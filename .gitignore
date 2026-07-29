@@ -1,0 +1,149 @@
+# ===== Java / Maven =====
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+replay_pid*
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle (ha később kell)
+.gradle/
+build/
+
+# ===== Node / Vite / npm =====
+node_modules/
+dist/
+build/
+.cache/
+*.local
+
+# npm / yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Vite
+.vite/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# ===== Environment & Secrets =====
+# Soha ne commitolj .env fájlt — csak .env.example-t
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+backup.env
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# ===== IDE =====
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Eclipse
+.project
+.classpath
+.settings/
+.factorypath
+
+# NetBeans
+nbproject/
+nb-configuration.xml
+
+# ===== OS =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.Trash-*
+
+# ===== Docker / Docker Compose =====
+# Volume-ok bind mount esetén (ha lokálisan mountolnánk a ./backups mappát git-be)
+/uploads/
+/backups/
+
+# Docker override fájlok (lokális dev)
+/docker-compose.override.yml
+/docker-compose.local.yml
+
+# ===== Test artifacts =====
+test-output/
+test-results/
+reports/
+*.html
+!docs/**/*.html
+
+# ===== Generált / Build artifacts =====
+# Frontend bundle
+.next/
+.nuxt/
+.svelte-kit/
+dist/
+out/
+
+# Backend JAR (build után)
+/target/*.jar
+
+# OpenAPI generált docs (CI-ből jön)
+/docs/api.md
+
+# Logs (stdout-on megy, de ha bármi local log fájlba megy)
+/*.log
+logs/
+
+# Backup / Archive (production-ben)
+/audit-archive/
+
+# ===== IDE temp =====
+*~
+*.swp
+*.swo
+.vs/
+
+# ===== Coverage / Test results =====
+jacoco/
+.coverage
+.coverage.*
+
+# ===== Misc =====
+.env.bak
+.env.old
+*.bak
+*.tmp
+*.orig
