@@ -1,5 +1,6 @@
 package hu.tanszek.device.auth.dto;
 
+import hu.tanszek.device.common.SizeLimits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -14,9 +15,10 @@ import jakarta.validation.constraints.Size;
  */
 public record PasswordChangeRequest(
         @NotBlank(message = "validation.notBlank")
+        @Size(max = SizeLimits.MEDIUM_TEXT_MAX)
         String currentPassword,
 
         @NotBlank(message = "validation.notBlank")
-        @Size(min = 12, max = 128, message = "validation.minLength")
+        @Size(min = 12, max = SizeLimits.PASSWORD_HASH_MAX, message = "validation.minLength")
         String newPassword
 ) {}
