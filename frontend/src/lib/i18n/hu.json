@@ -189,6 +189,8 @@
     "preview": "Előnézet",
     "validRows": "Érvényes sorok",
     "invalidRows": "Hibás sorok",
+    "totalRows": "Összes sor",
+    "rows": "sor",
     "rowNumber": "Sor",
     "fieldErrors": "Mező hibák",
     "import": "Import indítása",
