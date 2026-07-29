@@ -1,0 +1,224 @@
+# docker-compose.yml — Egyetemi Tanszéki Nyilvántartó Rendszer
+#
+# 5 konténer monorepo docker-compose:
+#   - postgres    (PostgreSQL 16)
+#   - backend     (Spring Boot 3.3 + Java 21)
+#   - frontend    (Vite + React 18 build → Nginx Alpine)
+#   - backup      (Alpine + pg_dump + dcron)
+#   - mailhog     (SMTP mock, dev profile only)
+#
+# Használat:
+#   cp .env.example .env
+#   cp backup.env.example backup.env
+#   ./scripts/bootstrap.sh   # JWT/Crypto secret generálás
+#   docker compose --profile dev up -d   # dev mód (mailhog is)
+#   docker compose up -d                 # production mód (mailhog nélkül)
+
+name: device-storage
+
+services:
+
+  # ===== PostgreSQL Database =====
+  postgres:
+    image: postgres:16-alpine
+    container_name: device-storage-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - postgres_data:/var/lib/postgresql/data:rw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+  # ===== Spring Boot Backend =====
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: device-storage-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Forward .env vars explicit (docker-compose env_file + environment merge)
+      JWT_KID_ACTIVE: ${JWT_KID_ACTIVE}
+      JWT_KID_PREVIOUS: ${JWT_KID_PREVIOUS:-}
+      JWT_KID_GRACE_PERIOD_SEC: ${JWT_KID_GRACE_PERIOD_SEC:-3600}
+      JWT_ACCESS_TTL_MIN: ${JWT_ACCESS_TTL_MIN:-15}
+      JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
+      CRYPTO_AES_KEY: ${CRYPTO_AES_KEY}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-localhost}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-1025}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@tanszek.local}
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
+      ALERT_EMAIL_RECIPIENT: ${ALERT_EMAIL_RECIPIENT:-admin@tanszek.local}
+      PAGINATION_DEFAULT_SIZE: ${PAGINATION_DEFAULT_SIZE:-20}
+      PAGINATION_MAX_SIZE: ${PAGINATION_MAX_SIZE:-50}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      AUDIT_RETENTION_YEARS: ${AUDIT_RETENTION_YEARS:-5}
+      REFRESH_CLEANUP_RETENTION_DAYS: ${REFRESH_CLEANUP_RETENTION_DAYS:-7}
+      UPLOAD_BASE_PATH: ${UPLOAD_BASE_PATH:-/var/uploads}
+      SPRING_CLOUD_REFRESH_ENABLED: ${SPRING_CLOUD_REFRESH_ENABLED:-true}
+    tmpfs:
+      - /tmp
+      - /var/run
+    volumes:
+      - uploads_data:/var/uploads:rw
+      - audit_archive_data:/var/backups/archive/audit:rw
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q 'UP'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true    # Root FS read-only, de a tmpfs mount-ok (/tmp, /var/run) és a volume mount-ok (uploads_data, audit_archive_data) biztosítják a runtime írható területet
+
+  # ===== Frontend (Nginx + Vite build) =====
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: device-storage-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+  # ===== Backup (pg_dump cron) =====
+  backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    container_name: device-storage-backup
+    restart: unless-stopped
+    env_file:
+      - backup.env
+    environment:
+      POSTGRES_HOST: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - backup_data:/var/backups:rw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+  # ===== MailHog (dev profile only, SMTP mock) =====
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: device-storage-mailhog
+    restart: unless-stopped
+    profiles: ["dev"]
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI (böngészőből: http://localhost:8025)
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+# ===== Networks =====
+networks:
+  app-network:
+    driver: bridge
+    name: device-storage-network
+
+# ===== Volumes =====
+volumes:
+  postgres_data:
+    name: device-storage-postgres-data
+  uploads_data:
+    name: device-storage-uploads
+  backup_data:
+    name: device-storage-backup-data
+  audit_archive_data:
+    name: device-storage-audit-archive

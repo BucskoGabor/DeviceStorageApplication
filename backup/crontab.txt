@@ -1,0 +1,13 @@
+# Cron tab a backup konténerhez
+# Formátum: perc óra nap hónap hétkönap parancs
+# 02:00-kor futtatja a backup.sh-t (UTC)
+
+# Környezeti változók a cron job-okhoz (a backup.env-ből töltődnek)
+POSTGRES_HOST=postgres
+POSTGRES_DB=tanszek_db
+POSTGRES_USER=admin
+BACKUP_RETENTION_DAYS=30
+PGPASSWORD=secure_pass
+
+# Napi backup 02:00-kor (UTC)
+0 2 * * * /usr/local/bin/backup.sh >> /var/backups/backup.log 2>&1
