@@ -189,6 +189,8 @@
     "preview": "Preview",
     "validRows": "Valid Rows",
     "invalidRows": "Invalid Rows",
+    "totalRows": "Total Rows",
+    "rows": "rows",
     "rowNumber": "Row",
     "fieldErrors": "Field Errors",
     "import": "Start Import",
