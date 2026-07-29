@@ -1,11 +1,12 @@
 import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios'
+import { useAuthStore } from '@/lib/store/authStore'
 
 /**
  * Axios HTTP kliens a backend API-hoz.
  *
  * Funkciók:
  * - withCredentials: true (refresh token cookie automatikus csatolás)
- * - Bearer token az Authorization headerben
+ * - Bearer token az Authorization headerben (Zustand store-ból)
  * - X-XSRF-TOKEN header state-changing kéréseknél (CSRF)
  * - Silent refresh 401-re (refresh-in-progress lock + queue)
  * - Globális hibakezelő interceptor (Sonner toast messageKey-vel)
@@ -21,25 +22,12 @@ export const apiClient = axios.create({
   },
 })
 
-// ===== Access Token Memory Storage =====
-// A refresh token HttpOnly cookie-ban van, de az access token memory-ban
-// (Zustand store vagy React Context). Most egyszerűsítve egy modul-szintű változó.
-
-let accessToken: string | null = null
-
-export function setAccessToken(token: string | null): void {
-  accessToken = token
-}
-
-export function getAccessToken(): string | null {
-  return accessToken
-}
-
 // ===== Request Interceptor: Bearer token + CSRF =====
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Access token hozzáadása
+    // Access token hozzáadása a Zustand store-ból
+    const accessToken = useAuthStore.getState().accessToken
     if (accessToken) {
       config.headers.set('Authorization', `Bearer ${accessToken}`)
     }
@@ -49,7 +37,7 @@ apiClient.interceptors.request.use(
       (config.method ?? 'get').toLowerCase()
     )
     if (isStateChanging) {
-      // A XSRF-TOKEN cookie-ból olvassuk ki
+      // A XSRF-TOKEN cookie-ból olvassuk ki (Spring Security által beállítva)
       const cookies = document.cookie.split(';')
       const xsrfToken = cookies
         .find((c) => c.trim().startsWith('XSRF-TOKEN='))
@@ -74,10 +62,13 @@ async function performRefresh(): Promise<string | null> {
       {},
       { withCredentials: true }
     )
-    const newAccessToken = response.data.accessToken as string
-    setAccessToken(newAccessToken)
-    return newAccessToken
+
+    const { accessToken } = response.data as { accessToken: string }
+    useAuthStore.getState().setAccessToken(accessToken)
+    return accessToken
   } catch {
+    // Refresh failure: clear auth state
+    useAuthStore.getState().clearAuth()
     return null
   }
 }
@@ -89,7 +80,9 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Ne próbálkozzunk refresh-sel a /login, /refresh, /logout endpointokon
+    const isAuthEndpoint = error.config?.url?.includes('/api/auth/')
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true
 
       // Refresh-in-progress lock: ha már fut egy refresh, várunk arra
@@ -109,9 +102,25 @@ apiClient.interceptors.response.use(
       }
 
       // Refresh failure: redirect login
+      useAuthStore.getState().clearAuth()
       window.location.href = '/login'
     }
 
     return Promise.reject(error)
   }
 )
+
+/**
+ * Access token lekérdezése a Zustand store-ból.
+ * Re-export a régi API kompatibilitáshoz.
+ */
+export const getAccessToken = (): string | null =>
+  useAuthStore.getState().accessToken
+
+/**
+ * Access token beállítása a Zustand store-ban.
+ * Re-export a régi API kompatibilitáshoz.
+ */
+export const setAccessToken = (token: string | null): void => {
+  useAuthStore.getState().setAccessToken(token)
+}
