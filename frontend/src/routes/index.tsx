@@ -9,6 +9,7 @@ import { RequireAuth } from '@/components/auth/RequireAuth'
 import { RequireRole } from '@/components/auth/RequireRole'
 import { DevicesPage } from '@/features/device/pages/DevicesPage'
 import { DeviceDetailPage } from '@/features/attachment/pages/DeviceDetailPage'
+import { AuditPage } from '@/features/audit/pages/AuditPage'
 import { ImportPage } from '@/features/import/pages/ImportPage'
 import { useState } from 'react'
 
@@ -92,6 +93,7 @@ export function AppRoutes() {
         <Route index element={<AdminIndexPage />} />
         <Route path="devices" element={<DevicesPage />} />
         <Route path="devices/:id" element={<DeviceDetailPage />} />
+        <Route path="audit" element={<AuditPage />} />
         <Route path="import" element={<ImportPage />} />
       </Route>
 
