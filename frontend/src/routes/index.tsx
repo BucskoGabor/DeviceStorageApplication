@@ -7,6 +7,7 @@ import { PasswordChangeForm } from '@/features/auth/components/PasswordChangeFor
 import { useAuthStore } from '@/lib/store/authStore'
 import { RequireAuth } from '@/components/auth/RequireAuth'
 import { RequireRole } from '@/components/auth/RequireRole'
+import { DevicesPage } from '@/features/device/pages/DevicesPage'
 import { useState } from 'react'
 
 /**
@@ -87,6 +88,7 @@ export function AppRoutes() {
         }
       >
         <Route index element={<AdminIndexPage />} />
+        <Route path="devices" element={<DevicesPage />} />
       </Route>
 
       {/* Fallback */}
