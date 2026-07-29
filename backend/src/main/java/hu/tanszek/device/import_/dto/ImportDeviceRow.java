@@ -1,5 +1,6 @@
 package hu.tanszek.device.import_.dto;
 
+import hu.tanszek.device.common.SizeLimits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -17,17 +18,17 @@ import jakarta.validation.constraints.Size;
  */
 public record ImportDeviceRow(
         @NotBlank(message = "validation.notBlank")
-        @Size(max = 50)
+        @Size(max = SizeLimits.INVENTORY_NUMBER_MAX)
         String inventoryNumber,
 
         @NotBlank(message = "validation.notBlank")
         @Pattern(regexp = "[a-zA-Z0-9-_]+", message = "validation.pattern")
-        @Size(max = 50)
+        @Size(max = SizeLimits.SHORT_TEXT_MAX)
         String type,  // pl. laptop, monitor, projektor
 
         @NotBlank(message = "validation.notBlank")
         String status,  // PENDING / ASSIGNED / IN_STORAGE / MAINTENANCE / DISPOSED
 
-        @Size(max = 255)
+        @Size(max = SizeLimits.MEDIUM_TEXT_MAX)
         String locationName  // optional — kezdeti location neve
 ) {}

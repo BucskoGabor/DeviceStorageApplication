@@ -1,5 +1,6 @@
 package hu.tanszek.device.import_.dto;
 
+import hu.tanszek.device.common.SizeLimits;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -18,14 +19,15 @@ import jakarta.validation.constraints.Size;
 public record ImportUserRow(
         @NotBlank(message = "validation.notBlank")
         @Email(message = "validation.email")
+        @Size(max = SizeLimits.EMAIL_MAX)
         String email,
 
         @NotBlank(message = "validation.notBlank")
-        @Size(max = 100)
+        @Size(max = SizeLimits.SHORT_TEXT_MAX)
         String firstName,
 
         @NotBlank(message = "validation.notBlank")
-        @Size(max = 100)
+        @Size(max = SizeLimits.SHORT_TEXT_MAX)
         String lastName,
 
         @NotBlank(message = "validation.notBlank")
@@ -33,6 +35,6 @@ public record ImportUserRow(
 
         Boolean active,  // nullable — default true
 
-        @Size(max = 255)
+        @Size(max = SizeLimits.MEDIUM_TEXT_MAX)
         String officeLocationName  // optional — iroda neve
 ) {}
