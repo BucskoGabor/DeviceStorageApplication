@@ -1,0 +1,47 @@
+{
+  "appName": "Device Storage",
+  "login": {
+    "title": "Login",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "languageSelector": "Language",
+    "themeToggle": "Toggle theme"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import"
+  },
+  "nav": {
+    "dashboard": "My Dashboard",
+    "admin": "Admin",
+    "users": "Users",
+    "devices": "Devices",
+    "locations": "Locations",
+    "software": "Software",
+    "audit": "Audit Log",
+    "logout": "Logout"
+  },
+  "deviceNotFound": "Device not found",
+  "userEmailDuplicate": "This email address is already in use",
+  "assignmentNotApproved": "Assignment has not been approved yet",
+  "rateLimitExceeded": "Too many requests, please try again later",
+  "validation": {
+    "notNull": "Field cannot be empty",
+    "notBlank": "Field cannot be blank",
+    "email": "Please enter a valid email",
+    "minLength": "Minimum {{min}} characters",
+    "maxLength": "Maximum {{max}} characters"
+  }
+}
