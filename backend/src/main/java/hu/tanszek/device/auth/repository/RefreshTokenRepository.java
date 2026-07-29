@@ -38,8 +38,15 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     /**
      * Cleanup query: 7+ napos lejárt/revoked tokenek törlése.
+     *
+     * <p>Native SQL kell, mert a JPQL nem támogatja az OR-t jól +
+     * a JPA bulk delete-ek az entity manager cache-t is invalidálják.
      */
     @Modifying
-    @Query("DELETE FROM RefreshToken rt WHERE rt.expiresAt < :cutoff OR rt.revoked = true AND rt.createdAt < :cutoff")
+    @Query(value = """
+            DELETE FROM refresh_tokens
+            WHERE expires_at < :cutoff
+               OR (revoked = true AND created_at < :cutoff)
+            """, nativeQuery = true)
     int deleteOldTokens(@Param("cutoff") Instant cutoff);
 }
