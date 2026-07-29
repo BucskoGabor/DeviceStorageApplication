@@ -6,6 +6,8 @@ import hu.tanszek.device.auth.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -55,11 +57,33 @@ public class SecurityConfig {
     }
 
     /**
+     * RoleHierarchy — ROLE_ADMIN > ROLE_TEACHER > ROLE_STUDENT hierarchia.
+     *
+     * <p>A {@link RoleHierarchyImpl} a Spring Security-ben egy ROLE_ADMIN
+     * user örökli a ROLE_TEACHER és ROLE_STUDENT összes permission-jét
+     * (ahol a RoleHierarchy bean definiálja a "tartalmazza" relációt).
+     *
+     * <p>A {@code RoleHierarchyVoter} ezt használja a permission check-eknél.
+     *
+     * <p>Ha új role jön a rendszerbe (admin UI-ból), itt kell frissíteni és
+     * újraindítani a backend-et.
+     */
+    @Bean
+    public RoleHierarchy roleHierarchy() {
+        return RoleHierarchyImpl.fromHierarchy(
+                "ROLE_ADMIN > ROLE_TEACHER \n" +
+                "ROLE_TEACHER > ROLE_STUDENT"
+        );
+    }
+
+    /**
      * AuthenticationManager — az AuthProviderFactory-ból nyeri az aktív provider-t.
      */
     @Bean
     public AuthenticationManager authenticationManager() {
-        return new ProviderManager(List.of(authProviderFactory.getActiveProvider()));
+        ProviderManager manager = new ProviderManager(List.of(authProviderFactory.getActiveProvider()));
+        // RoleHierarchy bean elérhető a provider-en belül a voter-eken keresztül
+        return manager;
     }
 
     /**
