@@ -78,10 +78,14 @@ export function DevicesPage() {
                   <Pencil className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button variant="ghost" size="icon" asChild>
-                <Link to={`/admin/devices/${device.id}/delete`}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Link>
+              <Button variant="ghost" size="icon" onClick={() => {
+                if (confirm(t('devices.confirmDelete'))) {
+                  deviceApi.deleteDevice(device.id).then(() => {
+                    window.location.reload()
+                  })
+                }
+              }}>
+                <Trash2 className="h-4 w-4 text-destructive" />
               </Button>
             </div>
           )
