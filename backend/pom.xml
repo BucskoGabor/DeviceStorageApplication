@@ -213,6 +213,31 @@
                 </configuration>
             </plugin>
 
+            <!-- Code generator: i18n keys TypeScript union type -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-i18n-keys</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>hu.tanszek.device.buildtools.GenerateI18nKeys</mainClass>
+                            <arguments>
+                                <argument>${project.basedir}/src/main/resources/messages_hu.properties</argument>
+                                <argument>${project.basedir}/src/main/resources/messages_en.properties</argument>
+                                <argument>${project.basedir}/../frontend/src/lib/i18n/i18n-keys.ts</argument>
+                            </arguments>
+                            <classpathScope>compile</classpathScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <!-- Compiler: Java 21 + Lombok annotation processor -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
