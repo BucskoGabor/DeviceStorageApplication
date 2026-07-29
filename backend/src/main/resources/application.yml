@@ -91,3 +91,11 @@ logging:
   level:
     root: INFO
     hu.tanszek: DEBUG
+
+# Mail retry konfiguráció (Spring Retry @Retryable)
+mail:
+  retry:
+    max-attempts: 3          # 3 próbálkozás (kezdeti + 2 retry)
+    initial-delay: 1000       # 1 másodperc várakozás az első retry előtt
+    multiplier: 2.0           # Exponential backoff (1s, 2s, 4s)
+    max-delay: 10000          # Maximum 10 másodperc várakozás

@@ -5,17 +5,25 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Központi email küldő service — rendszer notification-ök (alert-ek, audit log export, stb.).
  *
- * <p>Jelenleg a {@code ScheduledJobMonitoring} használja hiba alert-ekre
+ * <p>A {@code ScheduledJobMonitoring} használja hiba alert-ekre
  * (Task 2.10 mail config + Spring Retry 3 attempt exponential backoff).
  *
- * <p>A @Async használatával a küldés nem blockolja a job végrehajtását —
+ * <p>A {@code @Async} használatával a küldés nem blockolja a job végrehajtását —
  * ha a SMTP szerver lassú, a cleanup job akkor is tovább fut.
+ *
+ * <p>A {@code @Retryable} 3 attempt exponential backoff (1000ms → 2000ms → 4000ms).
+ * Ha mind a 3 próbálkozás sikertelen, log.error + NEM dob kivételt
+ * (a notification elveszhet, de a fő flow nem áll le).
  */
 @Slf4j
 @Service
@@ -28,17 +36,36 @@ public class MailService {
     private String fromAddress;
 
     /**
-     * Egyszerű szöveges email küldése.
+     * Küldési kísérletek számlálója (debug / monitoring célokra).
+     */
+    private final AtomicInteger totalAttempts = new AtomicInteger(0);
+    private final AtomicInteger totalFailures = new AtomicInteger(0);
+
+    /**
+     * Egyszerű szöveges email küldése @Retryable retry logikával.
      *
-     * <p>A {@link Async} miatt a hívó nem várja meg a küldést — a Spring külön
-     * thread-en futtatja.
+     * <p>3 próbálkozás exponential backoff-fal (1s, 2s, 4s várakozás).
      *
-     * @param to címzett (pl. admin@tanszek.local)
+     * <p>A retry kivételek: minden {@code Exception} (beleértve a
+     * {@code org.springframework.mail.MailException}-t és az
+     * I/O hibákat). Ha mind a 3 próbálkozás sikertelen, log.error + nem dob kivételt.
+     *
+     * @param to címzett
      * @param subject email tárgya
      * @param body email szövege
      */
     @Async
+    @Retryable(
+            retryFor = Exception.class,
+            maxAttemptsExpression = "${mail.retry.max-attempts:3}",
+            backoff = @Backoff(
+                    delayExpression = "${mail.retry.initial-delay:1000}",
+                    multiplierExpression = "${mail.retry.multiplier:2.0}",
+                    maxDelayExpression = "${mail.retry.max-delay:10000}"
+            )
+    )
     public void sendSimpleEmail(String to, String subject, String body) {
+        totalAttempts.incrementAndGet();
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromAddress);
@@ -48,9 +75,20 @@ public class MailService {
             mailSender.send(message);
             log.info("Email sent: to={}, subject={}", to, subject);
         } catch (Exception e) {
-            log.error("Failed to send email to={}, subject={}", to, subject, e);
-            // Ne dobjon kivételt — a @Async miatt a caller nem látja,
-            // de log.error rögzíti a hibát monitoring célokra.
+            totalFailures.incrementAndGet();
+            log.warn("Failed to send email (attempt will be retried): to={}, subject={}", to, subject, e);
+            throw e; // A Spring Retry elkapja és újrapróbálkozik
         }
+    }
+
+    /**
+     * Küldési statisztikák (monitoring endpoint-hoz / health check-hez).
+     */
+    public int getTotalAttempts() {
+        return totalAttempts.get();
+    }
+
+    public int getTotalFailures() {
+        return totalFailures.get();
     }
 }
