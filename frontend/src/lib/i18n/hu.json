@@ -1,0 +1,47 @@
+{
+  "appName": "Eszköz Nyilvántartó",
+  "login": {
+    "title": "Bejelentkezés",
+    "email": "Email cím",
+    "password": "Jelszó",
+    "submit": "Bejelentkezés",
+    "submitting": "Bejelentkezés...",
+    "languageSelector": "Nyelv",
+    "themeToggle": "Téma váltás"
+  },
+  "common": {
+    "loading": "Betöltés...",
+    "error": "Hiba",
+    "retry": "Újra",
+    "cancel": "Mégse",
+    "save": "Mentés",
+    "delete": "Törlés",
+    "edit": "Szerkesztés",
+    "create": "Létrehozás",
+    "search": "Keresés",
+    "filter": "Szűrés",
+    "export": "Exportálás",
+    "import": "Importálás"
+  },
+  "nav": {
+    "dashboard": "Saját Dashboard",
+    "admin": "Admin",
+    "users": "Felhasználók",
+    "devices": "Eszközök",
+    "locations": "Helyszínek",
+    "software": "Szoftverek",
+    "audit": "Audit Log",
+    "logout": "Kijelentkezés"
+  },
+  "deviceNotFound": "Eszköz nem található",
+  "userEmailDuplicate": "Ez az email cím már használatban van",
+  "assignmentNotApproved": "A hozzárendelés még nincs jóváhagyva",
+  "rateLimitExceeded": "Túl sok próbálkozás, kérjük várjon",
+  "validation": {
+    "notNull": "A mező nem lehet üres",
+    "notBlank": "A mező nem lehet üres",
+    "email": "Érvényes email címet adjon meg",
+    "minLength": "Minimum {{min}} karakter",
+    "maxLength": "Maximum {{max}} karakter"
+  }
+}
