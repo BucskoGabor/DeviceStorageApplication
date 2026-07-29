@@ -1,6 +1,6 @@
-# Frontend Dockerfile - Multi-stage build
-# Build stage: Node 20 + Vite
-# Runtime stage: Nginx Alpine
+# ===== Frontend Dockerfile - Multi-stage build =====
+# Stage 1: Build (Node 20 + Vite)
+# Stage 2: Runtime (Nginx 1.27 + Alpine)
 
 # ===== STAGE 1: Build =====
 FROM node:20-alpine AS build
