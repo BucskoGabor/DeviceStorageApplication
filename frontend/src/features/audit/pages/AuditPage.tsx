@@ -12,6 +12,7 @@ import { DataTable } from '@/components/DataTable/DataTable'
 import { type ColumnDef } from '@tanstack/react-table'
 import { auditApi, type AuditLog } from '@/features/audit/api/auditApi'
 import { AdminLayout } from '@/features/admin/layouts/AdminLayout'
+import { DiffViewer } from '@/components/DiffViewer/DiffViewer'
 
 /**
  * AuditPage — admin/audit táblázat (szűrő, lapozás, diff side panel, rollback gomb).
@@ -203,16 +204,9 @@ export function AuditPage() {
             </Card>
 
             {selectedLog.changesJson && (
-              <Card className="mb-4">
-                <CardHeader>
-                  <CardTitle>{t('audit.changesBefore')} / {t('audit.changesAfter')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <pre className="overflow-auto rounded-md bg-muted p-3 text-xs">
-                    {JSON.stringify(JSON.parse(selectedLog.changesJson), null, 2)}
-                  </pre>
-                </CardContent>
-              </Card>
+              <div className="mb-4">
+                <DiffViewer changesJson={selectedLog.changesJson} />
+              </div>
             )}
 
             <Button
