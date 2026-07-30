@@ -63,6 +63,9 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").exists())
                 .andExpect(jsonPath("$.expiresIn").exists())
+                .andExpect(jsonPath("$.role").value("ROLE_ADMIN"))
+                .andExpect(jsonPath("$.permissions").isArray())
+                .andExpect(jsonPath("$.mustChangePassword").value(false))
                 .andReturn();
 
         assertThat(result.getResponse().getCookie("refresh_token")).isNotNull();
