@@ -63,6 +63,7 @@ public class Location extends BaseEntity<Long> {
      * A {@code LocationService.move()} 3x retry-olja {@code OptimisticLockException} esetén.
      */
     @Version
+    @Version
     @Column(name = "version", nullable = false)
     private Long version;
 
