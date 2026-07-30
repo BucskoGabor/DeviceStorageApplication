@@ -1,6 +1,9 @@
 package hu.tanszek.device.user.controller;
 
 import hu.tanszek.device.auth.RequirePermission;
+import hu.tanszek.device.auth.repository.RoleRepository;
+import hu.tanszek.device.auth.entity.Role;
+import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
 import hu.tanszek.device.crypto.CryptoService;
 import hu.tanszek.device.user.UserService;
@@ -34,6 +37,7 @@ public class UserController {
     private final AppUserRepository userRepository;
     private final UserService userService;
     private final CryptoService cryptoService;
+    private final RoleRepository roleRepository;
 
     @GetMapping
     @RequirePermission("USER_READ")
@@ -71,18 +75,25 @@ public class UserController {
         String emailHash = cryptoService.sha256(request.email());
 
         userRepository.findByEmailHash(emailHash).ifPresent(u -> {
-            throw new hu.tanszek.device.common.BusinessValidationException(
+            throw new BusinessValidationException(
                     "userEmailDuplicate",
                     "Email already in use: " + request.email()
             );
         });
 
+        // Role lookup a roles táblából (pl. "ROLE_ADMIN" → role.id)
+        Role role = roleRepository.findByName(request.role())
+                .orElseThrow(() -> new BusinessValidationException(
+                        "invalidRole",
+                        "Unknown role: " + request.role()
+                ));
+
         // A jelszó hash placeholder — production-ban az Argon2PasswordEncoder generálja
         AppUser user = AppUser.builder()
                 .emailEncrypted(cryptoService.encrypt(request.email()))
                 .emailHash(emailHash)
-                .role(null) // TODO: role lookup from request
-                .passwordHash("$argon2id$PLACEHOLDER")
+                .role(role)
+                .passwordHash("$argon2id$PLACEHOLDER_FORCE_RESET")
                 .active(request.active() == null || request.active())
                 .mustChangePassword(true)
                 .failedLoginCount(0)
