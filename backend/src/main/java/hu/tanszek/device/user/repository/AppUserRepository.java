@@ -37,6 +37,13 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long>, JpaSpec
     Optional<AppUser> findByEmailHash(String emailHash);
 
     /**
+     * Find by ID with EAGER loading of role + permissions.
+     * Avoids N+1 query in controller endpoints.
+     */
+    @EntityGraph(attributePaths = {"role", "role.permissions", "permissions"})
+    Optional<AppUser> findWithDetailsById(Long id);
+
+    /**
      * User keresése role alapján.
      */
     List<AppUser> findByRoleId(Long roleId);
