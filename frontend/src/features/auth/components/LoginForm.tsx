@@ -42,7 +42,13 @@ export function LoginForm() {
     setIsSubmitting(true)
     try {
       const response: LoginResponse = await authApi.login(data)
-      setAuth(response.accessToken, data.email, '', [], false)
+      setAuth(
+        response.accessToken,
+        data.email,
+        response.role,
+        response.permissions,
+        response.mustChangePassword
+      )
       toast.success(t('loginSuccess'), { position: 'top-right' })
       navigate('/my-dashboard')
     } catch (error: any) {

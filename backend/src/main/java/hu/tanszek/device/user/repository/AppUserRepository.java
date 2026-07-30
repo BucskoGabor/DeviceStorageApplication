@@ -1,6 +1,7 @@
 package hu.tanszek.device.user.repository;
 
 import hu.tanszek.device.user.entity.AppUser;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -27,8 +28,12 @@ import java.util.Optional;
 public interface AppUserRepository extends JpaRepository<AppUser, Long>, JpaSpecificationExecutor<AppUser> {
 
     /**
-     * User keresése email_hash alapján (CustomUserDetailsService.loadUserByUsername).
+     * User keresése email_hash alapján, a role.permissions és user.permissions
+     * EAGER betöltésével (N+1 query elkerülése).
+     *
+     * CustomUserDetailsService.loadUserByUsername hívja login során.
      */
+    @EntityGraph(attributePaths = {"role", "role.permissions", "permissions"})
     Optional<AppUser> findByEmailHash(String emailHash);
 
     /**
