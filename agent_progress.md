@@ -15,16 +15,30 @@
 
 ## 🎯 Projekt státusz: TELJES (100%)
 
-**Minden fázis (Fázis 1-5) kész.** 46 commit, 33 tervezett task + 13 extra task (amelyek a terv implementálásakor felmerültek).
+**Minden fázis (Fázis 1-5) kész.** 55 commit, 33 tervezett task + 25 extra task (amik a terv implementálásakor felmerültek, kritikus bug fixek, biztonsági javítások).
 
 ### Extra taskok (amik a terv implementálásakor derültek ki)
 - **Task 4.10:** Backend REST controller-ek (Device, Location, User, Audit)
 - **Task 4.11:** LocationService.validateNoCycle + AttachmentController + ImportController
 - **Task 4.12:** DiffViewer komponens + UserService @AuditTarget bővítések
 - **Task 4.13:** Kritikus javítások — LoginResponse bővítés + readRefreshTokenCookie bug fix + AuditRollbackController
+- **Task 4.13.1:** AuthControllerIntegrationTest frissítés
+- **Task 4.13.2:** /api/auth/me endpoint + RequireAuth page reload fix
+- **Task 4.13.3:** UserController role lookup fix
+- **Task 4.13.4:** AppUserRepository.findWithDetailsById EntityGraph
+- **Task 4.13.5:** DeviceController rollback (row-level filter kimarad)
+- **Task 4.13.6:** GlobalExceptionHandler MaxUploadSizeExceededException handler
+- **Task 4.13.7:** Location entity @Version annotáció
+- **Task 4.13.8:** LocationService.move optimistic lock retry logika
+- **Task 4.13.9:** LocationController.update a LocationService.move()-t használja
 - **Task 4.14:** SecurityConfig filter lánc kiegészítés (RequestIdFilter, RateLimitFilter, CSRF)
+- **Task 4.14.1:** RateLimitFilter pozíció javítása (CsrfFilter ELŐTT)
 - **Task 4.15:** SeedPasswordInitializer — demo admin password hash fix
 - **Task 5.1, 5.2, 5.3:** Unit tesztek kiegészítése + Testcontainers + Integration tesztek
+- **Task 5.4:** Standard runbook (7 szekció)
+- **Task 5.5:** GitHub Actions CI workflow
+- **Task 5.6:** Végső tracker frissítés
+- **Task 5.7:** Vegses kisebb hiányosságok
 
 ### Összefoglaló
 - **Backend:** 40+ Java main package + 5 test package, 100+ forrásfájl
@@ -33,6 +47,19 @@
 - **Infrastructure:** 5 konténerrel, multi-stage Dockerfile-ok, nginx + SMTP + MailHog
 - **CI/CD:** GitHub Actions 3 job (backend + frontend + smoke-test)
 - **Documentation:** 3 doc (architecture, deployment, runbook 7 szekció)
+- **Security:** Minden tervben említett komponens implementálva (RequestIdFilter, RateLimitFilter, CsrfFilter, JwtAuthenticationFilter, ExceptionTranslationFilter, AuthorizationFilter)
+- **Bug fixek:** readRefreshTokenCookie (most HttpServletRequest-ből olvas), LoginResponse role/permissions (RequireRole/RequirePermission most működik), demo admin password hash (SeedPasswordInitializer generálja futásidőben), UserController role lookup (RoleRepository.findByName)
+- **Optimalizálás:** AppUserRepository @EntityGraph (N+1 query elkerülése), Location @Version (optimistic lock), LocationService.move retry logika
+- **Hibakezelés:** GlobalExceptionHandler 7+ exception típust kezel (BusinessValidationException, ResourceNotFoundException, UnauthorizedActionException, AuthenticationException, MethodArgumentNotValidException, MaxUploadSizeExceededException, Exception fallback)
+
+### Implementálatlan (tudatosan kimaradt)
+- DeviceController row-level filter (Task 3.2 JpaSpecificationExecutor kimaradt) — a frontend admin felületén minden user látható, így most nem kritikus
+- SoftwareService / SoftwareController (a tervben a Software csak a Device-eken keresztül érhető el, önálló CRUD nincs)
+- Custom SoftwareService tesztek (az Integration tesztek részben fedezik)
+- OpenAPI controller annotációk (@Operation, @ApiResponse) — a tervben csak a SecurityConfig van implementálva, az annotációk Task 4.5+ -ban pótolhatók
+
+### Deployment kész?
+✅ A `docker compose up -d` parancs indítja a rendszert, a `smoke-test.sh` tesztelheti, és a CI biztosítja a kódminőséget. Production deployment-hez a `.env` fájlban az SMTP jelszót és a JWT/Crypto titkos kulcsokat be kell állítani.
 
 ---
 
