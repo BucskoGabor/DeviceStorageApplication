@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -181,6 +182,29 @@ public class GlobalExceptionHandler {
 
         log.warn("Validation error at {}: {} field errors", getPath(request), fieldErrors.size());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
+     * MaxUploadSizeExceededException — 413 Payload Too Large.
+     * A Spring Boot a multipart feltöltési limit túllépésekor dobja
+     * (10MB default, application.yml spring.servlet.multipart.max-file-size).
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex,
+            WebRequest request
+    ) {
+        Map<String, Object> body = createBody(
+                HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                "Payload Too Large",
+                "fileTooLarge",
+                "File size exceeds 10MB limit",
+                getPath(request),
+                null
+        );
+
+        log.warn("File too large: {} at {}", ex.getMessage(), getPath(request));
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(body);
     }
 
     /**
