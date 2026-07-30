@@ -1,9 +1,15 @@
 package hu.tanszek.device.location;
 
 import hu.tanszek.device.common.BusinessValidationException;
+import hu.tanszek.device.common.ResourceNotFoundException;
 import hu.tanszek.device.location.entity.Location;
 import hu.tanszek.device.location.repository.LocationRepository;
+import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,12 +21,48 @@ import java.util.List;
  *
  * <p>Legfontosabb feladata: a {@link #validateNoCycle(Long, Long)} metódus,
  * ami rekurzívan végigmegy a parent láncon, és dob, ha ciklust talál.
+ *
+ * <p>A {@link #move(Long, Long)} metódus Optimistic Lock retry logikát
+ * használ: ha párhuzamos módosítás miatt OptimisticLockException dobódik,
+ * a Spring Retry 3x újrapróbálkozik exponential backoff-fal (1s, 2s, 4s).
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LocationService {
 
     private final LocationRepository locationRepository;
+
+    /**
+     * Location mozgatása új parenthez (cycle check + optimistic lock retry).
+     *
+     * <p>Retry policy: 3 attempt exponential backoff (1s, 2s, 4s).
+     * Ha mind a 3 próbálkozás OptimisticLockException-t dob, a service
+     * az utolsó kivételt továbbdobja a GlobalExceptionHandler felé.
+     */
+    @Retryable(
+            retryFor = {OptimisticLockException.class, ObjectOptimisticLockingFailureException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000, multiplier = 2.0)
+    )
+    @Transactional
+    public Location move(Long locationId, Long newParentId) {
+        Location location = locationRepository.findById(locationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Location not found: " + locationId));
+
+        if (newParentId != null) {
+            locationRepository.findById(newParentId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent location not found: " + newParentId));
+            validateNoCycle(locationId, newParentId);
+            location.setParent(locationRepository.findById(newParentId).orElse(null));
+        } else {
+            location.setParent(null);
+        }
+
+        Location saved = locationRepository.save(location);
+        log.info("Location {} moved to parent {} (version {})", locationId, newParentId, saved.getVersion());
+        return saved;
+    }
 
     /**
      * Rekurzív ciklusellenőrzés.
