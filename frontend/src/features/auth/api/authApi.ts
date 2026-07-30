@@ -26,6 +26,13 @@ export interface LoginResponse {
   mustChangePassword: boolean  // first-login flag
 }
 
+export interface MeResponse {
+  emailHash: string
+  role: string
+  permissions: string[]
+  mustChangePassword: boolean
+}
+
 export interface PasswordChangeRequest {
   currentPassword: string
   newPassword: string
@@ -73,11 +80,17 @@ export async function changePassword(request: PasswordChangeRequest): Promise<vo
 /**
  * Auth API namespace export.
  */
+export async function fetchMe(): Promise<MeResponse> {
+  const response = await apiClient.get<MeResponse>('/api/auth/me')
+  return response.data
+}
+
 export const authApi = {
   login,
   refresh,
   logout,
   changePassword,
+  me: fetchMe,
 }
 
 export default authApi

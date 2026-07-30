@@ -163,6 +163,41 @@ public class AuthController {
     }
 
     /**
+     * A current user adatainak lekérdezése (role, permissions, email).
+     *
+     * <p>A frontend F5 vagy page reload esetén hívja, hogy a useAuthStore
+     * újra betöltse a role/permissions-t a SecurityContext-ből.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<java.util.Map<String, Object>> me(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new UnauthorizedActionException("authRequired", "Authentication required");
+        }
+
+        String emailHash = (String) authentication.getPrincipal();
+        AppUser user = appUserRepository.findByEmailHash(emailHash)
+                .orElseThrow(() -> new UnauthorizedActionException("userNotFound", "User not found"));
+
+        String role = authentication.getAuthorities().stream()
+                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                .filter(a -> a.startsWith("ROLE_"))
+                .findFirst()
+                .orElse("ROLE_USER");
+
+        List<String> permissions = authentication.getAuthorities().stream()
+                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                .filter(a -> !a.startsWith("ROLE_"))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "emailHash", emailHash,
+                "role", role,
+                "permissions", permissions,
+                "mustChangePassword", user.isMustChangePassword()
+        ));
+    }
+
+    /**
      * Logout endpoint — refresh cookie revoke + cookie törlés.
      */
     @PostMapping("/logout")
