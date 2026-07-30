@@ -9,6 +9,7 @@ import hu.tanszek.device.common.UnauthorizedActionException;
 import hu.tanszek.device.user.UserService;
 import hu.tanszek.device.user.entity.AppUser;
 import hu.tanszek.device.user.repository.AppUserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -107,7 +108,10 @@ public class AuthController {
 
         LoginResponse loginResponse = new LoginResponse(
                 accessToken,
-                jwtTokenProvider.getAccessTokenTtlSeconds()
+                jwtTokenProvider.getAccessTokenTtlSeconds(),
+                role,
+                permissions,
+                user.isMustChangePassword()
         );
 
         log.info("User {} logged in successfully (mustChangePassword={})", emailHash, user.isMustChangePassword());
@@ -121,8 +125,11 @@ public class AuthController {
      * Ha a régi token már revoke (reuse detection), az egész chain revokeolódik.
      */
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResponse> refresh(HttpServletResponse response) {
-        String refreshToken = readRefreshTokenCookie();
+    public ResponseEntity<LoginResponse> refresh(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        String refreshToken = readRefreshTokenCookie(request);
         if (refreshToken == null) {
             throw new UnauthorizedActionException("refreshTokenMissing", "Refresh token cookie is missing");
         }
@@ -143,7 +150,10 @@ public class AuthController {
 
             return ResponseEntity.ok(new LoginResponse(
                     newAccessToken,
-                    jwtTokenProvider.getAccessTokenTtlSeconds()
+                    jwtTokenProvider.getAccessTokenTtlSeconds(),
+                    role,
+                    permissions,
+                    user.isMustChangePassword()
             ));
         } catch (IllegalStateException e) {
             // Reuse detection vagy lejárt token
@@ -212,10 +222,15 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    private String readRefreshTokenCookie() {
-        // A HttpServletRequest-ből közvetlenül olvassuk, mert a SecurityContext még nincs beállítva
-        // (a request el sem jut a JwtAuthenticationFilterig, ha nincs token).
-        // Implementációkor: HttpServletRequest-ből @CookieValue annotation-nel.
-        return null; // TODO: implementálni kell HttpServletRequest-ből
+    private String readRefreshTokenCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+        for (var cookie : request.getCookies()) {
+            if (REFRESH_TOKEN_COOKIE.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }
