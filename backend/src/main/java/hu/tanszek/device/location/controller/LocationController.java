@@ -106,25 +106,33 @@ public class LocationController {
     @PutMapping("/{id}")
     @RequirePermission("LOCATION_MANAGE")
     public ResponseEntity<Location> update(@PathVariable Long id, @Valid @RequestBody UpdateLocationRequest request) {
+        // Ha parentId változik, a move() hívása (retry logikával + cycle check)
+        if (request.parentId() != null && !isSameParent(id, request.parentId())) {
+            Location moved = locationService.move(id, request.parentId());
+            return ResponseEntity.ok(moved);
+        }
+
         Location location = locationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Location not found: " + id));
 
-        // Cycle check: ha parentId változik, ellenőrizzük a ciklust
-        if (request.parentId() != null) {
-            locationRepository.findById(request.parentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Parent location not found: " + request.parentId()));
-            locationService.validateNoCycle(id, request.parentId());
-        }
-
         if (request.name() != null) location.setName(request.name());
-        if (request.parentId() != null) {
-            Location parent = locationRepository.findById(request.parentId()).orElse(null);
-            location.setParent(parent);
-        }
         if (request.type() != null) location.setType(request.type());
 
         Location saved = locationRepository.save(location);
         return ResponseEntity.ok(saved);
+    }
+
+    /**
+     * Ellenőrzi, hogy a location current parent-je megegyezik-e a kért parentId-vel.
+     * Ha igen, a move() felesleges.
+     */
+    private boolean isSameParent(Long locationId, Long newParentId) {
+        return locationRepository.findById(locationId)
+                .map(loc -> {
+                    Long currentParentId = loc.getParent() != null ? loc.getParent().getId() : null;
+                    return java.util.Objects.equals(currentParentId, newParentId);
+                })
+                .orElse(false);
     }
 
     @DeleteMapping("/{id}")
