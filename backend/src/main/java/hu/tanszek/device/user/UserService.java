@@ -1,6 +1,7 @@
 package hu.tanszek.device.user;
 
 import hu.tanszek.device.auth.repository.RefreshTokenRepository;
+import hu.tanszek.device.audit.AuditTarget;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
 import hu.tanszek.device.user.entity.AppUser;
@@ -44,6 +45,7 @@ public class UserService {
      * @throws ResourceNotFoundException ha a user nem található
      * @throws BusinessValidationException ha a currentPassword hibás
      */
+    @AuditTarget(entityType = "AppUser", action = "change_password")
     @Transactional
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         AppUser user = appUserRepository.findById(userId)
@@ -88,6 +90,7 @@ public class UserService {
      * @param userId a user ID-ja
      * @throws ResourceNotFoundException ha a user nem található
      */
+    @AuditTarget(entityType = "AppUser", action = "deactivate")
     @Transactional
     public void deactivate(Long userId) {
         AppUser user = appUserRepository.findById(userId)
