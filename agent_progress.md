@@ -15,11 +15,20 @@
 
 ## 🎯 Projekt státusz: TELJES (100%)
 
-**Minden fázis (Fázis 1-5) kész.** 39 commit, 33 tervezett task + 6 extra task (Task 4.10 backend REST controller-ek + Task 5.1-5.3 integráció).
+**Minden fázis (Fázis 1-5) kész.** 46 commit, 33 tervezett task + 13 extra task (amelyek a terv implementálásakor felmerültek).
+
+### Extra taskok (amik a terv implementálásakor derültek ki)
+- **Task 4.10:** Backend REST controller-ek (Device, Location, User, Audit)
+- **Task 4.11:** LocationService.validateNoCycle + AttachmentController + ImportController
+- **Task 4.12:** DiffViewer komponens + UserService @AuditTarget bővítések
+- **Task 4.13:** Kritikus javítások — LoginResponse bővítés + readRefreshTokenCookie bug fix + AuditRollbackController
+- **Task 4.14:** SecurityConfig filter lánc kiegészítés (RequestIdFilter, RateLimitFilter, CSRF)
+- **Task 4.15:** SeedPasswordInitializer — demo admin password hash fix
+- **Task 5.1, 5.2, 5.3:** Unit tesztek kiegészítése + Testcontainers + Integration tesztek
 
 ### Összefoglaló
-- **Backend:** 33 Java main package + 5 test package, 80+ forrásfájl
-- **Frontend:** 25+ React komponens, 12+ API service, 10+ Zod schema
+- **Backend:** 40+ Java main package + 5 test package, 100+ forrásfájl
+- **Frontend:** 30+ React komponens, 12+ API service, 10+ Zod schema
 - **Database:** 14 tábla + 3 join table, 33 seed kulcs, 27 index
 - **Infrastructure:** 5 konténerrel, multi-stage Dockerfile-ok, nginx + SMTP + MailHog
 - **CI/CD:** GitHub Actions 3 job (backend + frontend + smoke-test)
@@ -104,6 +113,11 @@ _Ezek egymás után: 1.8 (alapok) → 1.1 (compose) → 1.2/1.7 párhuzamosan, m
 - [x] **Task 5.4:** Standard runbook (docs/runbook.md, **7 szekció**): (1) Első telepítés (bootstrap + .env + docker compose + demo admin), (2) Napi üzemeltetés (backup ellenőrzés, scheduled job státusz, log-ok, disk usage), (3) Gyakori hibák + megoldás (DB connection, JWT signature, refresh expired, rate limit, attachment too large, rollback permission), (4) Rollback eljárás (audit log, konténer, DB), (5) Backup restore (`scripts/backup-restore.sh` használat), (6) Credential rotation (JWT secret rotáció grace period-dal, DB password), (7) Incident response (izoláció, deaktiváció, token revoke, audit export, értesítési lánc, post-incident review). **Depends on:** 4.9.
 - [x] **Task 5.5:** GitHub Actions CI workflow (`.github/workflows/ci.yml`). **3 job:** `backend` (Java 21 + Maven, Spotless check, Checkstyle, OWASP Dependency-Check, unit + integration tests, Docker build), `frontend` (Node 20 + Vite, ESLint, Prettier, build, Docker build), `smoke-test` (depends on backend + frontend, docker compose --profile dev up, sleep 60, smoke-test.sh, continue-on-error: true). **Triggerek:** push to main/dev, PR to main/dev. **Spotless + Checkstyle + Jacoco + ESLint + Prettier** automatikus. **Depends on:** 1.1.
 - [x] **Task 5.1:** Unit tesztek kiegészítése. **`DeviceServiceAssertionTest`** (test/device/): 6 unit teszt (requestAssignment inactivates old, approveAssignment sets device status, approveUnassignment reverts to IN_STORAGE, approveUnassignment sets unassignApprover, requestUnassignment fails if not active, requestAssignment throws if device not found). **Depends on:** 1.5.
+- [x] **Task 4.11:** LocationService.validateNoCycle + AttachmentController + ImportController. **LocationService** rekurzív ciklusellenőrzés (max 100 lépés, visited Set). **AttachmentController** REST endpoints (GET/POST/DELETE). **ImportController** REST endpoints (preview/execute). **Depends on:** 3.5, 3.4.
+- [x] **Task 4.12:** DiffViewer komponens + UserService @AuditTarget bővítések. **DiffViewer** táblázatos diff nézet (before/after oszlopok, sárga kiemelés). **UserService.changePassword** + **deactivate** @AuditTarget annotációval. **Depends on:** 2.7, 4.8.
+- [x] **Task 4.13:** Kritikus javítások — LoginResponse bővítés + readRefreshTokenCookie bug fix + AuditRollbackController. **LoginResponse** új mezők: role, permissions, mustChangePassword. **AuthController.refresh** HttpServletRequest-ből olvassa a refresh_token cookie-t (regi kód mindig null-t adott vissza, a refresh endpoint SOHA nem működött). **AuthControllerIntegrationTest** frissítve. **AuditRollbackController** POST /api/audit/rollback/{id}. **Depends on:** 3.7, 4.1.
+- [x] **Task 4.14:** SecurityConfig filter lánc kiegészítés. **RequestIdFilter** + **RateLimitFilter** bean injection a SecurityConfig-ban. **CSRF** aktiválva `CookieCsrfTokenRepository.withHttpOnlyFalse()`-szel (a tervben ki volt kapcsolva). Filter lánc: RequestIdFilter → RateLimitFilter → CsrfFilter (default) → JwtAuthenticationFilter → UsernamePasswordAuthenticationFilter (default) → ExceptionTranslationFilter (default) → AuthorizationFilter (default). **Depends on:** 2.5, 2.9.
+- [x] **Task 4.15:** SeedPasswordInitializer — demo admin password hash fix. **ApplicationRunner** induláskor ellenőrzi, hogy a V2__seed.sql placeholder hash-e (`PLACEHOLDER_SALT` marker), és ha igen, generál egy valódi Argon2id hash-t a `ChangeMe123!` jelszóhoz. A demo login e nélkül nem működött volna. **Depends on:** 2.3.
 - [x] **Task 5.2:** Testcontainers setup. **`AbstractIntegrationTest`** (test/integration/): `@SpringBootTest` + `@ActiveProfiles('test')` + `@Testcontainers`, PostgreSQLContainer `postgres:16-alpine` (test DB, withDatabaseName/withUsername/withPassword/withReuse), `@DynamicPropertySource` regisztrálja a postgres URL-t, felhasználót, jelszót + `spring.flyway.enabled=true`. Integration tesztek ezt extendelik, kapnak egy valódi PostgreSQL konténert + Flyway migrációkat. **Depends on:** 1.5.
 - [x] **Task 5.3:** Integration tesztek. **`DeviceServiceIntegrationTest`** (test/integration/): `fullAssignmentFlowWorks` (location + user + device setup, requestAssignment → PENDING_ASSIGNMENT, approveAssignment → ASSIGNED + device status, requestUnassignment → PENDING_UNASSIGNMENT, approveUnassignment → IN_STORAGE, cleanup), `cannotAssignGroupLocation` (BusinessValidationException GROUP tiltás). **`AuthControllerIntegrationTest`**: `loginSuccessWithValidCredentials` (POST /api/auth/login, MockMvc, jsonPath $.accessToken, expiresIn, refresh_token cookie), `loginFailureWithInvalidPassword` (401 invalidCredentials), `loginFailureWithNonexistentUser` (401), `loginWithEmptyBodyShouldReturnBadRequest` (400). **`application-test.yml`**: spring.profiles.active=test, ddl-auto=validate, Flyway enabled, server.port=0 (random test port). **Depends on:** 5.2.
 
