@@ -138,14 +138,16 @@ public class SecurityConfig {
 
                 // Filter lánc (terv §3):
                 // 1) RequestIdFilter — UUID request_id (MDC-be) a lánc legelején
-                // 2) RateLimitFilter — Bucket4j per-IP/per-email a CsrfFilter előtt
+                // 2) RateLimitFilter — Bucket4j per-IP/per-email a CsrfFilter ELŐTT
                 // 3) [CsrfFilter] — Spring Security default filter
                 // 4) JwtAuthenticationFilter — Bearer token validáció
                 // 5) [UsernamePasswordAuthenticationFilter] — default, /api/auth/login
                 // 6) [ExceptionTranslationFilter] — default
                 // 7) [AuthorizationFilter] — @RequirePermission aspektus
+                // A SecurityConfig lánc a 'CsrfFilter' előtti pozíciót használja
+                // a RateLimitFilternek (terv §3: brute-force botok ne kapjanak CSRF tokent).
                 .addFilterBefore(requestIdFilter, BasicAuthenticationFilter.class)
-                .addFilterAfter(rateLimitFilter, BasicAuthenticationFilter.class)
+                .addFilterBefore(rateLimitFilter, org.springframework.security.web.csrf.CsrfFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, BasicAuthenticationFilter.class)
 
                 // UserDetailsService bean a JwtAuthenticationFilter-hez
