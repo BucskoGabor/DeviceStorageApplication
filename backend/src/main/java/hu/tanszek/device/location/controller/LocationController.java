@@ -1,11 +1,11 @@
 package hu.tanszek.device.location.controller;
 
 import hu.tanszek.device.auth.RequirePermission;
-import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
 import hu.tanszek.device.location.entity.Location;
 import hu.tanszek.device.location.entity.LocationType;
 import hu.tanszek.device.location.repository.LocationRepository;
+import hu.tanszek.device.location.LocationService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,6 +32,7 @@ public class LocationController {
     private static final int MAX_PAGE_SIZE = 50;
 
     private final LocationRepository locationRepository;
+    private final LocationService locationService;
 
     @GetMapping
     @RequirePermission("LOCATION_READ")
@@ -79,15 +80,17 @@ public class LocationController {
     @PostMapping
     @RequirePermission("LOCATION_MANAGE")
     public ResponseEntity<Location> create(@Valid @RequestBody CreateLocationRequest request) {
-        Location parent = null;
+        // Cycle check: a parentId nem vezethet ciklusba
         if (request.parentId() != null) {
-            parent = locationRepository.findById(request.parentId())
+            locationRepository.findById(request.parentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Parent location not found: " + request.parentId()));
-            // Cycle check: parent legyen az aktuális location őse
-            if (parent.getId() != null && parent.getId().equals(request.parentId())) {
-                // önmaga lenne a saját szülője - ezt a service ellenőrzi
-            }
+            // Új location-nál nincs locationId, de a parentId-t ellenőrizzük
+            locationService.validateNoCycle(null, request.parentId());
         }
+
+        Location parent = request.parentId() != null
+                ? locationRepository.findById(request.parentId()).orElse(null)
+                : null;
 
         Location location = Location.builder()
                 .name(request.name())
@@ -106,16 +109,16 @@ public class LocationController {
         Location location = locationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Location not found: " + id));
 
+        // Cycle check: ha parentId változik, ellenőrizzük a ciklust
+        if (request.parentId() != null) {
+            locationRepository.findById(request.parentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent location not found: " + request.parentId()));
+            locationService.validateNoCycle(id, request.parentId());
+        }
+
         if (request.name() != null) location.setName(request.name());
         if (request.parentId() != null) {
-            Location parent = locationRepository.findById(request.parentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Parent location not found: " + request.parentId()));
-            if (parent.getId().equals(id)) {
-                throw new BusinessValidationException(
-                        "locationCycleDetected",
-                        "Location cannot be its own parent"
-                );
-            }
+            Location parent = locationRepository.findById(request.parentId()).orElse(null);
             location.setParent(parent);
         }
         if (request.type() != null) location.setType(request.type());
