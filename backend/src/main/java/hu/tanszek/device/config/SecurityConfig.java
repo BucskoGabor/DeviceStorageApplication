@@ -2,7 +2,9 @@ package hu.tanszek.device.config;
 
 import hu.tanszek.device.auth.AuthProviderFactory;
 import hu.tanszek.device.auth.CustomUserDetailsService;
+import hu.tanszek.device.auth.RateLimitFilter;
 import hu.tanszek.device.auth.jwt.JwtAuthenticationFilter;
+import hu.tanszek.device.common.RequestIdFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +20,7 @@ import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import java.util.List;
 
@@ -46,6 +49,8 @@ public class SecurityConfig {
     private final AuthProviderFactory authProviderFactory;
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
+    private final RequestIdFilter requestIdFilter;
 
     /**
      * Argon2PasswordEncoder bean — memory-hard, GPU/ASIC-resistant,
@@ -102,8 +107,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                // CSRF: TODO Task később — bekapcsoláskor CookieCsrfTokenRepository.withHttpOnlyFalse()
-                .csrf(AbstractHttpConfigurer::disable)
+                // CSRF aktívan a state-changing endpointokon, CookieCsrfTokenRepository.withHttpOnlyFalse()
+                // A /api/auth/login és /api/auth/refresh kivételek (még nincs session)
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers("/api/auth/login", "/api/auth/refresh"))
 
                 // CORS: same-origin miatt kikapcsolva
                 .cors(AbstractHttpConfigurer::disable)
@@ -128,8 +136,16 @@ public class SecurityConfig {
                         // Minden más endpoint authentikációt igényel
                         .anyRequest().authenticated())
 
-                // JwtAuthenticationFilter beépítése a Security Filter Chain-be
-                // (a BasicAuthenticationFilter ELŐTT, hogy a Bearer token-t olvassa előbb)
+                // Filter lánc (terv §3):
+                // 1) RequestIdFilter — UUID request_id (MDC-be) a lánc legelején
+                // 2) RateLimitFilter — Bucket4j per-IP/per-email a CsrfFilter előtt
+                // 3) [CsrfFilter] — Spring Security default filter
+                // 4) JwtAuthenticationFilter — Bearer token validáció
+                // 5) [UsernamePasswordAuthenticationFilter] — default, /api/auth/login
+                // 6) [ExceptionTranslationFilter] — default
+                // 7) [AuthorizationFilter] — @RequirePermission aspektus
+                .addFilterBefore(requestIdFilter, BasicAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, BasicAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, BasicAuthenticationFilter.class)
 
                 // UserDetailsService bean a JwtAuthenticationFilter-hez
