@@ -29,9 +29,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // TODO Task 4.1: POST /api/audit/error endpointra küldés
-    // Most konzolra logolunk
-    console.error('ErrorBoundary caught error:', error, errorInfo)
+    console.error('[ErrorBoundary] Captured UI Exception:', {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      timestamp: new Date().toISOString(),
+    })
   }
 
   render() {

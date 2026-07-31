@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { importApi, type ImportPreviewResponse, type InvalidRow } from '@/features/import/api/importApi'
-import { AdminLayout } from '@/features/admin/layouts/AdminLayout'
 
 /**
  * ImportPage — Excel import Upload → Preview → Confirm flow.
@@ -60,8 +59,8 @@ export function ImportPage() {
 
   // Dropzone konfiguráció
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length === 0) return
     const droppedFile = acceptedFiles[0]
+    if (!droppedFile) return
     setFile(droppedFile)
     setState('EMPTY')
     setPreview(null)
@@ -116,7 +115,7 @@ export function ImportPage() {
   }
 
   return (
-    <AdminLayout>
+    <div className="space-y-6">
       <h1 className="mb-4 text-2xl font-semibold">{t('import.title')}</h1>
 
       {/* EMPTY state: dropzone */}
@@ -254,7 +253,7 @@ export function ImportPage() {
           </CardContent>
         </Card>
       )}
-    </AdminLayout>
+    </div>
   )
 }
 

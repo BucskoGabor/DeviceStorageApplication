@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Users,
@@ -9,6 +9,7 @@ import {
   Shield,
   Upload,
   LayoutDashboard,
+  ClipboardCheck,
 } from 'lucide-react'
 import { DashboardPage } from '@/features/auth/pages/DashboardPage'
 import { cn } from '@/lib/utils'
@@ -27,9 +28,12 @@ const sidebarItems = [
   { to: '/admin/devices', icon: Laptop, labelKey: 'admin.devices' },
   { to: '/admin/locations', icon: MapPin, labelKey: 'admin.locations' },
   { to: '/admin/software', icon: Shield, labelKey: 'admin.softwares' },
+  { to: '/admin/approvals', icon: ClipboardCheck, labelKey: 'assignments.approvalQueue' },
   { to: '/admin/audit', icon: FileText, labelKey: 'admin.audit' },
   { to: '/admin/import', icon: Upload, labelKey: 'admin.import' },
 ] as const
+
+import { useAuthStore } from '@/lib/store/authStore'
 
 interface AdminLayoutProps {
   children?: ReactNode
@@ -37,7 +41,21 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { t } = useTranslation()
-  const location = useLocation()
+  const userRole = useAuthStore((state) => state.role)
+  const permissions = useAuthStore((state) => state.permissions)
+
+  const hasPermission = (perm: string) => userRole === 'ROLE_ADMIN' || permissions.includes(perm)
+
+  const filteredItems = sidebarItems.filter((item) => {
+    if (item.to === '/admin/users') return hasPermission('USER_READ') || hasPermission('USER_MANAGE')
+    if (item.to === '/admin/devices') return hasPermission('DEVICE_READ')
+    if (item.to === '/admin/locations') return hasPermission('LOCATION_READ')
+    if (item.to === '/admin/software') return hasPermission('SOFTWARE_LICENSE_VIEW') || hasPermission('SOFTWARE_MANAGE')
+    if (item.to === '/admin/audit') return hasPermission('AUDIT_READ')
+    if (item.to === '/admin/approvals') return hasPermission('DEVICE_ASSIGN')
+    if (item.to === '/admin/import') return userRole === 'ROLE_ADMIN'
+    return true
+  })
 
   return (
     <DashboardPage>
@@ -45,7 +63,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         {/* Sidebar */}
         <aside className={cn('flex-shrink-0', SIDEBAR_WIDTH)}>
           <nav className="sticky top-4 flex flex-col gap-1 rounded-lg border border-border bg-card p-2">
-            {sidebarItems.map((item) => {
+            {filteredItems.map((item) => {
               const Icon = item.icon
               return (
                 <NavLink
