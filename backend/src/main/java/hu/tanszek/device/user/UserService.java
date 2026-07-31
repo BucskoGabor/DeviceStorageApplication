@@ -1,9 +1,13 @@
 package hu.tanszek.device.user;
 
+import hu.tanszek.device.auth.entity.Role;
 import hu.tanszek.device.auth.repository.RefreshTokenRepository;
+import hu.tanszek.device.auth.repository.RoleRepository;
 import hu.tanszek.device.audit.AuditTarget;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
+import hu.tanszek.device.location.entity.Location;
+import hu.tanszek.device.location.repository.LocationRepository;
 import hu.tanszek.device.user.entity.AppUser;
 import hu.tanszek.device.user.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +34,8 @@ public class UserService {
 
     private final AppUserRepository appUserRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final RoleRepository roleRepository;
+    private final LocationRepository locationRepository;
     private final Argon2PasswordEncoder passwordEncoder;
 
     /**
@@ -131,5 +137,69 @@ public class UserService {
         appUserRepository.save(user);
 
         log.info("User {} reactivated", userId);
+    }
+
+    /**
+     * User adatainak módosítása (partial update).
+     *
+     * <p>Csak a nem-null mezők frissülnek:
+     * <ul>
+     *   <li>{@code role} — Role entitás (lookup a {@code roles} táblából név alapján)</li>
+     *   <li>{@code officeLocationId} — irodai location (opcionális, lehet null = törölve)</li>
+     *   <li>{@code active} — boolean (deaktiváláshoz)</li>
+     * </ul>
+     *
+     * <p>Az email és a jelszó ezen a metóduson keresztül <b>nem</b> módosítható —
+     * azok külön endpointokon mennek (admin reset email, user password change).
+     *
+     * <p>Audit log bejegyzés generálódik ({@code @AuditTarget}).
+     *
+     * @param userId a user ID-ja
+     * @param roleName új role név, pl. "ROLE_ADMIN" (null = nem változik)
+     * @param officeLocationId új office location ID (null = nem változik; {@code clearOfficeLocation=true} esetén törölhető)
+     * @param clearOfficeLocation ha true, az office_location_id null-ra állítódik
+     * @param active új active flag (null = nem változik)
+     * @return a frissített user
+     */
+    @AuditTarget(entityType = "AppUser", action = "update")
+    @Transactional
+    public AppUser update(
+            Long userId,
+            String roleName,
+            Long officeLocationId,
+            boolean clearOfficeLocation,
+            Boolean active
+    ) {
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        if (roleName != null) {
+            Role role = roleRepository.findByName(roleName)
+                    .orElseThrow(() -> new BusinessValidationException(
+                            "invalidRole",
+                            "Unknown role: " + roleName
+                    ));
+            user.setRole(role);
+        }
+        if (clearOfficeLocation) {
+            user.setOfficeLocation(null);
+        } else if (officeLocationId != null) {
+            Location office = locationRepository.findById(officeLocationId)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Location not found: " + officeLocationId));
+            user.setOfficeLocation(office);
+        }
+        if (active != null && !active.equals(user.isActive())) {
+            user.setActive(active);
+            // Ha deaktiválódik, a session-jét is le kell zárni
+            if (!active) {
+                int revokedCount = refreshTokenRepository.revokeAllRefreshTokensByUserId(userId);
+                log.info("User {} deactivated via update, revoked {} refresh tokens", userId, revokedCount);
+            }
+        }
+
+        AppUser saved = appUserRepository.save(user);
+        log.info("User {} updated", userId);
+        return saved;
     }
 }
