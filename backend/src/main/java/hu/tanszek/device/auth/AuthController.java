@@ -6,6 +6,7 @@ import hu.tanszek.device.auth.dto.PasswordChangeRequest;
 import hu.tanszek.device.auth.jwt.JwtTokenProvider;
 import hu.tanszek.device.auth.jwt.RefreshTokenService;
 import hu.tanszek.device.common.UnauthorizedActionException;
+import hu.tanszek.device.crypto.CryptoService;
 import hu.tanszek.device.user.UserService;
 import hu.tanszek.device.user.entity.AppUser;
 import hu.tanszek.device.user.repository.AppUserRepository;
@@ -20,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -59,6 +61,7 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
     private final LoginService loginService;
+    private final CryptoService cryptoService;
 
     /**
      * Login endpoint — email + password → access token + refresh cookie.
@@ -85,7 +88,7 @@ public class AuthController {
         }
 
         // User betöltése a refresh token és mustChangePassword flag-hez
-        String emailHash = (String) authentication.getPrincipal();
+        String emailHash = authentication.getName();
         AppUser user = appUserRepository.findByEmailHash(emailHash)
                 .orElseThrow(() -> new UnauthorizedActionException("userNotFound", "User not found"));
 
@@ -163,10 +166,14 @@ public class AuthController {
     }
 
     /**
-     * A current user adatainak lekérdezése (role, permissions, email).
+     * A current user adatainak lekérdezése (role, permissions, email, ID).
      *
      * <p>A frontend F5 vagy page reload esetén hívja, hogy a useAuthStore
-     * újra betöltse a role/permissions-t a SecurityContext-ből.
+     * újra betöltse a role/permissions-t a SecurityContext-ből. A profil
+     * oldal (MyProfilePage) is ezt használja.
+     *
+     * <p>Az {@code emailEncrypted} mező a titkosított email — a frontend
+     * dekódolás nélkül maszkolja (pl. {@code a***@tanszek.local}).
      */
     @GetMapping("/me")
     public ResponseEntity<java.util.Map<String, Object>> me(Authentication authentication) {
@@ -189,8 +196,27 @@ public class AuthController {
                 .filter(a -> !a.startsWith("ROLE_"))
                 .collect(Collectors.toList());
 
+        // Email maszkolás a visszafejtett értékből: "a***@tanszek.local"
+        String emailMasked = null;
+        try {
+            String decryptedEmail = cryptoService.decrypt(user.getEmailEncrypted());
+            int atIndex = decryptedEmail.indexOf('@');
+            if (atIndex > 1) {
+                emailMasked = decryptedEmail.charAt(0) + "***" + decryptedEmail.substring(atIndex);
+            } else {
+                emailMasked = "***";
+            }
+        } catch (Exception e) {
+            log.warn("Failed to decrypt email for user {}: {}", user.getId(), e.getMessage());
+            emailMasked = "***";
+        }
+
         return ResponseEntity.ok(java.util.Map.of(
+                "id", user.getId(),
                 "emailHash", emailHash,
+                "emailEncrypted", user.getEmailEncrypted(),
+                "emailMasked", emailMasked,
+                "active", user.isActive(),
                 "role", role,
                 "permissions", permissions,
                 "mustChangePassword", user.isMustChangePassword()
@@ -201,8 +227,8 @@ public class AuthController {
      * Logout endpoint — refresh cookie revoke + cookie törlés.
      */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
-        String refreshToken = readRefreshTokenCookie();
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = readRefreshTokenCookie(request);
         if (refreshToken != null) {
             refreshTokenService.revoke(refreshToken);
         }
@@ -223,7 +249,7 @@ public class AuthController {
             throw new UnauthorizedActionException("authRequired", "Authentication required");
         }
 
-        String emailHash = (String) authentication.getPrincipal();
+        String emailHash = authentication.getName();
         AppUser user = appUserRepository.findByEmailHash(emailHash)
                 .orElseThrow(() -> new UnauthorizedActionException("userNotFound", "User not found"));
 
