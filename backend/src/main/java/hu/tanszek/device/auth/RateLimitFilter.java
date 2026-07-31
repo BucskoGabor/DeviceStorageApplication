@@ -63,13 +63,76 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Email check: a request body-t olvassuk, de ez bonyolult.
-        // Egyszerűsítés: a body-t egy wrapper RequestWrapper-rel olvassuk,
-        // vagy kihagyjuk az email check-et, és csak per-IP limit van.
-        // TODO Task 2.5+: email check a request body parsing után
-        // (vagy ContentCachingRequestWrapper).
+        CachedBodyHttpServletRequest cachedRequest;
+        try {
+            cachedRequest = new CachedBodyHttpServletRequest(request);
+        } catch (Exception e) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-        filterChain.doFilter(request, response);
+        byte[] body = cachedRequest.getCachedBody();
+        if (body.length > 0) {
+            try {
+                Map<String, Object> bodyMap = objectMapper.readValue(body, Map.class);
+                String email = (String) bodyMap.get("email");
+                if (email != null && !email.isBlank()) {
+                    if (!rateLimiterService.tryConsumePerEmail(email)) {
+                        log.warn("Rate limit exceeded (per-email) for login request");
+                        writeRateLimitError(response, "perEmail");
+                        return;
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Could not parse request body for email rate limit: {}", e.getMessage());
+            }
+        }
+
+        filterChain.doFilter(cachedRequest, response);
+    }
+
+    private static class CachedBodyHttpServletRequest extends jakarta.servlet.http.HttpServletRequestWrapper {
+        private final byte[] cachedBody;
+
+        public CachedBodyHttpServletRequest(HttpServletRequest request) throws IOException {
+            super(request);
+            this.cachedBody = request.getInputStream().readAllBytes();
+        }
+
+        public byte[] getCachedBody() {
+            return this.cachedBody;
+        }
+
+        @Override
+        public jakarta.servlet.ServletInputStream getInputStream() {
+            java.io.ByteArrayInputStream byteArrayInputStream = new java.io.ByteArrayInputStream(this.cachedBody);
+            return new jakarta.servlet.ServletInputStream() {
+                @Override
+                public boolean isFinished() {
+                    return byteArrayInputStream.available() == 0;
+                }
+
+                @Override
+                public boolean isReady() {
+                    return true;
+                }
+
+                @Override
+                public void setReadListener(jakarta.servlet.ReadListener readListener) {
+                    // Sync read
+                }
+
+                @Override
+                public int read() {
+                    return byteArrayInputStream.read();
+                }
+            };
+        }
+
+        @Override
+        public java.io.BufferedReader getReader() {
+            return new java.io.BufferedReader(new java.io.InputStreamReader(getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
+        }
     }
 
     /**

@@ -3,10 +3,7 @@ package hu.tanszek.device.audit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.tanszek.device.audit.entity.AuditLog;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
-import hu.tanszek.device.common.BaseEntity;
 import hu.tanszek.device.common.ScheduledJobMonitoring;
-import hu.tanszek.device.user.entity.AppUser;
-import hu.tanszek.device.user.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -18,7 +15,6 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * AuditAspect — AOP-based audit interceptor service-szinten.
@@ -53,7 +49,7 @@ public class AuditAspect {
     };
 
     private final AuditLogRepository auditLogRepository;
-    private final AppUserRepository appUserRepository;
+    private final EntityTypeRegistry entityTypeRegistry;
     private final ObjectMapper objectMapper;
     private final ScheduledJobMonitoring jobMonitoring;
 
@@ -99,16 +95,20 @@ public class AuditAspect {
     }
 
     /**
-     * BEFORE state: DB-ből az aktuális entity lekérdezése.
+     * BEFORE state: DB-ből az aktuális entity lekérdezése az EntityTypeRegistry-n keresztül.
+     *
+     * <p>Támogatott típusok: Device, User, Location, Assignment, Software, Attachment.
      */
     private Object captureBeforeState(String entityType, Object entityId) {
-        // TODO Task 2.7+: minden entity típusra repository alapján
-        // Most egyszerűsített változat: csak AppUser-t támogatja
-        if ("AppUser".equals(entityType) && entityId instanceof Long) {
-            Optional<AppUser> user = appUserRepository.findById((Long) entityId);
-            return user.orElse(null);
+        if (entityId == null || !(entityId instanceof Long)) {
+            return null;
         }
-        return null;
+        try {
+            return entityTypeRegistry.findById(entityType, (Long) entityId);
+        } catch (IllegalArgumentException e) {
+            log.warn("Unknown entity type for BEFORE state capture: {}", entityType);
+            return null;
+        }
     }
 
     /**
@@ -189,7 +189,7 @@ public class AuditAspect {
                 AuditLog auditLog = AuditLog.builder()
                         .timestamp(Instant.now())
                         .userEmail(userEmail)
-                        .endpoint("service-method") // TODO: controller endpoint
+                        .endpoint(action != null ? action : "unknown")
                         .method("INTERNAL")
                         .requestPayload(null)
                         .changesJson(changesJson)
@@ -280,11 +280,7 @@ public class AuditAspect {
         org.springframework.security.core.Authentication authentication =
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof String) {
-            // Principal = emailHash (LocalAuthProvider beállítja)
-            String emailHash = (String) authentication.getPrincipal();
-            return appUserRepository.findByEmailHash(emailHash)
-                    .map(AppUser::getEmailEncrypted) // Visszafejtett email
-                    .orElse(emailHash);
+            return (String) authentication.getPrincipal();
         }
         return "anonymous";
     }

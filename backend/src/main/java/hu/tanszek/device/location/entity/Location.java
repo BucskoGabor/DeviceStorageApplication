@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import jakarta.persistence.OneToMany;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +43,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Location extends BaseEntity<Long> {
 
     /** A location neve (pl. "Tanterem 101") */
@@ -51,6 +53,7 @@ public class Location extends BaseEntity<Long> {
     /** Self-reference a hierarchiához (parent location) — NULL = root */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Location parent;
 
     /** A location típusa (lásd {@link LocationType}) */
@@ -63,14 +66,27 @@ public class Location extends BaseEntity<Long> {
      * A {@code LocationService.move()} 3x retry-olja {@code OptimisticLockException} esetén.
      */
     @Version
-    @Version
     @Column(name = "version", nullable = false)
     private Long version;
 
     /**
      * Helper: a location children location-jai (lazy fetch).
-     * Nem tárolódik adatbázisban, csak navigációs célokra.
      */
+    @OneToMany(mappedBy = "parent")
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Location> children = new ArrayList<>();
+
+    /**
+     * Származtatott mező a JSON serializációhoz — a {@code parent} entitás ID-ja.
+     * A {@code @JsonIgnore}-elt {@code parent} mező helyett ez kerül a wire-ba,
+     * így a kliens egyszerűen használhatja a fa-struktúra megjelenítéséhez.
+     *
+     * <p>A {@code @JsonProperty} felülírja a {@code @JsonIgnore}-et ezen a mezőn.
+     * A metódus null-t ad vissza, ha nincs parent (root node).
+     */
+    @com.fasterxml.jackson.annotation.JsonProperty("parentId")
+    public Long getParentId() {
+        return parent != null ? parent.getId() : null;
+    }
 }

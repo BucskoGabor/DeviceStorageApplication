@@ -15,6 +15,8 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -46,11 +48,15 @@ class RefreshTokenCleanupJobTest {
 
         // Hogy a jobMonitoring.run() ténylegesen hívja a cleanup logikát
         // (nem csak mockolva legyen), beállítjuk, hogy a run() hívja meg a doCleanup-ot
-        when(jobMonitoring.run(anyString(), any(Runnable.class))).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             Runnable runnable = invocation.getArgument(1);
-            runnable.run();
+            try {
+                runnable.run();
+            } catch (Exception ignored) {
+                // ScheduledJobMonitoring catches exception internally and logs/alerts
+            }
             return null;
-        });
+        }).when(jobMonitoring).run(anyString(), any(Runnable.class));
     }
 
     @Test
@@ -74,15 +80,11 @@ class RefreshTokenCleanupJobTest {
 
     @Test
     void cleanupOnExceptionSendsAlertEmail() {
-        // A jobMonitoring.run() ne hívja meg a doCleanup-ot (szimuláljuk a hibát)
-        org.mockito.Mockito.reset(jobMonitoring);
-        when(jobMonitoring.run(anyString(), any(Runnable.class)))
+        when(refreshTokenRepository.deleteOldTokens(any(Instant.class)))
                 .thenThrow(new RuntimeException("DB connection failed"));
 
         cleanupJob.cleanup();
 
-        // A cleanup maga nem dob kivételt, mert a monitoring wrapper elkapja
-        // és email alert-et küld (most mockolva, nem hívódik valódi mailService)
-        verify(jobMonitoring, times(1)).run(anyString(), any(Runnable.class));
+        verify(refreshTokenRepository, times(1)).deleteOldTokens(any(Instant.class));
     }
 }

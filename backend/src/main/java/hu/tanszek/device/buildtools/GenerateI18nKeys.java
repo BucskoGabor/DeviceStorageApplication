@@ -95,7 +95,7 @@ public class GenerateI18nKeys {
                     .replace("\"", "\\\"")
                     .replace("\n", "\\n")
                     .replace("\r", "");
-            ts.append("    ").append(key).append(": \"").append(escaped).append("\",\n");
+            ts.append("    \"").append(key).append("\": \"").append(escaped).append("\",\n");
         }
         ts.append("};\n");
 
