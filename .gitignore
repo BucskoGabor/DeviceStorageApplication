@@ -147,3 +147,5 @@ jacoco/
 *.bak
 *.tmp
 *.orig
+# ===== TypeScript incremental build cache =====
+*.tsbuildinfo
