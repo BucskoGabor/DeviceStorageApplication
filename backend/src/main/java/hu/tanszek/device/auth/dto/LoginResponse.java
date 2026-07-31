@@ -6,6 +6,7 @@ import java.util.List;
  * Login response DTO.
  *
  * <p>A sikeres bejelentkezés után a backend ezt a JSON-t adja vissza:
+ *
  * <pre>
  *   {
  *     "accessToken": "eyJ...",
@@ -16,9 +17,9 @@ import java.util.List;
  *   }
  * </pre>
  *
- * <p>A refresh token a HttpOnly cookie-ban jön (lásd {@code AuthController.login}).
- * A role/permissions a frontend useAuthStore.setAuth hívásához kell, hogy
- * a RequireRole és RequirePermission wrapper komponensek működjenek.
+ * <p>A refresh token a HttpOnly cookie-ban jön (lásd {@code AuthController.login}). A
+ * role/permissions a frontend useAuthStore.setAuth hívásához kell, hogy a RequireRole és
+ * RequirePermission wrapper komponensek működjenek.
  *
  * @param accessToken az aláírt JWT access token
  * @param expiresIn access token TTL másodpercben
@@ -27,9 +28,8 @@ import java.util.List;
  * @param mustChangePassword true ha first-login jelszócsere szükséges
  */
 public record LoginResponse(
-        String accessToken,
-        long expiresIn,
-        String role,
-        List<String> permissions,
-        boolean mustChangePassword
-) {}
+    String accessToken,
+    long expiresIn,
+    String role,
+    List<String> permissions,
+    boolean mustChangePassword) {}

@@ -8,11 +8,12 @@ import java.lang.annotation.Target;
 /**
  * @AuditTarget — service metódus szintű annotáció az AOP audit interceptor-hoz.
  *
- * <p>A service metódusokra alkalmazandó, amelyek módosítják az adatbázist.
- * Az AOP audit interceptor a metódus ELŐTT és UTÁN rögzíti az entity state-et,
- * és a {@code changes_json} mezőben tárolja a diff-et.
+ * <p>A service metódusokra alkalmazandó, amelyek módosítják az adatbázist. Az AOP audit interceptor
+ * a metódus ELŐTT és UTÁN rögzíti az entity state-et, és a {@code changes_json} mezőben tárolja a
+ * diff-et.
  *
  * <p>Használat:
+ *
  * <pre>
  *   &#64;AuditTarget(entityType = "Device", action = "create")
  *   public DeviceDto createDevice(CreateDeviceDto dto) { ... }
@@ -27,17 +28,17 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface AuditTarget {
 
-    /**
-     * Az entity típusa (pl. "Device", "User", "Location").
-     *
-     * @return az entity osztály egyszerűsített neve
-     */
-    String entityType();
+  /**
+   * Az entity típusa (pl. "Device", "User", "Location").
+   *
+   * @return az entity osztály egyszerűsített neve
+   */
+  String entityType();
 
-    /**
-     * A művelet (pl. "create", "update", "delete", "assign").
-     *
-     * @return a művelet neve
-     */
-    String action();
+  /**
+   * A művelet (pl. "create", "update", "delete", "assign").
+   *
+   * @return a művelet neve
+   */
+  String action();
 }

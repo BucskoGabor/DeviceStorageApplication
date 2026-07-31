@@ -1,10 +1,11 @@
 package hu.tanszek.device.auth.repository;
 
-import hu.tanszek.device.auth.entity.Role;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import hu.tanszek.device.auth.entity.Role;
 
 /**
  * Role-ok repository.
@@ -14,11 +15,11 @@ import java.util.Optional;
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Long> {
 
-    /**
-     * Role keresése név alapján.
-     *
-     * @param name a role neve (pl. "ROLE_ADMIN")
-     * @return Optional a role-lal
-     */
-    Optional<Role> findByName(String name);
+  /**
+   * Role keresése név alapján.
+   *
+   * @param name a role neve (pl. "ROLE_ADMIN")
+   * @return Optional a role-lal
+   */
+  Optional<Role> findByName(String name);
 }

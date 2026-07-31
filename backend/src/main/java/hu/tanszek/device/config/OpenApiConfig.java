@@ -1,5 +1,8 @@
 package hu.tanszek.device.config;
 
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
@@ -7,60 +10,60 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 /**
  * OpenApiConfig — Springdoc OpenAPI integráció testreszabása.
  *
- * <p>A {@code springdoc-openapi-starter-webmvc-ui} dependency már a pom.xml-ben van
- * (Task 1.2), és a Spring Boot auto-config aktiválja az alapértelmezett
- * {@code /v3/api-docs} (JSON) és {@code /swagger-ui.html} (UI) endpoint-okat.
+ * <p>A {@code springdoc-openapi-starter-webmvc-ui} dependency már a pom.xml-ben van (Task 1.2), és
+ * a Spring Boot auto-config aktiválja az alapértelmezett {@code /v3/api-docs} (JSON) és {@code
+ * /swagger-ui.html} (UI) endpoint-okat.
  *
  * <p>Ez az osztály testreszabja:
+ *
  * <ul>
- *   <li>Project info (title, version, description, contact, license)</li>
- *   <li>JWT Bearer security scheme (Authorization: Bearer xxx header)</li>
+ *   <li>Project info (title, version, description, contact, license)
+ *   <li>JWT Bearer security scheme (Authorization: Bearer xxx header)
  * </ul>
  *
- * <p>A controller-eken a @Operation, @ApiResponse, @Parameter annotációk
- * a Task 4.x-ben (controller endpoint implementáláskor) kerülnek hozzáadásra.
+ * <p>A controller-eken a @Operation, @ApiResponse, @Parameter annotációk a Task 4.x-ben (controller
+ * endpoint implementáláskor) kerülnek hozzáadásra.
  */
 @Configuration
 public class OpenApiConfig {
 
-    /**
-     * OpenAPI bean — project info + JWT bearer security scheme.
-     *
-     * @return testreszabott OpenAPI objektum
-     */
-    @Bean
-    public OpenAPI deviceStorageOpenAPI() {
-        return new OpenAPI()
-                // Project info
-                .info(new Info()
-                        .title("Device Storage API")
-                        .description("Egyetemi Informatikai Tanszéki Nyilvántartó Rendszer — REST API. " +
-                                "JWT authentikáció, row-level szűrés, audit log, " +
-                                "Excel import, device assignment management.")
-                        .version("0.1.0")
-                        .contact(new Contact()
-                                .name("Tanszéki Admin")
-                                .email("admin@tanszek.local"))
-                        .license(new License()
-                                .name("MIT")
-                                .url("https://opensource.org/licenses/MIT")))
+  /**
+   * OpenAPI bean — project info + JWT bearer security scheme.
+   *
+   * @return testreszabott OpenAPI objektum
+   */
+  @Bean
+  public OpenAPI deviceStorageOpenAPI() {
+    return new OpenAPI()
+        // Project info
+        .info(
+            new Info()
+                .title("Device Storage API")
+                .description(
+                    "Egyetemi Informatikai Tanszéki Nyilvántartó Rendszer — REST API. "
+                        + "JWT authentikáció, row-level szűrés, audit log, "
+                        + "Excel import, device assignment management.")
+                .version("0.1.0")
+                .contact(new Contact().name("Tanszéki Admin").email("admin@tanszek.local"))
+                .license(new License().name("MIT").url("https://opensource.org/licenses/MIT")))
 
-                // JWT Bearer security scheme
-                .components(new Components()
-                        .addSecuritySchemes("bearer-jwt",
-                                new SecurityScheme()
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")
-                                        .description("JWT access token az Authorization headerben: 'Bearer {token}'")))
+        // JWT Bearer security scheme
+        .components(
+            new Components()
+                .addSecuritySchemes(
+                    "bearer-jwt",
+                    new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")
+                        .description(
+                            "JWT access token az Authorization headerben: 'Bearer {token}'")))
 
-                // Alapértelmezett security requirement (minden endpoint védett)
-                .addSecurityItem(new SecurityRequirement().addList("bearer-jwt"));
-    }
+        // Alapértelmezett security requirement (minden endpoint védett)
+        .addSecurityItem(new SecurityRequirement().addList("bearer-jwt"));
+  }
 }
