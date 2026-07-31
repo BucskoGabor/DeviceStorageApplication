@@ -213,6 +213,39 @@ public class AttachmentService {
     }
 
     /**
+     * Fájl bináris tartalmának betöltése.
+     *
+     * <p>A fizikai fájl a {@code storagePath} mezőben tárolt útvonalon található.
+     * A hívó fél a {@code Content-Type}-ot a {@link DeviceAttachment#getMimeType()}
+     * mezőből tudja beállítani.
+     *
+     * @param attachmentId az attachment azonosítója
+     * @return a fájl bináris tartalma (byte[])
+     * @throws ResourceNotFoundException ha az attachment vagy a fizikai fájl nem található
+     */
+    @Transactional(readOnly = true)
+    public byte[] loadFileBytes(Long attachmentId) {
+        DeviceAttachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attachment not found: " + attachmentId));
+
+        Path path = Paths.get(attachment.getStoragePath());
+        if (!Files.exists(path)) {
+            log.error("Attachment {} physical file missing: {}", attachmentId, path);
+            throw new ResourceNotFoundException("Attachment file missing on disk: " + attachmentId);
+        }
+
+        try {
+            return Files.readAllBytes(path);
+        } catch (IOException e) {
+            log.error("Failed to read attachment file: {}", path, e);
+            throw new BusinessValidationException(
+                    "attachmentReadError",
+                    "Failed to read attachment file: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
      * Fájl kiterjesztés kinyerése (pl. "report.pdf" → "pdf").
      */
     private String extractExtension(String filename) {
