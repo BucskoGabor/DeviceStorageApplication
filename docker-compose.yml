@@ -23,6 +23,8 @@ services:
     image: postgres:16-alpine
     container_name: device-storage-postgres
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -57,8 +59,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      network: host
     container_name: device-storage-backend
     restart: unless-stopped
+    ports:
+      - "8080:8080"
     env_file:
       - .env
     environment:
@@ -73,7 +78,7 @@ services:
       JWT_ACCESS_TTL_MIN: ${JWT_ACCESS_TTL_MIN:-15}
       JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
       CRYPTO_AES_KEY: ${CRYPTO_AES_KEY}
-      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-localhost}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-mailhog}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-1025}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
@@ -123,6 +128,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      network: host
     container_name: device-storage-frontend
     restart: unless-stopped
     ports:
@@ -150,6 +156,7 @@ services:
     build:
       context: ./backup
       dockerfile: Dockerfile
+      network: host
     container_name: device-storage-backup
     restart: unless-stopped
     env_file:

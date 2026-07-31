@@ -6,7 +6,7 @@ FROM alpine:3.19
 
 # Telepítés: postgresql-client (pg_dump), dcron (cron), bash, curl (healthcheck)
 RUN apk add --no-cache \
-    postgresql16-client \
+    postgresql-client \
     dcron \
     bash \
     curl \
