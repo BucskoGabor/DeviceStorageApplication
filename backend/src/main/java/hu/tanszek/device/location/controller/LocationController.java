@@ -2,10 +2,16 @@ package hu.tanszek.device.location.controller;
 
 import hu.tanszek.device.auth.RequirePermission;
 import hu.tanszek.device.common.ResourceNotFoundException;
+import hu.tanszek.device.location.dto.LocationTreeDto;
 import hu.tanszek.device.location.entity.Location;
 import hu.tanszek.device.location.entity.LocationType;
 import hu.tanszek.device.location.repository.LocationRepository;
 import hu.tanszek.device.location.LocationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -27,6 +33,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/locations")
 @RequiredArgsConstructor
+@Tag(name = "Location", description = "Hierarchikus helyszín CRUD + tree nézet")
 public class LocationController {
 
     private static final int MAX_PAGE_SIZE = 50;
@@ -34,8 +41,31 @@ public class LocationController {
     private final LocationRepository locationRepository;
     private final LocationService locationService;
 
+    /**
+     * GET /api/locations/tree
+     * A teljes location hierarchia nested DTO formában.
+     * Max depth: 10 (LocationService.MAX_TREE_DEPTH).
+     */
+    @Operation(summary = "Location fa", description = "A teljes hierarchia nested DTO-ban. " +
+            "Max depth 10 — efelett a node-ok üres children listát kapnak.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Sikeres fa"),
+            @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
+    })
+    @GetMapping("/tree")
+    @RequirePermission("LOCATION_READ")
+    public ResponseEntity<List<LocationTreeDto>> findTree() {
+        return ResponseEntity.ok(locationService.buildTree());
+    }
+
+    @Operation(summary = "Helyszín lista (lapozott)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Sikeres lista"),
+            @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
+    })
     @GetMapping
     @RequirePermission("LOCATION_READ")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
@@ -56,29 +86,59 @@ public class LocationController {
         ));
     }
 
+    @Operation(summary = "Helyszín részletek")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Sikeres lekérdezés"),
+            @ApiResponse(responseCode = "404", description = "Helyszín nem található"),
+            @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
+    })
     @GetMapping("/{id}")
     @RequirePermission("LOCATION_READ")
-    public ResponseEntity<Location> findById(@PathVariable Long id) {
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<Location> findById(@Parameter(description = "Helyszín azonosító") @PathVariable Long id) {
         Location location = locationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Location not found: " + id));
         return ResponseEntity.ok(location);
     }
 
+    @Operation(summary = "Root helyszínek", description = "Visszaadja a parent == null node-okat (legfelső szint).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Sikeres lista"),
+            @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
+    })
     @GetMapping("/roots")
     @RequirePermission("LOCATION_READ")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<List<Location>> findRoots() {
         return ResponseEntity.ok(locationRepository.findByParentIsNull());
     }
 
+    @Operation(summary = "Helyszínek típus szerint", description = "Visszaadja az adott típusú helyszíneket.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Sikeres lista"),
+            @ApiResponse(responseCode = "400", description = "Érvénytelen típus"),
+            @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
+    })
     @GetMapping("/by-type/{type}")
     @RequirePermission("LOCATION_READ")
-    public ResponseEntity<List<Location>> findByType(@PathVariable String type) {
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<List<Location>> findByType(
+            @Parameter(description = "Helyszín típus (CLASSROOM/OFFICE/STORAGE/GROUP)") @PathVariable String type) {
         LocationType locationType = LocationType.valueOf(type);
         return ResponseEntity.ok(locationRepository.findByType(locationType));
     }
 
+    @Operation(summary = "Új helyszín létrehozása", description = "Cycle check a parentId-re, ha megadott. " +
+            "A move() retry logikát használ, ha parentId változik.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Helyszín létrehozva"),
+            @ApiResponse(responseCode = "400", description = "Validációs hiba vagy ciklus"),
+            @ApiResponse(responseCode = "404", description = "Parent location nem található"),
+            @ApiResponse(responseCode = "403", description = "LOCATION_MANAGE permission hiányzik")
+    })
     @PostMapping
     @RequirePermission("LOCATION_MANAGE")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<Location> create(@Valid @RequestBody CreateLocationRequest request) {
         // Cycle check: a parentId nem vezethet ciklusba
         if (request.parentId() != null) {
@@ -103,9 +163,20 @@ public class LocationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
+    @Operation(summary = "Helyszín módosítása", description = "Partial update — csak a nem-null mezők frissülnek. " +
+            "Ha parentId változik, a LocationService.move() hívódik (3x retry optimistic lock esetén).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Helyszín módosítva"),
+            @ApiResponse(responseCode = "400", description = "Ciklus vagy validációs hiba"),
+            @ApiResponse(responseCode = "404", description = "Helyszín nem található"),
+            @ApiResponse(responseCode = "403", description = "LOCATION_MANAGE permission hiányzik")
+    })
     @PutMapping("/{id}")
     @RequirePermission("LOCATION_MANAGE")
-    public ResponseEntity<Location> update(@PathVariable Long id, @Valid @RequestBody UpdateLocationRequest request) {
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<Location> update(
+            @Parameter(description = "Helyszín azonosító") @PathVariable Long id,
+            @Valid @RequestBody UpdateLocationRequest request) {
         // Ha parentId változik, a move() hívása (retry logikával + cycle check)
         if (request.parentId() != null && !isSameParent(id, request.parentId())) {
             Location moved = locationService.move(id, request.parentId());
@@ -135,9 +206,17 @@ public class LocationController {
                 .orElse(false);
     }
 
+    @Operation(summary = "Helyszín törlése", description = "Hard delete. Ha vannak child location-ok vagy device assignment-ek, " +
+            "a foreign key constraint miatt a törlés sikertelen lesz (DB hiba).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Helyszín törölve"),
+            @ApiResponse(responseCode = "404", description = "Helyszín nem található"),
+            @ApiResponse(responseCode = "403", description = "LOCATION_MANAGE permission hiányzik")
+    })
     @DeleteMapping("/{id}")
     @RequirePermission("LOCATION_MANAGE")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(
+            @Parameter(description = "Helyszín azonosító") @PathVariable Long id) {
         if (!locationRepository.existsById(id)) {
             throw new ResourceNotFoundException("Location not found: " + id);
         }
