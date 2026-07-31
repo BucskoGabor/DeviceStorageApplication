@@ -10,10 +10,5 @@ import jakarta.validation.constraints.NotBlank;
  * @param password a user plain text jelszava
  */
 public record LoginRequest(
-        @NotBlank(message = "validation.notBlank")
-        @Email(message = "validation.email")
-        String email,
-
-        @NotBlank(message = "validation.notBlank")
-        String password
-) {}
+    @NotBlank(message = "validation.notBlank") @Email(message = "validation.email") String email,
+    @NotBlank(message = "validation.notBlank") String password) {}

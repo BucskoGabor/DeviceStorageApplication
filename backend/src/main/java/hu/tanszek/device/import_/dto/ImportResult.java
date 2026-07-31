@@ -10,9 +10,4 @@ package hu.tanszek.device.import_.dto;
  * @param errors a futás során felmerült hibák (pl. DB constraint violation)
  */
 public record ImportResult(
-        int usersInserted,
-        int usersUpdated,
-        int devicesInserted,
-        int devicesUpdated,
-        int errors
-) {}
+    int usersInserted, int usersUpdated, int devicesInserted, int devicesUpdated, int errors) {}

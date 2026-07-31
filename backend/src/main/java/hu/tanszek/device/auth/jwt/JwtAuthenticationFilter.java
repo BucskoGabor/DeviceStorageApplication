@@ -1,5 +1,15 @@
 package hu.tanszek.device.auth.jwt;
 
+import java.io.IOException;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -8,29 +18,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
 
 /**
- * JwtAuthenticationFilter — minden request-en kiolvassa a Bearer tokent,
- * validálja, és betölti a SecurityContext-be.
+ * JwtAuthenticationFilter — minden request-en kiolvassa a Bearer tokent, validálja, és betölti a
+ * SecurityContext-be.
  *
- * <p>Ha a token invalid vagy lejárt, a filter NEM dob kivételt — csak
- * {@code log.debug()} bejegyzést ír, és a lánc folytatódik. A Spring Security
- * később a védett endpointokon {@code 401 Unauthorized}-t ad vissza, és
- * a frontend silent refresh-t indít.
+ * <p>Ha a token invalid vagy lejárt, a filter NEM dob kivételt — csak {@code log.debug()}
+ * bejegyzést ír, és a lánc folytatódik. A Spring Security később a védett endpointokon {@code 401
+ * Unauthorized}-t ad vissza, és a frontend silent refresh-t indít.
  *
- * <p>A filter a {@code UsernamePasswordAuthenticationToken}-t állítja be a
- * SecurityContext-be, ahol a principal a user email_hash, és az authorities
- * a role + permissions a JWT payload-ból.
+ * <p>A filter a {@code UsernamePasswordAuthenticationToken}-t állítja be a SecurityContext-be, ahol
+ * a principal a user email_hash, és az authorities a role + permissions a JWT payload-ból.
  *
  * <p>Filter pozíció: Security Filter Chain 4. lépése (a CsrfFilter után).
  */
@@ -39,60 +37,55 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String AUTH_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
+  private static final String AUTH_HEADER = "Authorization";
+  private static final String BEARER_PREFIX = "Bearer ";
 
-    private final JwtTokenProvider jwtTokenProvider;
-    private final UserDetailsService userDetailsService;
+  private final JwtTokenProvider jwtTokenProvider;
+  private final UserDetailsService userDetailsService;
 
-    @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+  @Override
+  protected void doFilterInternal(
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+      throws ServletException, IOException {
 
-        String token = extractToken(request);
+    String token = extractToken(request);
 
-        if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            try {
-                Claims claims = jwtTokenProvider.validateTokenWithGracePeriod(token);
+    if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+      try {
+        Claims claims = jwtTokenProvider.validateTokenWithGracePeriod(token);
 
-                // UserDetails betöltése email_hash alapján — a UserDetailsService
-                // a DB-ből tölti a role + role.permissions + user.permissions listát.
-                //
-                // <p>Fontos: a token claims-ből vett permissions listát NEM használjuk,
-                // mert az a login pillanatában rögzített (stale adat). Ehelyett a
-                // UserDetails.getAuthorities() a friss DB állapotot adja.
-                UserDetails userDetails = userDetailsService.loadUserByUsername(claims.getSubject());
+        // UserDetails betöltése email_hash alapján — a UserDetailsService
+        // a DB-ből tölti a role + role.permissions + user.permissions listát.
+        //
+        // <p>Fontos: a token claims-ből vett permissions listát NEM használjuk,
+        // mert az a login pillanatában rögzített (stale adat). Ehelyett a
+        // UserDetails.getAuthorities() a friss DB állapotot adja.
+        UserDetails userDetails = userDetailsService.loadUserByUsername(claims.getSubject());
 
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        UsernamePasswordAuthenticationToken authentication =
+            new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                log.debug("Authenticated user {} for {}", userDetails.getUsername(), request.getRequestURI());
-            } catch (JwtException ex) {
-                // Invalid token — nem dobunk, csak log
-                log.debug("Invalid JWT for {}: {}", request.getRequestURI(), ex.getMessage());
-                SecurityContextHolder.clearContext();
-            }
-        }
-
-        filterChain.doFilter(request, response);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        log.debug(
+            "Authenticated user {} for {}", userDetails.getUsername(), request.getRequestURI());
+      } catch (JwtException ex) {
+        // Invalid token — nem dobunk, csak log
+        log.debug("Invalid JWT for {}: {}", request.getRequestURI(), ex.getMessage());
+        SecurityContextHolder.clearContext();
+      }
     }
 
-    /**
-     * Bearer token kiolvasása az Authorization headerből.
-     */
-    private String extractToken(HttpServletRequest request) {
-        String header = request.getHeader(AUTH_HEADER);
-        if (header != null && header.startsWith(BEARER_PREFIX)) {
-            return header.substring(BEARER_PREFIX.length());
-        }
-        return null;
+    filterChain.doFilter(request, response);
+  }
+
+  /** Bearer token kiolvasása az Authorization headerből. */
+  private String extractToken(HttpServletRequest request) {
+    String header = request.getHeader(AUTH_HEADER);
+    if (header != null && header.startsWith(BEARER_PREFIX)) {
+      return header.substring(BEARER_PREFIX.length());
     }
+    return null;
+  }
 }

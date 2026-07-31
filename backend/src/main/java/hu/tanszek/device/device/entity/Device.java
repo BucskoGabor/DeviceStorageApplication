@@ -1,7 +1,11 @@
 package hu.tanszek.device.device.entity;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import hu.tanszek.device.common.BaseEntity;
 import hu.tanszek.device.software.entity.Software;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,21 +22,17 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.util.HashSet;
-import java.util.Set;
-
 /**
  * Eszköz entitás.
  *
- * <p>{@code type} String (nem ENUM), mert egyedi tanszéki eszköztípusok
- * támogatása szükséges. Service-réteg validálja regex-szel
- * ({@code [a-zA-Z0-9\-_]+}, max 50 karakter).
+ * <p>{@code type} String (nem ENUM), mert egyedi tanszéki eszköztípusok támogatása szükséges.
+ * Service-réteg validálja regex-szel ({@code [a-zA-Z0-9\-_]+}, max 50 karakter).
  *
- * <p>{@code status} ENUM — {@code MAINTENANCE} és {@code DISPOSED} állapotú
- * eszközökre NEM lehet assignolni vagy törölni (lásd {@code DeviceService}).
+ * <p>{@code status} ENUM — {@code MAINTENANCE} és {@code DISPOSED} állapotú eszközökre NEM lehet
+ * assignolni vagy törölni (lásd {@code DeviceService}).
  *
- * <p>A {@code softwares} kapcsolat many-to-many, cascade nélkül — a szoftver
- * törlésekor manuálisan tisztítandó a join tábla service-szinten.
+ * <p>A {@code softwares} kapcsolat many-to-many, cascade nélkül — a szoftver törlésekor manuálisan
+ * tisztítandó a join tábla service-szinten.
  *
  * @see hu.tanszek.device.device.repository.DeviceRepository
  */
@@ -45,26 +45,25 @@ import java.util.Set;
 @SuperBuilder
 public class Device extends BaseEntity<Long> {
 
-    /** Eszköz típusa (pl. "laptop", "monitor") — service validálja */
-    @Column(name = "type", nullable = false, length = 50)
-    private String type;
+  /** Eszköz típusa (pl. "laptop", "monitor") — service validálja */
+  @Column(name = "type", nullable = false, length = 50)
+  private String type;
 
-    /** Egyedi leltári szám (max 50 karakter) */
-    @Column(name = "inventory_number", nullable = false, unique = true, length = 50)
-    private String inventoryNumber;
+  /** Egyedi leltári szám (max 50 karakter) */
+  @Column(name = "inventory_number", nullable = false, unique = true, length = 50)
+  private String inventoryNumber;
 
-    /** Eszköz státusz (lásd {@link DeviceStatus}) */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private DeviceStatus status;
+  /** Eszköz státusz (lásd {@link DeviceStatus}) */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false, length = 20)
+  private DeviceStatus status;
 
-    /** Telepített szoftverek (lazy fetch, nincs cascade) */
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "device_softwares",
-            joinColumns = @JoinColumn(name = "device_id"),
-            inverseJoinColumns = @JoinColumn(name = "software_id")
-    )
-    @Builder.Default
-    private Set<Software> softwares = new HashSet<>();
+  /** Telepített szoftverek (lazy fetch, nincs cascade) */
+  @ManyToMany(fetch = FetchType.LAZY)
+  @JoinTable(
+      name = "device_softwares",
+      joinColumns = @JoinColumn(name = "device_id"),
+      inverseJoinColumns = @JoinColumn(name = "software_id"))
+  @Builder.Default
+  private Set<Software> softwares = new HashSet<>();
 }
