@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DataTable } from '@/components/DataTable/DataTable'
 import { type ColumnDef } from '@tanstack/react-table'
 import { auditApi, type AuditLog } from '@/features/audit/api/auditApi'
-import { AdminLayout } from '@/features/admin/layouts/AdminLayout'
 import { DiffViewer } from '@/components/DiffViewer/DiffViewer'
 
 /**
@@ -105,7 +104,7 @@ export function AuditPage() {
   ]
 
   return (
-    <AdminLayout>
+    <div className="space-y-6">
       <h1 className="mb-4 text-2xl font-semibold">{t('audit.title')}</h1>
 
       {/* Szűrők */}
@@ -224,6 +223,6 @@ export function AuditPage() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </div>
   )
 }

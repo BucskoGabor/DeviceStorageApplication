@@ -40,7 +40,8 @@
     "attachments": "Mellékletek",
     "audit": "Audit Log",
     "import": "Excel Import",
-    "logout": "Kijelentkezés"
+    "logout": "Kijelentkezés",
+    "profile": "Profil"
   },
   "login": {
     "title": "Bejelentkezés",
@@ -85,6 +86,7 @@
     "locations": "Helyszínek kezelése",
     "softwares": "Szoftverek kezelése",
     "audit": "Audit Log",
+    "import": "Excel importálás",
     "roles": "Role-ok kezelése"
   },
   "devices": {
@@ -99,6 +101,7 @@
     "location": "Helyszín",
     "softwares": "Telepített szoftverek",
     "confirmDelete": "Biztosan törölni szeretnéd ezt az eszközt?",
+    "confirmUnassign": "Biztosan vissza akarod venni ezt az eszközt? (A kérés jóváhagyásra vár.)",
     "assign": "Hozzárendelés",
     "unassign": "Hozzárendelés visszavonása",
     "assignTo": "Hozzárendelés ehhez:",
@@ -108,23 +111,49 @@
     "statusAssigned": "Hozzárendelve",
     "statusInStorage": "Raktárban",
     "statusMaintenance": "Karbantartás alatt",
-    "statusDisposed": "Selejtezve"
+    "statusDisposed": "Selejtezve",
+    "addSoftware": "Szoftver hozzáadása",
+    "selectSoftware": "Válassz szoftvert",
+    "softwareAttached": "Szoftver sikeresen hozzárendelve",
+    "confirmDetachSoftware": "Biztosan leválasztod ezt a szoftvert az eszközről?",
+    "licenseKey": "Licence kulcs",
+    "copy": "Másolás",
+    "copied": "Másolva!",
+    "name": "Név",
+    "statusChanged": "Státusz sikeresen módosítva",
+    "viewDetails": "Részletek"
+  },
+  "softwares": {
+    "create": "Új szoftver",
+    "edit": "Szoftver szerkesztése",
+    "confirmDelete": "Biztosan törlöd ezt a szoftvert?",
+    "editLicenseHelp": "Hagyd üresen, ha nem akarod módosítani.",
+    "noViewPermission": "Nincs jogosultságod a licence kulcs megtekintéséhez — csak a nevet módosíthatod.",
+    "name": "Név",
+    "installedDevices": "Telepített eszközök",
+    "more": "további"
   },
   "users": {
     "title": "Felhasználók",
     "create": "Új felhasználó",
     "edit": "Felhasználó szerkesztése",
     "email": "Email",
-    "firstName": "Keresztnév",
-    "lastName": "Vezetéknév",
     "role": "Role",
     "active": "Aktív",
     "inactive": "Inaktív",
     "office": "Iroda",
+    "user": "Felhasználó",
     "confirmDelete": "Biztosan törölni szeretnéd ezt a felhasználót?",
     "unlockAccount": "Fiók zárolás feloldása",
     "unlockSuccess": "Fiók zárolás feloldva",
-    "mustChangePassword": "Jelszóváltás szükséges"
+    "mustChangePassword": "Jelszóváltás szükséges",
+    "activeChangeWarning": "Ha inaktívra állítod, a user meglévő session-jei azonnal lejárnak.",
+    "status": "Fiók státusz",
+    "accountStatus": "Aktív/inaktív, jelszócsere kötelezettség, lockout állapot",
+    "viewDetails": "Részletek",
+    "lockedUntil": "Zárolva eddig: {{date}}",
+    "failedLoginCount": "{{count}} sikertelen bejelentkezés",
+    "createdAt": "Létrehozva"
   },
   "locations": {
     "title": "Helyszínek",
@@ -133,13 +162,18 @@
     "name": "Név",
     "type": "Típus",
     "parent": "Szülő helyszín",
+    "noParent": "Nincs szülő (root)",
+    "selectParent": "Szülő helyszín kiválasztása",
+    "selectParentHelp": "Válaszd ki a hierarchiából a szülő helyszínt, vagy hagyd üresen root node létrehozásához.",
     "typeClassroom": "Tanterem",
     "typeOffice": "Iroda",
     "typeStorage": "Raktár",
     "typeGroup": "Csoport",
     "typeGroupHelp": "Csoport típusú helyre NEM lehet eszközt assignolni",
     "confirmDelete": "Biztosan törölni szeretnéd?",
-    "cycleDetected": "Körkörös referencia! A kiválasztott szülő a saját leszármazottja."
+    "cycleDetected": "Körkörös referencia! A kiválasztott szülő a saját leszármazottja.",
+    "viewList": "Lista",
+    "viewTree": "Fa nézet"
   },
   "assignments": {
     "title": "Hozzárendelések",
@@ -162,7 +196,13 @@
     "approveUnassignment": "Elvétel jóváhagyása",
     "requestAssignmentSuccess": "Hozzárendelés kérelem benyújtva",
     "approveAssignmentSuccess": "Hozzárendelés jóváhagyva",
-    "approverRequired": "A jóváhagyáshoz AUDIT_ROLLBACK vagy admin role szükséges"
+    "requestUnassignment": "Visszavétel kérése",
+    "requestUnassignmentSuccess": "Visszavétel kérelem benyújtva",
+    "approveUnassignmentSuccess": "Visszavétel jóváhagyva",
+    "approverRequired": "A jóváhagyáshoz DEVICE_ASSIGN vagy admin role szükséges",
+    "approvalQueue": "Jóváhagyási sor",
+    "currentAssignment": "Aktuális hozzárendelés",
+    "noActiveAssignment": "Jelenleg nincs aktív hozzárendelés"
   },
   "audit": {
     "title": "Audit Log",
@@ -179,7 +219,15 @@
     "rollbackSuccess": "Visszaállítás sikeres",
     "rollbackConfirm": "Biztosan visszaállítod ezt a módosítást?",
     "changesBefore": "Eredeti állapot",
-    "changesAfter": "Módosított állapot"
+    "changesAfter": "Módosított állapot",
+    "diffAdded": "Új",
+    "diffRemoved": "Törölt",
+    "diffModified": "Módosított",
+    "diffUnchanged": "Változatlan",
+    "field": "Mező",
+    "state": "Állapot",
+    "fieldsCompared": "mező",
+    "invalidJson": "Érvénytelen JSON:"
   },
   "import": {
     "title": "Excel Import",
@@ -214,7 +262,24 @@
     "confirmDelete": "Biztosan törölni szeretnéd?",
     "uploadedBy": "Feltöltötte",
     "uploadedAt": "Feltöltve",
-    "size": "Méret"
+    "size": "Méret",
+    "preview": "Előnézet",
+    "download": "Letöltés",
+    "previewNotSupported": "A fájltípushoz nincs böngészőben megjeleníthető előnézet — használd a Letöltés gombot.",
+    "uploading": "Feltöltés folyamatban",
+    "uploadSuccess": "Fájl sikeresen feltöltve"
+  },
+  "myProfile": {
+    "title": "Saját profil",
+    "basicInfo": "Alapadatok",
+    "permissions": "Jogosultságok",
+    "permissionsCount": "jogosultság",
+    "noPermissions": "Nincs explicit jogosultságod",
+    "password": "Jelszó"
+  },
+  "forbidden": {
+    "title": "Hozzáférés megtagadva (403)",
+    "helpText": "Ha szerinted ez tévedés, vedd fel a kapcsolatot egy rendszergazdával."
   },
   "permissions": {
     "DEVICE_CREATE": "Eszköz létrehozása",
@@ -267,6 +332,17 @@
     "logoutSuccess": "Kijelentkezés sikeres",
     "refreshTokenMissing": "Refresh token hiányzik",
     "refreshTokenInvalid": "Refresh token érvénytelen vagy lejárt",
-    "refreshTokenExpired": "Refresh token lejárt"
+    "refreshTokenExpired": "Refresh token lejárt",
+    "deviceNotAssignable": "Az eszköz MAINTENANCE vagy DISPOSED státuszú, nem adható ki",
+    "groupLocationNotAssignable": "GROUP típusú helyre nem lehet eszközt rendelni",
+    "assignmentNotPending": "A hozzárendelés nem PENDING_ASSIGNMENT státuszú",
+    "assignmentNotActive": "A hozzárendelés nem aktív",
+    "unassignmentNotPending": "A visszavétel nem PENDING_UNASSIGNMENT státuszú",
+    "invalidRole": "Ismeretlen role",
+    "optimisticLockException": "Egy másik felhasználó módosította az entitást — próbáld újra",
+    "validation.nameNotBlank": "A név nem lehet üres",
+    "locationCycleDetected": "Körkörös referencia! A kiválasztott szülő a saját leszármazottja.",
+    "attachmentReadError": "Nem sikerült beolvasni a melléklet fájlt",
+    "deviceStatusTransitionNotAllowed": "Nem megengedett státusz átmenet"
   }
 }

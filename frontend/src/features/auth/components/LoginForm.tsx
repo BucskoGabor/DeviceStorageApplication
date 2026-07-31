@@ -10,7 +10,6 @@ import { loginSchema, type LoginFormData } from '@/features/auth/schemas/loginSc
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { i18n } from '@/lib/i18n/i18n'
 
 /**
  * LoginForm — email + password form React Hook Form + Zod validációval.
