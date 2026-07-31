@@ -1,17 +1,4 @@
-import axios from 'axios'
 import { apiClient } from '@/lib/api/axios'
-
-/**
- * Auth API — bejelentkezés, refresh, logout, password change.
- *
- * A backend AuthController endpoint-jait hívja:
- * - POST /api/auth/login
- * - POST /api/auth/refresh
- * - POST /api/auth/logout
- * - POST /api/auth/password-change
- */
-
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export interface LoginRequest {
   email: string
@@ -27,7 +14,11 @@ export interface LoginResponse {
 }
 
 export interface MeResponse {
+  id: number
   emailHash: string
+  emailEncrypted: string
+  emailMasked: string
+  active: boolean
   role: string
   permissions: string[]
   mustChangePassword: boolean

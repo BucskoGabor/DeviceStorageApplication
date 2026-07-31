@@ -32,9 +32,15 @@ import {
 interface PasswordChangeFormProps {
   open: boolean
   onSuccess?: () => void
+  /**
+   * Ha true, a user bezárhatja a dialog-ot a sikeres csere előtt
+   * (pl. saját profil oldal). Ha false (default), a dialog csak
+   * sikeres csere után záródik be (first-login flow).
+   */
+  closable?: boolean
 }
 
-export function PasswordChangeForm({ open, onSuccess }: PasswordChangeFormProps) {
+export function PasswordChangeForm({ open, onSuccess, closable = false }: PasswordChangeFormProps) {
   const { t } = useTranslation()
   const setMustChangePassword = useAuthStore((state) => state.setMustChangePassword)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -73,7 +79,12 @@ export function PasswordChangeForm({ open, onSuccess }: PasswordChangeFormProps)
   }
 
   return (
-    <Dialog open={open} onOpenChange={() => undefined}>
+    <Dialog
+      open={open}
+      onOpenChange={() => {
+        if (closable) onSuccess?.()
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('login.mustChangePasswordTitle')}</DialogTitle>
