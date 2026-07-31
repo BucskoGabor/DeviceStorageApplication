@@ -19,6 +19,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Set;
+
 import java.time.Instant;
 
 /**
@@ -48,6 +53,40 @@ import java.time.Instant;
 @Service
 @RequiredArgsConstructor
 public class DeviceService {
+
+    /**
+     * Eszköz státusz átmenetek state machine — operatív PATCH endpoint-hoz.
+     *
+     * <p><b>Fontos:</b> a {@code → ASSIGNED} átmenetek <b>NEM</b> szerepelnek itt,
+     * mert azokat az assignment workflow ({@code requestAssignment} /
+     * {@code approveAssignment}) kezeli — közvetlen PATCH-csel
+     * "ASSIGNED" státuszba rakni az eszközt assignment rekord nélkül
+     * inkonzisztens állapotot okozna.
+     *
+     * <p>Szabályok:
+     * <ul>
+     *   <li>PENDING → IN_STORAGE / MAINTENANCE (raktárba vagy karbantartásra)</li>
+     *   <li>IN_STORAGE → MAINTENANCE / DISPOSED (karbantartásra vagy selejtezésre)</li>
+     *   <li>ASSIGNED → IN_STORAGE / MAINTENANCE (manuális visszavétel vagy karbantartás)</li>
+     *   <li>MAINTENANCE → IN_STORAGE / DISPOSED (karbantartás kész vagy selejtezés)</li>
+     *   <li>DISPOSED → (végállapot, NINCS visszaút)</li>
+     * </ul>
+     */
+    private static final Map<DeviceStatus, Set<DeviceStatus>> ALLOWED_TRANSITIONS =
+            new EnumMap<>(DeviceStatus.class);
+
+    static {
+        ALLOWED_TRANSITIONS.put(DeviceStatus.PENDING,
+                EnumSet.of(DeviceStatus.IN_STORAGE, DeviceStatus.MAINTENANCE));
+        ALLOWED_TRANSITIONS.put(DeviceStatus.IN_STORAGE,
+                EnumSet.of(DeviceStatus.MAINTENANCE, DeviceStatus.DISPOSED));
+        ALLOWED_TRANSITIONS.put(DeviceStatus.ASSIGNED,
+                EnumSet.of(DeviceStatus.IN_STORAGE, DeviceStatus.MAINTENANCE));
+        ALLOWED_TRANSITIONS.put(DeviceStatus.MAINTENANCE,
+                EnumSet.of(DeviceStatus.IN_STORAGE, DeviceStatus.DISPOSED));
+        ALLOWED_TRANSITIONS.put(DeviceStatus.DISPOSED,
+                EnumSet.noneOf(DeviceStatus.class));
+    }
 
     private final DeviceRepository deviceRepository;
     private final DeviceAssignmentRepository assignmentRepository;
@@ -265,6 +304,59 @@ public class DeviceService {
         DeviceAssignment saved = assignmentRepository.save(unassignment);
 
         log.info("Unassignment approved: id={}, by={}", unassignmentId, approvedByUserId);
+        return saved;
+    }
+
+    /**
+     * Eszköz státusz manuális átállítása (operatív/admin beavatkozás).
+     *
+     * <p>A state machine ({@link #ALLOWED_TRANSITIONS}) határozza meg, hogy
+     * mely átmenetek engedélyezettek. DISPOSED végállapot — onnan nincs visszaút.
+     *
+     * <p>Ha az eszköznek van aktív assignmentje (ASSIGNED státuszban), a
+     * státusz átállítása NEM inaktiválja automatikusan azt — az operátor
+     * felelőssége, hogy a megfelelő flow-t válassza. Ha a célstátusz IN_STORAGE,
+     * az aktív assignment inaktívvá válik (orphan assignment keletkezik, de
+     * a history megmarad).
+     *
+     * @param deviceId az eszköz azonosítója
+     * @param newStatus az új státusz
+     * @return a frissített device
+     * @throws ResourceNotFoundException ha a device nem található
+     * @throws BusinessValidationException ha az átmenet nem megengedett
+     */
+    @AuditTarget(entityType = "Device", action = "change_status")
+    @Transactional
+    public Device changeStatus(Long deviceId, DeviceStatus newStatus) {
+        Device device = deviceRepository.findById(deviceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Device not found: " + deviceId));
+
+        DeviceStatus currentStatus = device.getStatus();
+        if (currentStatus == newStatus) {
+            return device;
+        }
+
+        if (!ALLOWED_TRANSITIONS.getOrDefault(currentStatus, EnumSet.noneOf(DeviceStatus.class))
+                .contains(newStatus)) {
+            throw new BusinessValidationException(
+                    "deviceStatusTransitionNotAllowed",
+                    "Status transition not allowed: " + currentStatus + " → " + newStatus
+            );
+        }
+
+        // Ha IN_STORAGE-ra váltunk és van aktív assignment, inaktiváljuk
+        if (newStatus == DeviceStatus.IN_STORAGE) {
+            assignmentRepository.findByDeviceIdAndActiveTrue(deviceId).ifPresent(activeAssignment -> {
+                activeAssignment.setActive(false);
+                activeAssignment.setUnassignCreatedDate(java.time.Instant.now());
+                assignmentRepository.save(activeAssignment);
+            });
+        }
+
+        device.setStatus(newStatus);
+        Device saved = deviceRepository.save(device);
+
+        log.info("Device {} status changed: {} → {}", deviceId, currentStatus, newStatus);
         return saved;
     }
 }
