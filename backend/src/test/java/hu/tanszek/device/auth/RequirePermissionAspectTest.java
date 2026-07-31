@@ -64,7 +64,8 @@ class RequirePermissionAspectTest {
 
         assertThatThrownBy(() -> invokeAspect(annotation))
                 .isInstanceOf(UnauthorizedActionException.class)
-                .hasMessageContaining("permissionDenied");
+                .extracting("messageKey")
+                .isEqualTo("permissionDenied");
     }
 
     @Test
@@ -74,7 +75,8 @@ class RequirePermissionAspectTest {
 
         assertThatThrownBy(() -> invokeAspect(annotation))
                 .isInstanceOf(UnauthorizedActionException.class)
-                .hasMessageContaining("authRequired");
+                .extracting("messageKey")
+                .isEqualTo("authRequired");
     }
 
     // ===== Helpers =====
@@ -101,6 +103,9 @@ class RequirePermissionAspectTest {
     private Object invokeAspect(RequirePermission annotation) {
         // Mock ProceedingJoinPoint — a method body "success" string-et ad vissza
         org.aspectj.lang.ProceedingJoinPoint pjp = org.mockito.Mockito.mock(org.aspectj.lang.ProceedingJoinPoint.class);
+        org.aspectj.lang.Signature signature = org.mockito.Mockito.mock(org.aspectj.lang.Signature.class);
+        org.mockito.Mockito.when(signature.toShortString()).thenReturn("testMethod()");
+        org.mockito.Mockito.when(pjp.getSignature()).thenReturn(signature);
         try {
             org.mockito.Mockito.when(pjp.proceed()).thenReturn("success");
         } catch (Throwable t) {
@@ -108,6 +113,8 @@ class RequirePermissionAspectTest {
         }
         try {
             return aspect.checkPermission(pjp, annotation);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Throwable t) {
             throw new RuntimeException(t);
         }

@@ -2,7 +2,10 @@ package hu.tanszek.device.device;
 
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.device.repository.DeviceRepository;
+import hu.tanszek.device.user.entity.AppUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,16 +15,10 @@ import java.util.List;
 /**
  * DeviceQueryService — Device entity olvasási műveletek JpaSpecificationExecutor-ral.
  *
- * <p>A row-level filter (Task 3.2 scope) itt történik a JpaSpecificationExecutor
- * Specification-ön keresztül. A service-szintű assertion (write műveletekre,
- * Task 3.3 scope) a {@link DeviceService}-ben lesz implementálva.
- *
- * <p>A Specification a SecurityContext-ből olvassa a bejelentkezett user
- * role-ját, és alkalmazza a row-level filtert:
+ * <p>A row-level filter a bejelentkezett user role-ja alapján szűr:
  * <ul>
- *   <li>ADMIN: minden device</li>
- *   <li>TEACHER: saját device-ok (active assignment to currentUser)
- *       + irodai device-ok (location_id = currentUser.office_location_id)</li>
+ *   <li>ADMIN (null user): minden device</li>
+ *   <li>TEACHER: saját device-ok (active assignment) + irodai device-ok</li>
  *   <li>STUDENT: csak saját device-ok (active assignment to currentUser)</li>
  * </ul>
  */
@@ -34,24 +31,43 @@ public class DeviceQueryService {
     /**
      * Device lista lekérdezése row-level filterrel.
      *
-     * <p>A filter a SecurityContext-ből olvassa a currentUser-t, és a role
-     * alapján szűr. A pontos SQL implementáció a Specification osztályban
-     * van (lásd {@link DeviceSpecifications}).
-     *
-     * @param currentUserId a bejelentkezett user ID-ja
+     * @param currentUser a bejelentkezett user (null = ADMIN, minden device)
      * @return a row-level filter által engedélyezett device-ok listája
      */
     @Transactional(readOnly = true)
-    public List<Device> findAllForCurrentUser(Long currentUserId) {
-        // TODO Task 3.3: implementálni a pontos Specification-t a role-alapú szűréshez
-        // Most egy placeholder Specification-t használunk (minden device visszaadása,
-        // ha a currentUserId null, ami az ADMIN szerepkörre utal)
-        if (currentUserId == null) {
-            return deviceRepository.findAll();
+    public List<Device> findAllForCurrentUser(AppUser currentUser) {
+        Specification<Device> spec = buildSpecForUser(currentUser);
+        return deviceRepository.findAll(spec);
+    }
+
+    /**
+     * Device lista lekérdezése row-level filterrel, lapozással.
+     *
+     * @param currentUser a bejelentkezett user (null = ADMIN)
+     * @param pageable    lapozási paraméterek
+     * @return lapozott device lista
+     */
+    @Transactional(readOnly = true)
+    public Page<Device> findAllForCurrentUser(AppUser currentUser, Pageable pageable) {
+        Specification<Device> spec = buildSpecForUser(currentUser);
+        return deviceRepository.findAll(spec, pageable);
+    }
+
+    /**
+     * Role-alapú Specification összeállítása.
+     */
+    private Specification<Device> buildSpecForUser(AppUser currentUser) {
+        if (currentUser == null) {
+            return DeviceSpecifications.hasAccess(null); // ADMIN → minden
         }
 
-        // TODO Task 3.3: helyettesíteni a tényleges role-alapú Specification-gal
-        Specification<Device> spec = DeviceSpecifications.hasAccess(currentUserId);
-        return deviceRepository.findAll(spec);
+        String role = currentUser.getRole().getName();
+        if ("ROLE_ADMIN".equals(role)) {
+            return DeviceSpecifications.hasAccess(null);
+        } else if ("ROLE_TEACHER".equals(role)) {
+            return DeviceSpecifications.teacherAccess(currentUser.getId(), currentUser);
+        } else {
+            return DeviceSpecifications.hasAccess(currentUser.getId());
+        }
     }
 }

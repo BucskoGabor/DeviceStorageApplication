@@ -78,6 +78,17 @@ public class AuditRollbackService {
             );
         }
 
+        String changesJsonStr;
+        try {
+            changesJsonStr = objectMapper.writeValueAsString(Map.of(
+                    "rollbackOf", auditLogId,
+                    "before", beforeState,
+                    "after", afterState
+            ));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            changesJsonStr = "{}";
+        }
+
         // 3. Új audit log a rollback rögzítésére
         AuditLog rollbackLog = AuditLog.builder()
                 .timestamp(Instant.now())
@@ -85,11 +96,7 @@ public class AuditRollbackService {
                 .endpoint("rollback")
                 .method("ROLLBACK")
                 .requestPayload("auditLogId=" + auditLogId)
-                .changesJson(objectMapper.writeValueAsString(Map.of(
-                        "rollbackOf", auditLogId,
-                        "before", beforeState,
-                        "after", afterState
-                )))
+                .changesJson(changesJsonStr)
                 .httpStatus(200)
                 .entityType(entityType)
                 .entityId(entityId)
@@ -112,10 +119,7 @@ public class AuditRollbackService {
         }
 
         entityTypeRegistry.applyJsonMap(entity, beforeState);
-
-        // TODO Task 3.7+: az entitás típusától függően a megfelelő repository.save() hívás
-        // Most az applyJsonMap() in-place módosítja az entitást (managed entity),
-        // és a @Transactional a metódus végén automatikusan persistálja.
+        entityTypeRegistry.saveEntity(entity);
         log.info("UPDATE rollback applied: entityType={}, entityId={}", entityType, entityId);
     }
 
@@ -129,22 +133,22 @@ public class AuditRollbackService {
             return;
         }
 
-        // TODO Task 3.7+: típus-alapú delete az EntityTypeRegistry.delete() metódussal
-        // Most az entitás törlését a konkrét repository-k hívásával kellene,
-        // de az EntityTypeRegistry jelenleg csak findById()-ot támogat.
-        log.warn("CREATE rollback TODO: entityType={}, entityId={} — manual delete required",
-                entityType, entityId);
+        entityTypeRegistry.deleteById(entityType, entityId);
+        log.info("CREATE rollback applied (entity deleted): entityType={}, entityId={}", entityType, entityId);
     }
 
     /**
      * DELETE rollback: az entitás újra-létrehozása a before state-ből.
      *
-     * <p>TODO Task 3.7+: az EntityTypeRegistry.createFromJson() metódus kell,
-     * ami a JSON map-ből új entitást hoz létre. Most csak logolunk.
+     * <p>FIGYELEM: törölt entitás újralétrehozása FK ütközés és ID konfliktus
+     * kockázatával jár. A jelenlegi implementáció warning log-ot ír és
+     * admin manuális beavatkozást igényel.
      */
     private void rollbackDelete(String entityType, Long entityId, Map<String, Object> beforeState) {
-        log.warn("DELETE rollback TODO: entityType={}, entityId={} — manual recreate required",
-                entityType, entityId);
+        log.warn("DELETE rollback requested: entityType={}, entityId={} — " +
+                        "automatic recreation is not supported due to FK/ID conflict risk. " +
+                        "Manual admin action required. Before state: {}",
+                entityType, entityId, beforeState);
     }
 
     /**

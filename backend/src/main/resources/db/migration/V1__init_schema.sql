@@ -12,6 +12,7 @@
 -- A JPA Auditing (@PrePersist/@PreUpdate) runtime felülírja ezeket save-kor,
 -- de a DB default backup ha a JPA valamiért nem állítaná be (defense in depth).
 -- ============================================================================
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ============================================================================
 -- 1. configs tábla — rendszer konfigurációs kulcs-érték párok
@@ -289,6 +290,7 @@ CREATE TABLE refresh_tokens (
     expires_at TIMESTAMP NOT NULL,
     revoked BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     replaced_by_id BIGINT,
     CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE,
     CONSTRAINT fk_refresh_tokens_replaced_by FOREIGN KEY (replaced_by_id) REFERENCES refresh_tokens(id) ON DELETE SET NULL

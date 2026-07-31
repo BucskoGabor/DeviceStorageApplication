@@ -1,6 +1,7 @@
 package hu.tanszek.device.audit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import hu.tanszek.device.audit.EntityTypeRegistry;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.common.ScheduledJobMonitoring;
 import hu.tanszek.device.user.repository.AppUserRepository;
@@ -28,7 +29,7 @@ class AuditAspectTest {
     void setUp() throws Exception {
         AuditAspect real = new AuditAspect(
                 mock(AuditLogRepository.class),
-                mock(AppUserRepository.class),
+                mock(EntityTypeRegistry.class),
                 new ObjectMapper(),
                 mock(ScheduledJobMonitoring.class)
         );

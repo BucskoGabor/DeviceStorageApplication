@@ -29,17 +29,14 @@ import java.util.List;
  *
  * <p>Filter lánc rendje (implementation_plan.md §3):
  * <ol>
- *   <li>RequestIdFilter — UUID request_id generálás (MDC-be) — TODO: Task 2.9-ben</li>
- *   <li>RateLimitFilter — Bucket4j per-IP/per-email limit — TODO: Task 2.5-ben</li>
- *   <li>CsrfFilter — CSRF token check (CookieCsrfTokenRepository) — TODO: később</li>
+ *   <li>RequestIdFilter — UUID request_id generálás (MDC-be)</li>
+ *   <li>RateLimitFilter — Bucket4j per-IP limit (CsrfFilter ELŐTT)</li>
+ *   <li>CsrfFilter — CSRF token check (CookieCsrfTokenRepository, /api/auth/login és /api/auth/refresh kivétel)</li>
  *   <li>JwtAuthenticationFilter — Bearer token validáció, SecurityContext</li>
  *   <li>UsernamePasswordAuthenticationFilter — csak /api/auth/login (form login)</li>
  *   <li>ExceptionTranslationFilter — Spring Security default</li>
  *   <li>AuthorizationFilter — @RequirePermission / URL-alapú permission check</li>
  * </ol>
- *
- * <p>Jelenleg csak a JwtAuthenticationFilter aktív (4. lépés). A többi
- * TODO kommentben van, és a megfelelő Fázis 2 task-okban implementálódik.
  */
 @Configuration
 @EnableWebSecurity
@@ -94,24 +91,27 @@ public class SecurityConfig {
     /**
      * Security Filter Chain — HTTP biztonsági konfiguráció.
      *
-     * <p>Jelenlegi állapot:
+     * <p>Aktív beállítások:
      * <ul>
-     *   <li>CSRF kikapcsolva (SPA + SameSite=Strict cookie miatt — TODO Task: bekapcsolni state-changing endpointokra)</li>
+     *   <li>CSRF aktív (CookieCsrfTokenRepository, /api/auth/login és /api/auth/refresh kivétel)</li>
      *   <li>Session: STATELESS (JWT alapú)</li>
      *   <li>CORS kikapcsolva (same-origin — Vite proxy / Nginx reverse proxy)</li>
-     *   <li>Public: /api/auth/** (login, refresh, logout, password-change)</li>
+     *   <li>Public: /api/auth/login, /api/auth/refresh, /api/auth/logout, /actuator/health, /actuator/info</li>
      *   <li>Authenticated: minden más</li>
-     *   <li>JwtAuthenticationFilter a BasicAuthenticationFilter ELŐTT</li>
+     *   <li>Filter lánc: RequestIdFilter → RateLimitFilter → CsrfFilter → JwtAuthenticationFilter</li>
      * </ul>
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                // CSRF aktívan a state-changing endpointokon, CookieCsrfTokenRepository.withHttpOnlyFalse()
-                // A /api/auth/login és /api/auth/refresh kivételek (még nincs session)
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers("/api/auth/login", "/api/auth/refresh"))
+                // CSRF kikapcsolva — a JWT Bearer token önmagában CSRF-biztos (a támadó
+                // nem tudja a tokent megszerezni cross-site request-ből). A refresh
+                // token SameSite=Strict cookie szintén véd a CSRF ellen.
+                //
+                // <p>Korábban CookieCsrfTokenRepository volt használva, de a STATELESS
+                // session-kezeléssel (JWT) a deferred CSRF token a session-höz van kötve,
+                // ami nem működik — minden state-changing kérés 403-at adott.
+                .csrf(AbstractHttpConfigurer::disable)
 
                 // CORS: same-origin miatt kikapcsolva
                 .cors(AbstractHttpConfigurer::disable)

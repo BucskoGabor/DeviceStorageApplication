@@ -34,7 +34,7 @@ public class ImportController {
         try {
             ImportPreviewResponse response = importService.preview(file);
             return ResponseEntity.ok(response);
-        } catch (IOException e) {
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }

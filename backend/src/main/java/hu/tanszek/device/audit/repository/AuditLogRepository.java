@@ -1,6 +1,8 @@
 package hu.tanszek.device.audit.repository;
 
 import hu.tanszek.device.audit.entity.AuditLog;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -19,9 +21,14 @@ import java.util.List;
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
     /**
-     * Audit log-ok listája entity alapján.
+     * Audit log-ok listája entity alapján (lapozás nélkül).
      */
     List<AuditLog> findByEntityTypeAndEntityId(String entityType, Long entityId);
+
+    /**
+     * Audit log-ok lapozható listája entity alapján (controller használja).
+     */
+    Page<AuditLog> findByEntityTypeAndEntityId(String entityType, Long entityId, Pageable pageable);
 
     /**
      * Retention cleanup: 1+ éves rekordok archiválás előtt.
@@ -36,7 +43,12 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     int deleteByTimestampBefore(@Param("cutoff") Instant cutoff);
 
     /**
-     * User audit history.
+     * User audit history (lapozás nélkül).
      */
     List<AuditLog> findByUserEmailOrderByTimestampDesc(String userEmail);
+
+    /**
+     * User audit history (lapozható, controller használja).
+     */
+    Page<AuditLog> findByUserEmailOrderByTimestampDesc(String userEmail, Pageable pageable);
 }

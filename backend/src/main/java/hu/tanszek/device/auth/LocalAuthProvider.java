@@ -92,8 +92,8 @@ public class LocalAuthProvider implements AuthProvider {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        // 5. Successful auth: reset failedLoginCount, return Authentication
-        resetFailedLoginCount(user);
+        // 5. Successful auth: reset failedLoginCount, rehash if needed, return Authentication
+        resetFailedLoginCount(user, password);
         return buildAuthentication(user);
     }
 
@@ -132,13 +132,33 @@ public class LocalAuthProvider implements AuthProvider {
     }
 
     /**
-     * Sikeres login: failedLoginCount és lockedUntil reset.
-     * TODO Task 2.2: Argon2 upgrade check itt (passwordEncoder.upgradeEncoding()).
+     * Sikeres login: failedLoginCount és lockedUntil reset + Argon2 rehash check.
+     *
+     * <p>Ha a jelszó hash paraméterei (memory, iterations, parallelism) elmaradnak
+     * az aktuális policy-től, transparent módon újrahasheli és DB-be írja.
+     *
+     * @param user a bejelentkezett user
+     * @param rawPassword a nyers jelszó (rehash-hez szükséges)
      */
-    private void resetFailedLoginCount(AppUser user) {
+    private void resetFailedLoginCount(AppUser user, String rawPassword) {
+        boolean changed = false;
+
         if (user.getFailedLoginCount() > 0 || user.getLockedUntil() != null) {
             user.setFailedLoginCount(0);
             user.setLockedUntil(null);
+            changed = true;
+        }
+
+        // Argon2 upgrade check: ha a hash paraméterei elavultak, rehash
+        if (passwordEncoder.upgradeEncoding(user.getPasswordHash())) {
+            String newHash = passwordEncoder.encode(rawPassword);
+            user.setPasswordHash(newHash);
+            user.setPasswordChangedAt(Instant.now());
+            log.info("Argon2 rehash applied for user {}", user.getEmailHash());
+            changed = true;
+        }
+
+        if (changed) {
             appUserRepository.save(user);
         }
     }

@@ -1,5 +1,6 @@
 package hu.tanszek.device.audit;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.tanszek.device.audit.entity.AuditLog;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.common.ScheduledJobMonitoring;
@@ -54,6 +55,7 @@ public class AuditRetentionJob {
 
     private final AuditLogRepository auditLogRepository;
     private final ScheduledJobMonitoring jobMonitoring;
+    private final ObjectMapper objectMapper;
 
     /**
      * Heti futás vasárnap 03:00-kor.
@@ -124,8 +126,10 @@ public class AuditRetentionJob {
             }
         }
 
-        // TODO Task 3.6+: az exportált rekordok DB-ből való törlése (most meghagyjuk,
-        // hogy a retention-ön belül ne veszítsünk adatot)
+        // Archiválás utáni DB törlés: az exportált rekordok eltávolítása
+        int archivedCount = recordsToArchive.size();
+        auditLogRepository.deleteAll(recordsToArchive);
+        log.info("Archived and deleted {} audit records from DB (cutoff: {})", archivedCount, cutoff);
     }
 
     /**
@@ -140,18 +144,10 @@ public class AuditRetentionJob {
              GZIPOutputStream gzipOut = new GZIPOutputStream(fileOut);
              BufferedOutputStream bufferedOut = new BufferedOutputStream(gzipOut)) {
 
-            // TODO: a Jackson ObjectMapper-rel NDJSON formátumban írni (a mostani verzió nem JSON)
-            // Most egyszerűsített: minden rekord egy sor, a kulcs-érték párokkal
             for (AuditLog record : records) {
-                String line = String.format(
-                        "{\"id\":%d,\"timestamp\":\"%s\",\"userEmail\":\"%s\",\"endpoint\":\"%s\",\"httpStatus\":%d}\n",
-                        record.getId(),
-                        record.getTimestamp(),
-                        escapeJson(record.getUserEmail()),
-                        escapeJson(record.getEndpoint()),
-                        record.getHttpStatus()
-                );
-                bufferedOut.write(line.getBytes());
+                String line = objectMapper.writeValueAsString(record);
+                bufferedOut.write(line.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                bufferedOut.write('\n');
             }
         }
 

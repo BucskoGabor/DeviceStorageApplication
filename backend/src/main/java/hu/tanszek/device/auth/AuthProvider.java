@@ -39,7 +39,17 @@ public interface AuthProvider extends AuthenticationProvider {
      * @return Spring Security {@link Authentication} object a sikeres
      *         hitelesítés után (username + role/permission authorities)
      * @throws AuthenticationException ha a hitelesítés sikertelen
-     *         (hibás jelszó, locked account, inaktív user, stb.)
      */
     Authentication authenticate(String email, String password) throws AuthenticationException;
+
+    /**
+     * Spring Security {@link AuthenticationProvider#authenticate(Authentication)} delegáció.
+     */
+    @Override
+    default Authentication authenticate(Authentication authentication) throws AuthenticationException {
+        if (authentication == null || authentication.getPrincipal() == null || authentication.getCredentials() == null) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Invalid authentication request");
+        }
+        return authenticate(authentication.getPrincipal().toString(), authentication.getCredentials().toString());
+    }
 }

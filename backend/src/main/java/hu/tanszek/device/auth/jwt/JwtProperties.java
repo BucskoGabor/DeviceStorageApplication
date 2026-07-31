@@ -49,12 +49,15 @@ public class JwtProperties {
     private byte[] decodedActiveKey;
 
     /**
-     * Beállítja az active kulcsot (base64 encoded string) és dekódolja.
+     * Visszaadja a dekódolt aktív HMAC kulcsot (Base64-ből byte tömbbé konvertálva).
      *
-     * @param activeKeyBase64 base64 kódolt HMAC-SHA256 kulcs (32+ byte dekódolva)
+     * @return 32+ byte-os aktív HMAC kulcs
      */
-    public void setActiveKey(String activeKeyBase64) {
-        this.kids.active = activeKeyBase64;
+    public byte[] getDecodedActiveKey() {
+        if (decodedActiveKey != null) {
+            return decodedActiveKey;
+        }
+        String activeKeyBase64 = getActiveKey();
         if (activeKeyBase64 == null || activeKeyBase64.isBlank()) {
             throw new IllegalStateException("jwt.kids.active is missing");
         }
@@ -70,6 +73,7 @@ public class JwtProperties {
             );
         }
         this.decodedActiveKey = decoded;
+        return decoded;
     }
 
     public String getActiveKey() {
