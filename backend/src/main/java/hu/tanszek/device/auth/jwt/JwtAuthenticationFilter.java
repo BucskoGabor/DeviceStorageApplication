@@ -58,13 +58,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 Claims claims = jwtTokenProvider.validateTokenWithGracePeriod(token);
 
-                // UserDetails betöltése email_hash alapján
+                // UserDetails betöltése email_hash alapján — a UserDetailsService
+                // a DB-ből tölti a role + role.permissions + user.permissions listát.
+                //
+                // <p>Fontos: a token claims-ből vett permissions listát NEM használjuk,
+                // mert az a login pillanatában rögzített (stale adat). Ehelyett a
+                // UserDetails.getAuthorities() a friss DB állapotot adja.
                 UserDetails userDetails = userDetailsService.loadUserByUsername(claims.getSubject());
 
-                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
-                        jwtTokenProvider.extractAuthorities(claims)
+                        userDetails.getAuthorities()
                 );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 

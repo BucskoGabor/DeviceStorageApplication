@@ -152,6 +152,27 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * HttpMessageNotReadableException — 400 Bad Request.
+     */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(
+            org.springframework.http.converter.HttpMessageNotReadableException ex,
+            WebRequest request
+    ) {
+        Map<String, Object> body = createBody(
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                "validationError",
+                "Malformed or missing request body",
+                getPath(request),
+                null
+        );
+
+        log.warn("Malformed JSON request at {}: {}", getPath(request), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /**
      * MethodArgumentNotValidException — 400 validation hibákkal.
      *
      * <p>A details tömb mezőnkénti listázza a hibákat: {field, message, rejectedValue}.
