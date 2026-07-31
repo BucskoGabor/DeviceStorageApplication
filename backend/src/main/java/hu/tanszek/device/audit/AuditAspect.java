@@ -274,8 +274,8 @@ public class AuditAspect {
     org.springframework.security.core.Authentication authentication =
         org.springframework.security.core.context.SecurityContextHolder.getContext()
             .getAuthentication();
-    if (authentication != null && authentication.getPrincipal() instanceof String) {
-      return (String) authentication.getPrincipal();
+    if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() != null) {
+      return authentication.getName();
     }
     return "anonymous";
   }

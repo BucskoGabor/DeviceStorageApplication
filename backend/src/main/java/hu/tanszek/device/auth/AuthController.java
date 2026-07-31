@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +59,21 @@ public class AuthController {
   private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
   private static final String REFRESH_TOKEN_PATH = "/api/auth";
   private static final long REFRESH_TOKEN_MAX_AGE_SECONDS = 30L * 24 * 60 * 60; // 30 nap
+
+  /**
+   * A refresh token cookie secure flag-je. Dev/prod környezetben a backend HTTP-n fut
+   * (Nginx reverse proxy terminálja a TLS-t), tehát a secure flag-et ki kell kapcsolni
+   * a cookie tárolásához és a böngésző általi visszaküldéshez.
+   *
+   * <p>Production deployment: ha a backend közvetlenül HTTPS-t szolgál ki
+   * (Nginx nélkül), állítsd {@code true}-ra az application.yml-ben:
+   * <pre>
+   * jwt:
+   *   cookie-secure: true
+   * </pre>
+   */
+  @Value("${jwt.cookie-secure:false}")
+  private boolean cookieSecure;
 
   private final UserService userService;
   private final AppUserRepository appUserRepository;
@@ -186,7 +202,7 @@ public class AuthController {
       throw new UnauthorizedActionException("authRequired", "Authentication required");
     }
 
-    String emailHash = (String) authentication.getPrincipal();
+    String emailHash = authentication.getName();
     AppUser user =
         appUserRepository
             .findByEmailHash(emailHash)
@@ -278,7 +294,7 @@ public class AuthController {
     ResponseCookie cookie =
         ResponseCookie.from(REFRESH_TOKEN_COOKIE, plainToken)
             .httpOnly(true)
-            .secure(true) // Prod-ban HTTPS; dev-ben a Spring figyelmen kívül hagyja
+            .secure(cookieSecure)
             .sameSite("Strict")
             .path(REFRESH_TOKEN_PATH)
             .maxAge(Duration.ofSeconds(REFRESH_TOKEN_MAX_AGE_SECONDS))
@@ -290,7 +306,7 @@ public class AuthController {
     ResponseCookie cookie =
         ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
             .httpOnly(true)
-            .secure(true)
+            .secure(cookieSecure)
             .sameSite("Strict")
             .path(REFRESH_TOKEN_PATH)
             .maxAge(Duration.ZERO)

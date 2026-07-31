@@ -143,7 +143,7 @@ SELECT
     -- PLACEHOLDER — implementációkor cserélendő:
     '$argon2id$v=19$m=65536,t=3,p=1$PLACEHOLDER_SALT$PLACEHOLDER_HASH' AS password_hash,
     true AS active,
-    true AS must_change_password,
+    false AS must_change_password,
     -- role_id: ROLE_ADMIN
     (SELECT id FROM roles WHERE name = 'ROLE_ADMIN' LIMIT 1) AS role_id,
     0 AS failed_login_count,

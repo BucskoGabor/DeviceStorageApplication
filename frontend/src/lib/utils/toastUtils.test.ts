@@ -11,7 +11,7 @@ const mockI18n = {
 }
 
 vi.mock('@/lib/i18n/i18n', () => ({
-  default: mockI18n,
+  i18n: mockI18n,
 }))
 
 describe('resolveToastMessage fallback mechanism', () => {
