@@ -25,7 +25,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget -qO- http://localhost:80/ || exit 1
+    CMD wget --spider -q http://127.0.0.1:80/ || exit 1
 
 EXPOSE 80
 
