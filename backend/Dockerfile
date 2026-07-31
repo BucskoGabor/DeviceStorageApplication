@@ -7,7 +7,7 @@ FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Cache Maven dependencies (réteg kihasználva a Docker cache-t)
-COPY pom.xml .
+COPY pom.xml checkstyle.xml suppressions.xml ./
 RUN mvn dependency:go-offline -B -q
 
 # Copy source and build (skip tesztek, mert a Task 5.3-ban vannak integrációs tesztek)
