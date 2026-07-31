@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useAuthStore } from '@/lib/store/authStore'
+import { authApi } from '@/features/auth/api/authApi'
 
 /**
  * ForbiddenPage — 403-as hibaoldal.
@@ -29,9 +30,15 @@ export function ForbiddenPage() {
 
   const roleLabel = role ? t(`roles.${role}`, role) : '—'
 
-  const handleLogout = () => {
-    clearAuth()
-    window.location.href = '/login'
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      // Backend logout hiba esetén is töröljük a helyi auth state-et
+    } finally {
+      clearAuth()
+      window.location.href = '/login'
+    }
   }
 
   return (

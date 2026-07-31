@@ -52,6 +52,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
 
+    // Csak a /api/auth/login POST endpointra alkalmazzuk — a /refresh, /logout,
+    // /password-change NEM rate-limited (a silent refresh F5 page reloadkor
+    // automatikusan fut, és nem user-initiated).
     if (!LOGIN_PATH.equals(request.getRequestURI()) || !"POST".equals(request.getMethod())) {
       filterChain.doFilter(request, response);
       return;

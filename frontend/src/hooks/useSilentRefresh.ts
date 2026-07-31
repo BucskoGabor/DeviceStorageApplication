@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useAuthStore } from '@/lib/store/authStore'
 import { authApi } from '@/features/auth/api/authApi'
 
@@ -21,16 +21,14 @@ import { authApi } from '@/features/auth/api/authApi'
  */
 export function useSilentRefresh() {
   const accessToken = useAuthStore((state) => state.accessToken)
+  const initialRefreshDone = useAuthStore((state) => state.initialRefreshDone)
   const setAuth = useAuthStore((state) => state.setAuth)
   const clearAuth = useAuthStore((state) => state.clearAuth)
-  const [refreshAttempted, setRefreshAttempted] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const setInitialRefreshDone = useAuthStore((state) => state.setInitialRefreshDone)
 
   useEffect(() => {
     // Csak akkor fut, ha NINCS access token ÉS még nem próbálkoztunk
-    if (!accessToken && !refreshAttempted) {
-      setRefreshAttempted(true)
-      setIsRefreshing(true)
+    if (!accessToken && !initialRefreshDone) {
       authApi.refresh()
         .then((resp) => {
           // A /api/auth/refresh response shape: { accessToken, role, permissions, mustChangePassword }
@@ -57,14 +55,9 @@ export function useSilentRefresh() {
             })
         })
         .catch(() => {
-          // Refresh token is lejárt vagy nincs → /login
+          // Refresh token is lejárt vagy nincs → clearAuth + initialRefreshDone: true
           clearAuth()
         })
-        .finally(() => {
-          setIsRefreshing(false)
-        })
     }
-  }, [accessToken, refreshAttempted, setAuth, clearAuth])
-
-  return { isRefreshing, refreshAttempted }
+  }, [accessToken, initialRefreshDone, setAuth, clearAuth, setInitialRefreshDone])
 }

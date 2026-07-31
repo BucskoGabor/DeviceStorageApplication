@@ -24,6 +24,8 @@ import { userApi } from '@/features/user/api/userApi'
 import { deviceApi } from '@/features/device/api/deviceApi'
 import { locationApi } from '@/features/location/api/locationApi'
 
+import { useSilentRefresh } from '@/hooks/useSilentRefresh'
+
 /**
  * Központi route konfig.
  *
@@ -38,8 +40,21 @@ import { locationApi } from '@/features/location/api/locationApi'
  */
 export function AppRoutes() {
   const accessToken = useAuthStore((state) => state.accessToken)
+  const initialRefreshDone = useAuthStore((state) => state.initialRefreshDone)
   const mustChangePassword = useAuthStore((state) => state.mustChangePassword)
   const [passwordChanged, setPasswordChanged] = useState(false)
+
+  // Automatrikus silent refresh indítása oldalbetöltéskor / F5 frissítéskor
+  useSilentRefresh()
+
+  // Még fut a kezdeti silent refresh → Betöltés képernyő
+  if (!initialRefreshDone) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-muted-foreground">Betöltés...</p>
+      </div>
+    )
+  }
 
   // Ha nincs access token, csak /login elérhető
   if (!accessToken) {

@@ -2,6 +2,7 @@ import { type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/lib/store/authStore'
+import { authApi } from '@/features/auth/api/authApi'
 
 /**
  * DashboardPage — wrapper komponens a védett route-okhoz.
@@ -22,9 +23,15 @@ export function DashboardPage({ children }: DashboardPageProps) {
   const permissions = useAuthStore((state) => state.permissions)
   const location = useLocation()
 
-  const handleLogout = () => {
-    clearAuth()
-    window.location.href = '/login'
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch {
+      // Backend logout hiba esetén is töröljük a helyi auth state-et
+    } finally {
+      clearAuth()
+      window.location.href = '/login'
+    }
   }
 
   const canAccessAdmin = role === 'ROLE_ADMIN' || role === 'ROLE_TEACHER' || permissions.includes('DEVICE_READ')

@@ -2,7 +2,6 @@ import { useEffect, type ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/lib/store/authStore'
 import { authApi } from '@/features/auth/api/authApi'
-import { useSilentRefresh } from '@/hooks/useSilentRefresh'
 
 interface RequireAuthProps {
   children: ReactNode
@@ -26,7 +25,6 @@ export function RequireAuth({ children }: RequireAuthProps) {
   const accessToken = useAuthStore((state) => state.accessToken)
   const role = useAuthStore((state) => state.role)
   const setAuth = useAuthStore((state) => state.setAuth)
-  const { isRefreshing, refreshAttempted } = useSilentRefresh()
 
   // Ha van access token, de nincs role → me hívás a role/permissions betöltéséhez
   useEffect(() => {
@@ -36,22 +34,12 @@ export function RequireAuth({ children }: RequireAuthProps) {
           setAuth(accessToken, me.emailHash, me.role, me.permissions, me.mustChangePassword)
         })
         .catch(() => {
-          // 401 → access token lejárt, a silent refresh-et a useSilentRefresh kezeli
+          // 401 → access token lejárt
         })
     }
   }, [accessToken, role, setAuth])
 
-  // Silent refresh még fut, vagy befejeződött és nincs access token
   if (!accessToken) {
-    if (isRefreshing || !refreshAttempted) {
-      // Még fut, vagy még nem próbálkoztunk — várunk
-      return (
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <p className="text-muted-foreground">Betöltés...</p>
-        </div>
-      )
-    }
-    // A refresh befejeződött, de nincs access token → /login
     return <Navigate to="/login" replace />
   }
 

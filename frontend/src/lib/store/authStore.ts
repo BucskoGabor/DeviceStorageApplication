@@ -23,12 +23,14 @@ interface AuthState {
   role: string | null
   permissions: string[]
   mustChangePassword: boolean
+  initialRefreshDone: boolean
 
   // Actions
   setAuth: (token: string, email: string, role: string, permissions: string[], mustChangePassword: boolean) => void
   setAccessToken: (token: string | null) => void
   clearAuth: () => void
   setMustChangePassword: (value: boolean) => void
+  setInitialRefreshDone: (value: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -38,6 +40,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   role: null,
   permissions: [],
   mustChangePassword: false,
+  initialRefreshDone: false,
 
   // Set all auth state (called after login)
   setAuth: (token, email, role, permissions, mustChangePassword) =>
@@ -47,10 +50,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       role,
       permissions,
       mustChangePassword,
+      initialRefreshDone: true,
     }),
 
   // Set just the access token (called after silent refresh)
-  setAccessToken: (token) => set({ accessToken: token }),
+  setAccessToken: (token) => set({ accessToken: token, initialRefreshDone: true }),
 
   // Clear all auth state (called on logout or refresh failure)
   clearAuth: () =>
@@ -60,10 +64,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       role: null,
       permissions: [],
       mustChangePassword: false,
+      initialRefreshDone: true,
     }),
 
   // Set mustChangePassword flag (cleared after successful password change)
   setMustChangePassword: (value) => set({ mustChangePassword: value }),
+
+  // Set initialRefreshDone flag
+  setInitialRefreshDone: (value) => set({ initialRefreshDone: value }),
 }))
 
 /**
