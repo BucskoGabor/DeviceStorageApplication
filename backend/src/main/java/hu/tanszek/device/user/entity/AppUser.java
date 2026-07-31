@@ -72,10 +72,12 @@ public class AppUser extends BaseEntity<Long> {
     /** A user irodai helyszíne (NULL = nincs iroda) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "office_location_id")
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "parent"})
     private Location officeLocation;
 
     /** Argon2id hash a jelszóból (memory-hard, OWASP 2024+) */
     @Column(name = "password_hash", nullable = false, columnDefinition = "TEXT")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String passwordHash;
 
     /** true = aktív, false = deaktivált (nem tud belépni) */
@@ -90,8 +92,9 @@ public class AppUser extends BaseEntity<Long> {
     private boolean mustChangePassword;
 
     /** A user role-ja (lazy fetch a security betöltéshez) */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "permissions"})
     private Role role;
 
     /** Sikertelen bejelentkezési próbálkozások száma (5 → lockout) */
@@ -114,5 +117,6 @@ public class AppUser extends BaseEntity<Long> {
             inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Set<Permission> permissions = new HashSet<>();
 }

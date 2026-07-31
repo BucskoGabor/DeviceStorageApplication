@@ -41,6 +41,8 @@ class UserServiceTest {
 
     @Mock private AppUserRepository appUserRepository;
     @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock private hu.tanszek.device.auth.repository.RoleRepository roleRepository;
+    @Mock private hu.tanszek.device.location.repository.LocationRepository locationRepository;
 
     private Argon2PasswordEncoder passwordEncoder;
 
@@ -51,7 +53,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         passwordEncoder = new Argon2PasswordEncoder(16, 32, 1, 65536, 3);
-        userService = new UserService(appUserRepository, refreshTokenRepository, passwordEncoder);
+        userService = new UserService(appUserRepository, refreshTokenRepository, roleRepository, locationRepository, passwordEncoder);
 
         user = AppUser.builder()
                 .id(1L)
