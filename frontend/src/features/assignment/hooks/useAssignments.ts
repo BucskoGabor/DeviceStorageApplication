@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
+import { resolveToastMessage } from '@/lib/utils/toastUtils'
 import { assignmentApi, type DeviceAssignment, type CreateAssignmentPayload } from '../api/assignmentApi'
 
 /**
@@ -42,8 +43,7 @@ export function useRequestAssignment(deviceId: number, onSuccess?: () => void) {
       onSuccess?.()
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
     },
   })
 }
@@ -63,8 +63,7 @@ export function useApproveAssignment(deviceId: number) {
       toast.success(t('assignments.approveAssignmentSuccess'))
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
     },
   })
 }
@@ -84,8 +83,7 @@ export function useRequestUnassignment(deviceId: number) {
       toast.success(t('assignments.requestUnassignmentSuccess'))
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
     },
   })
 }
@@ -105,8 +103,31 @@ export function useApproveUnassignment(deviceId: number) {
       toast.success(t('assignments.approveUnassignmentSuccess'))
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
+    },
+  })
+}
+
+/**
+ * useRejectAssignment — POST /api/devices/assignments/{id}/reject
+ */
+export function useRejectAssignment(deviceId?: number) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (assignmentId: number) => assignmentApi.rejectAssignment(assignmentId),
+    onSuccess: () => {
+      if (deviceId) {
+        queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
+        queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
+      }
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast.success(t('assignments.rejectAssignmentSuccess'))
+    },
+    onError: (error: any) => {
+      toast.error(resolveToastMessage(error.response))
     },
   })
 }

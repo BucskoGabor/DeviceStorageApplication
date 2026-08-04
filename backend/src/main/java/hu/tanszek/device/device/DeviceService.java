@@ -119,15 +119,22 @@ public class DeviceService {
             .findById(deviceId)
             .orElseThrow(() -> new ResourceNotFoundException("Device not found: " + deviceId));
 
-    // Üzleti szabály 1: MAINTENANCE/DISPOSED device-ot nem lehet assignolni
-    if (device.getStatus() == DeviceStatus.MAINTENANCE
-        || device.getStatus() == DeviceStatus.DISPOSED) {
+    // Üzleti szabály 1: Csak IN_STORAGE státuszú eszközt lehet hozzárendelni
+    if (device.getStatus() != DeviceStatus.IN_STORAGE) {
       throw new BusinessValidationException(
           "deviceNotAssignable",
-          "Device is in " + device.getStatus() + " status, cannot be assigned");
+          "Only devices in IN_STORAGE status can be assigned. Current status: " + device.getStatus());
     }
 
-    // Üzleti szabály 2: GROUP location-ra NEM lehet assignolni
+    // Üzleti szabály 2: Vagy location, vagy user megadása kötelező, egyszerre mindkettő vagy egyik sem tilos
+    if ((targetLocationId == null && targetUserId == null)
+        || (targetLocationId != null && targetUserId != null)) {
+      throw new BusinessValidationException(
+          "assignmentTargetExclusive",
+          "Must specify either targetLocationId or targetUserId, but not both");
+    }
+
+    // Üzleti szabály 3: GROUP location-ra NEM lehet assignolni
     Location targetLocation = null;
     if (targetLocationId != null) {
       targetLocation =
@@ -141,7 +148,7 @@ public class DeviceService {
       }
     }
 
-    // Üzleti szabály 3: target user valid (ha megadva)
+    // Üzleti szabály 4: target user valid (ha megadva)
     AppUser targetUser = null;
     if (targetUserId != null) {
       targetUser =
@@ -150,7 +157,7 @@ public class DeviceService {
               .orElseThrow(() -> new ResourceNotFoundException("User not found: " + targetUserId));
     }
 
-    // Üzleti szabály 4: by user valid
+    // Üzleti szabály 5: by user valid
     AppUser byUser =
         userRepository
             .findById(byUserId)
@@ -332,6 +339,52 @@ public class DeviceService {
   }
 
   /**
+   * Assignment kérelem elutasítása (PENDING_ASSIGNMENT vagy PENDING_UNASSIGNMENT).
+   *
+   * @param assignmentId az elutasítandó assignment ID-ja
+   * @param rejectedByUserId az elutasító user ID-ja
+   * @return a frissített assignment (REJECTED státusszal)
+   */
+  @AuditTarget(entityType = "DeviceAssignment", action = "reject_assignment")
+  @Transactional
+  public DeviceAssignment rejectAssignment(Long assignmentId, Long rejectedByUserId) {
+    DeviceAssignment assignment =
+        assignmentRepository
+            .findById(assignmentId)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Assignment not found: " + assignmentId));
+
+    if (assignment.getStatus() != AssignmentStatus.PENDING_ASSIGNMENT
+        && assignment.getStatus() != AssignmentStatus.PENDING_UNASSIGNMENT) {
+      throw new BusinessValidationException(
+          "assignmentNotPending", "Assignment is not in pending status");
+    }
+
+    AppUser rejecter =
+        userRepository
+            .findById(rejectedByUserId)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("User not found: " + rejectedByUserId));
+
+    AssignmentStatus previousStatus = assignment.getStatus();
+    assignment.setStatus(AssignmentStatus.REJECTED);
+    assignment.setActive(false);
+    assignment.setApprovedBy(rejecter);
+
+    Device device = assignment.getDevice();
+    if (previousStatus == AssignmentStatus.PENDING_ASSIGNMENT) {
+      device.setStatus(DeviceStatus.IN_STORAGE);
+    } else if (previousStatus == AssignmentStatus.PENDING_UNASSIGNMENT) {
+      device.setStatus(DeviceStatus.ASSIGNED);
+    }
+    deviceRepository.save(device);
+
+    DeviceAssignment saved = assignmentRepository.save(assignment);
+    log.info("Assignment rejected: id={}, by={}", assignmentId, rejectedByUserId);
+    return saved;
+  }
+
+  /**
    * Eszköz státusz manuális átállítása (operatív/admin beavatkozás).
    *
    * <p>A state machine ({@link #ALLOWED_TRANSITIONS}) határozza meg, hogy mely átmenetek
@@ -385,6 +438,89 @@ public class DeviceService {
     Device saved = deviceRepository.save(device);
 
     log.info("Device {} status changed: {} → {}", deviceId, currentStatus, newStatus);
+    return saved;
+  }
+
+  /**
+   * Eszköz karbantartásba küldése (IN_STORAGE vagy ASSIGNED státuszból).
+   */
+  @AuditTarget(entityType = "Device", action = "send_to_maintenance")
+  @Transactional
+  public Device sendToMaintenance(Long deviceId, String reason, Long byUserId) {
+    Device device =
+        deviceRepository
+            .findById(deviceId)
+            .orElseThrow(() -> new ResourceNotFoundException("Device not found: " + deviceId));
+
+    if (device.getStatus() == DeviceStatus.DISPOSED || device.getStatus() == DeviceStatus.MAINTENANCE) {
+      throw new BusinessValidationException(
+          "deviceStatusTransitionNotAllowed",
+          "Cannot send to maintenance from status: " + device.getStatus());
+    }
+
+    // Ha az eszköz hozzá volt rendelve, az aktív assignmentet lezárjuk
+    assignmentRepository
+        .findByDeviceIdAndActiveTrue(deviceId)
+        .ifPresent(
+            activeAssignment -> {
+              activeAssignment.setActive(false);
+              activeAssignment.setUnassignCreatedDate(Instant.now());
+              assignmentRepository.save(activeAssignment);
+            });
+
+    device.setStatus(DeviceStatus.MAINTENANCE);
+    Device saved = deviceRepository.save(device);
+    log.info("Device {} sent to maintenance by user {}. Reason: {}", deviceId, byUserId, reason);
+    return saved;
+  }
+
+  /**
+   * Eszköz visszavétele karbantartásból (MAINTENANCE → IN_STORAGE).
+   */
+  @AuditTarget(entityType = "Device", action = "return_from_maintenance")
+  @Transactional
+  public Device returnFromMaintenance(Long deviceId, Long byUserId) {
+    Device device =
+        deviceRepository
+            .findById(deviceId)
+            .orElseThrow(() -> new ResourceNotFoundException("Device not found: " + deviceId));
+
+    if (device.getStatus() != DeviceStatus.MAINTENANCE) {
+      throw new BusinessValidationException(
+          "deviceNotInMaintenance", "Device is not in MAINTENANCE status");
+    }
+
+    device.setStatus(DeviceStatus.IN_STORAGE);
+    Device saved = deviceRepository.save(device);
+    log.info("Device {} returned from maintenance to IN_STORAGE by user {}", deviceId, byUserId);
+    return saved;
+  }
+
+  /**
+   * Eszköz selejtezése (IN_STORAGE vagy MAINTENANCE státuszból → DISPOSED végállapot).
+   */
+  @AuditTarget(entityType = "Device", action = "dispose_device")
+  @Transactional
+  public Device disposeDevice(Long deviceId, String reason, Long byUserId) {
+    Device device =
+        deviceRepository
+            .findById(deviceId)
+            .orElseThrow(() -> new ResourceNotFoundException("Device not found: " + deviceId));
+
+    if (device.getStatus() == DeviceStatus.DISPOSED) {
+      throw new BusinessValidationException(
+          "deviceAlreadyDisposed", "Device is already DISPOSED");
+    }
+
+    if (device.getStatus() == DeviceStatus.ASSIGNED) {
+      throw new BusinessValidationException(
+          "assignedDeviceCannotBeDisposed",
+          "Assigned devices must be unassigned or sent to maintenance before disposal");
+    }
+
+    device.setStatus(DeviceStatus.DISPOSED);
+    Device saved = deviceRepository.save(device);
+    log.info("Device {} disposed by user {}. Reason: {}", deviceId, byUserId, reason);
     return saved;
   }
 }

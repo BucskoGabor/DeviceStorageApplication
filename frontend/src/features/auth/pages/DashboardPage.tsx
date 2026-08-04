@@ -4,6 +4,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/lib/store/authStore'
 import { authApi } from '@/features/auth/api/authApi'
 
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
+
 /**
  * DashboardPage — wrapper komponens a védett route-okhoz.
  *
@@ -46,7 +48,8 @@ export function DashboardPage({ children }: DashboardPageProps) {
       <header className="border-b border-border bg-card">
         <div className="flex items-center justify-between p-4">
           <h1 className="text-xl font-semibold">{t('appName')}</h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
             {userEmail && <span className="text-sm text-muted-foreground">{userEmail}</span>}
             <Link
               to="/my-profile"

@@ -2,14 +2,23 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Plus, Trash2, List, TreePine } from 'lucide-react'
+import { Plus, Trash2, Pencil, List, TreePine } from 'lucide-react'
 import { DataTable } from '@/components/DataTable/DataTable'
 import { locationApi, type Location } from '@/features/location/api/locationApi'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/lib/store/authStore'
 import { LocationTreeView } from '@/features/location/components/LocationTreeView'
 import { LocationTreeSelector } from '@/features/location/components/LocationTreeSelector'
 
@@ -18,12 +27,25 @@ type ViewMode = 'list' | 'tree'
 export function LocationsPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const permissions = useAuthStore((state) => state.permissions)
+  const canManage = permissions.includes('LOCATION_MANAGE')
+
   const [page, setPage] = useState(0)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null)
+
+  // Form states for create
   const [name, setName] = useState('')
   const [type, setType] = useState<'CLASSROOM' | 'OFFICE' | 'STORAGE' | 'GROUP'>('OFFICE')
   const [parentId, setParentId] = useState<number | null>(null)
   const [parentSelectorOpen, setParentSelectorOpen] = useState(false)
+
+  // Form states for edit
+  const [editName, setEditName] = useState('')
+  const [editType, setEditType] = useState<'CLASSROOM' | 'OFFICE' | 'STORAGE' | 'GROUP'>('OFFICE')
+  const [editParentId, setEditParentId] = useState<number | null>(null)
+  const [editParentSelectorOpen, setEditParentSelectorOpen] = useState(false)
+
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const pageSize = 20
 
@@ -53,6 +75,20 @@ export function LocationsPage() {
     },
   })
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof locationApi.update>[1] }) =>
+      locationApi.update(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['locations'] })
+      setEditingLocation(null)
+      toast.success(t('common.updated', 'Sikeresen frissítve'))
+    },
+    onError: (error: any) => {
+      const messageKey = error.response?.data?.messageKey ?? 'internalError'
+      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+    },
+  })
+
   const deleteMutation = useMutation({
     mutationFn: locationApi.delete,
     onSuccess: () => {
@@ -64,6 +100,29 @@ export function LocationsPage() {
       toast.error(t(messageKey, { defaultValue: t('common.error') }))
     },
   })
+
+  const openEdit = (loc: Location) => {
+    setEditingLocation(loc)
+    setEditName(loc.name)
+    setEditType(loc.type)
+    setEditParentId(loc.parentId ?? null)
+  }
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingLocation || !editName) return
+    const payload: Parameters<typeof locationApi.update>[1] = {}
+    if (editName !== editingLocation.name) payload.name = editName
+    if (editType !== editingLocation.type) payload.type = editType
+    if (editParentId !== (editingLocation.parentId ?? null)) payload.parentId = editParentId
+
+    if (Object.keys(payload).length === 0) {
+      setEditingLocation(null)
+      return
+    }
+
+    updateMutation.mutate({ id: editingLocation.id, payload })
+  }
 
   const columns = useMemo<ColumnDef<Location, unknown>[]>(
     () => [
@@ -84,7 +143,11 @@ export function LocationsPage() {
         header: t('locations.type'),
         cell: (info) => {
           const type = info.getValue() as string
-          return <Badge variant="secondary">{t(`locations.type${type.charAt(0) + type.slice(1).toLowerCase()}`, type)}</Badge>
+          return (
+            <Badge variant="secondary">
+              {t(`locations.type${type.charAt(0) + type.slice(1).toLowerCase()}`, type)}
+            </Badge>
+          )
         },
       },
       {
@@ -93,7 +156,11 @@ export function LocationsPage() {
         header: t('locations.parent'),
         cell: (info) => {
           const parentId = info.getValue()
-          return parentId ? <span className="font-mono text-xs">#{String(parentId)}</span> : <span className="text-muted-foreground">—</span>
+          return parentId ? (
+            <span className="font-mono text-xs">#{String(parentId)}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )
         },
       },
       {
@@ -102,23 +169,37 @@ export function LocationsPage() {
         cell: (info) => {
           const location = info.row.original
           return (
-            <Button
-              variant="ghost"
-              size="icon"
-              title={t('common.delete', 'Törlés')}
-              onClick={() => {
-                if (confirm(t('locations.confirmDelete'))) {
-                  deleteMutation.mutate(location.id)
-                }
-              }}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
+            <div className="flex gap-1">
+              {canManage && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title={t('common.edit', 'Szerkesztés')}
+                  onClick={() => openEdit(location)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              {canManage && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title={t('common.delete', 'Törlés')}
+                  onClick={() => {
+                    if (confirm(t('locations.confirmDelete'))) {
+                      deleteMutation.mutate(location.id)
+                    }
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              )}
+            </div>
           )
         },
       },
     ],
-    [t, deleteMutation]
+    [t, canManage, deleteMutation]
   )
 
   const handleCreateSubmit = (e: React.FormEvent) => {
@@ -157,10 +238,12 @@ export function LocationsPage() {
               {t('locations.viewTree')}
             </Button>
           </div>
-          <Button onClick={() => setIsCreateOpen(!isCreateOpen)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('locations.create')}
-          </Button>
+          {canManage && (
+            <Button onClick={() => setIsCreateOpen(!isCreateOpen)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('locations.create')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -245,6 +328,88 @@ export function LocationsPage() {
         onOpenChange={setParentSelectorOpen}
         onSelect={(id) => setParentId(id)}
         selectedId={parentId}
+      />
+
+      {/* Edit Location Dialog */}
+      <Dialog
+        open={editingLocation !== null}
+        onOpenChange={(open) => !open && setEditingLocation(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('locations.edit', 'Helyszín szerkesztése')}</DialogTitle>
+            <DialogDescription>
+              #{editingLocation?.id} ({editingLocation?.name})
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-3 py-3">
+            <div>
+              <Label htmlFor="edit-loc-name" className="text-xs text-muted-foreground">
+                {t('locations.name')}
+              </Label>
+              <Input
+                id="edit-loc-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-loc-type" className="text-xs text-muted-foreground">
+                {t('locations.type')}
+              </Label>
+              <select
+                id="edit-loc-type"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={editType}
+                onChange={(e: any) => setEditType(e.target.value)}
+              >
+                <option value="OFFICE">{t('locations.typeOffice')}</option>
+                <option value="CLASSROOM">{t('locations.typeClassroom')}</option>
+                <option value="STORAGE">{t('locations.typeStorage')}</option>
+                <option value="GROUP">{t('locations.typeGroup')}</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">{t('locations.parent')}</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 justify-start"
+                  onClick={() => setEditParentSelectorOpen(true)}
+                >
+                  {editParentId != null ? `#${editParentId}` : t('locations.noParent')}
+                </Button>
+                {editParentId != null && (
+                  <Button type="button" variant="ghost" onClick={() => setEditParentId(null)}>
+                    ×
+                  </Button>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingLocation(null)}
+                disabled={updateMutation.isPending}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {t('common.save')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <LocationTreeSelector
+        open={editParentSelectorOpen}
+        onOpenChange={setEditParentSelectorOpen}
+        onSelect={(id) => setEditParentId(id)}
+        selectedId={editParentId}
       />
     </div>
   )

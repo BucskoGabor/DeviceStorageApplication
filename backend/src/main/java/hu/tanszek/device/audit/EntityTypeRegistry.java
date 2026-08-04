@@ -10,6 +10,8 @@ import hu.tanszek.device.assignment.entity.DeviceAssignment;
 import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
 import hu.tanszek.device.attachment.entity.DeviceAttachment;
 import hu.tanszek.device.attachment.repository.DeviceAttachmentRepository;
+import hu.tanszek.device.auth.entity.Role;
+import hu.tanszek.device.auth.repository.RoleRepository;
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.device.repository.DeviceRepository;
 import hu.tanszek.device.location.entity.Location;
@@ -37,6 +39,7 @@ import lombok.RequiredArgsConstructor;
  *   <li>Assignment → DeviceAssignmentRepository.findById()
  *   <li>Software → SoftwareRepository.findById()
  *   <li>Attachment → DeviceAttachmentRepository.findById()
+ *   <li>Role → RoleRepository.findByIdWithPermissions()
  * </ul>
  */
 @Component
@@ -49,6 +52,7 @@ public class EntityTypeRegistry {
   private final DeviceAssignmentRepository assignmentRepository;
   private final SoftwareRepository softwareRepository;
   private final DeviceAttachmentRepository attachmentRepository;
+  private final RoleRepository roleRepository;
 
   /**
    * Entity lookup az entity_type string alapján.
@@ -81,6 +85,7 @@ public class EntityTypeRegistry {
       case "Assignment" -> assignmentRepository.deleteById(entityId);
       case "Software" -> softwareRepository.deleteById(entityId);
       case "Attachment" -> attachmentRepository.deleteById(entityId);
+      case "Role" -> roleRepository.deleteById(entityId);
       default ->
           throw new IllegalArgumentException("Cannot delete unknown entity type: " + entityType);
     }
@@ -94,6 +99,7 @@ public class EntityTypeRegistry {
     else if (entity instanceof DeviceAssignment a) assignmentRepository.save(a);
     else if (entity instanceof Software s) softwareRepository.save(s);
     else if (entity instanceof DeviceAttachment att) attachmentRepository.save(att);
+    else if (entity instanceof Role r) roleRepository.save(r);
   }
 
   /**
@@ -154,6 +160,17 @@ public class EntityTypeRegistry {
       map.put("fileName", attachment.getFileName());
       map.put("mimeType", attachment.getMimeType());
       map.put("sizeBytes", attachment.getSizeBytes());
+    } else if (entity instanceof Role role) {
+      map.put("id", role.getId());
+      map.put("name", role.getName());
+      map.put(
+          "permissions",
+          role.getPermissions() != null
+              ? role.getPermissions().stream()
+                  .map(hu.tanszek.device.auth.entity.Permission::getName)
+                  .sorted()
+                  .toList()
+              : java.util.List.of());
     }
 
     return map;
@@ -172,56 +189,69 @@ public class EntityTypeRegistry {
     if (entity == null || fields == null) return;
 
     if (entity instanceof Device device) {
-      if (fields.containsKey("type")) device.setType((String) fields.get("type"));
-      if (fields.containsKey("inventoryNumber"))
-        device.setInventoryNumber((String) fields.get("inventoryNumber"));
-      if (fields.containsKey("status") && fields.get("status") != null) {
+      if (fields.get("type") instanceof String s && !"***".equals(s)) {
+        device.setType(s);
+      }
+      if (fields.get("inventoryNumber") instanceof String s && !"***".equals(s)) {
+        device.setInventoryNumber(s);
+      }
+      if (fields.get("status") != null && !"***".equals(fields.get("status"))) {
         device.setStatus(
             hu.tanszek.device.device.entity.DeviceStatus.valueOf(fields.get("status").toString()));
       }
     } else if (entity instanceof AppUser user) {
       if (fields.containsKey("active") && fields.get("active") != null) {
-        user.setActive((Boolean) fields.get("active"));
+        Object val = fields.get("active");
+        if (val instanceof Boolean b) user.setActive(b);
+        else if (val instanceof String s && !"***".equals(s)) user.setActive(Boolean.parseBoolean(s));
       }
       if (fields.containsKey("mustChangePassword") && fields.get("mustChangePassword") != null) {
-        user.setMustChangePassword((Boolean) fields.get("mustChangePassword"));
-      }
-      if (fields.containsKey("roleId") && fields.get("roleId") != null) {
-        Long roleId = ((Number) fields.get("roleId")).longValue();
-        // Role lookup szükséges — de a registry nem tud role-t keresni,
-        // ezért itt a managed entity JPA-n keresztül frissül
-        // (a tranzakción belül a role lazy load működik)
+        Object val = fields.get("mustChangePassword");
+        if (val instanceof Boolean b) user.setMustChangePassword(b);
+        else if (val instanceof String s && !"***".equals(s)) user.setMustChangePassword(Boolean.parseBoolean(s));
       }
     } else if (entity instanceof Location location) {
-      if (fields.containsKey("name")) location.setName((String) fields.get("name"));
-      if (fields.containsKey("type") && fields.get("type") != null) {
+      if (fields.get("name") instanceof String s && !"***".equals(s)) {
+        location.setName(s);
+      }
+      if (fields.get("type") != null && !"***".equals(fields.get("type"))) {
         location.setType(
             hu.tanszek.device.location.entity.LocationType.valueOf(fields.get("type").toString()));
       }
-      if (fields.containsKey("parentId") && fields.get("parentId") != null) {
+      if (fields.containsKey("parentId") && fields.get("parentId") != null && !"***".equals(fields.get("parentId"))) {
         Long parentId = ((Number) fields.get("parentId")).longValue();
         locationRepository.findById(parentId).ifPresent(location::setParent);
       } else if (fields.containsKey("parentId") && fields.get("parentId") == null) {
         location.setParent(null);
       }
     } else if (entity instanceof DeviceAssignment assignment) {
-      if (fields.containsKey("status") && fields.get("status") != null) {
+      if (fields.get("status") != null && !"***".equals(fields.get("status"))) {
         assignment.setStatus(
             hu.tanszek.device.assignment.entity.AssignmentStatus.valueOf(
                 fields.get("status").toString()));
       }
-      if (fields.containsKey("active") && fields.get("active") != null) {
-        assignment.setActive((Boolean) fields.get("active"));
+      if (fields.get("active") != null && !"***".equals(fields.get("active"))) {
+        Object val = fields.get("active");
+        if (val instanceof Boolean b) assignment.setActive(b);
+        else if (val instanceof String s && !"***".equals(s)) assignment.setActive(Boolean.parseBoolean(s));
       }
-      // FK rollback-ek: device, location, user FK-k a DeviceAssignment-en
-      // A managed entity-n keresztül a JPA dirty checking menti őket
     } else if (entity instanceof Software software) {
-      if (fields.containsKey("name")) software.setName((String) fields.get("name"));
+      if (fields.get("name") instanceof String s && !"***".equals(s)) {
+        software.setName(s);
+      }
     } else if (entity instanceof DeviceAttachment attachment) {
-      if (fields.containsKey("fileName")) attachment.setFileName((String) fields.get("fileName"));
-      if (fields.containsKey("mimeType")) attachment.setMimeType((String) fields.get("mimeType"));
-      if (fields.containsKey("sizeBytes") && fields.get("sizeBytes") != null) {
-        attachment.setSizeBytes(((Number) fields.get("sizeBytes")).longValue());
+      if (fields.get("fileName") instanceof String s && !"***".equals(s)) {
+        attachment.setFileName(s);
+      }
+      if (fields.get("mimeType") instanceof String s && !"***".equals(s)) {
+        attachment.setMimeType(s);
+      }
+      if (fields.get("sizeBytes") instanceof Number num) {
+        attachment.setSizeBytes(num.longValue());
+      }
+    } else if (entity instanceof Role role) {
+      if (fields.get("name") instanceof String s && !"***".equals(s)) {
+        role.setName(s);
       }
     }
   }
@@ -242,7 +272,9 @@ public class EntityTypeRegistry {
     finders.put("AppUser", id -> userRepository.findById(id));
     finders.put("Location", id -> locationRepository.findById(id));
     finders.put("Assignment", id -> assignmentRepository.findById(id));
+    finders.put("DeviceAssignment", id -> assignmentRepository.findById(id));
     finders.put("Software", id -> softwareRepository.findById(id));
     finders.put("Attachment", id -> attachmentRepository.findById(id));
+    finders.put("Role", id -> roleRepository.findByIdWithPermissions(id));
   }
 }

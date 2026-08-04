@@ -56,7 +56,7 @@ export function UserDetailPage() {
           <ProfileField
             icon={<Mail className="h-4 w-4 text-muted-foreground" />}
             label={t('users.email')}
-            value={<span className="font-mono text-xs">{user.emailMasked}</span>}
+            value={<span className="font-mono text-xs">{user.email || user.emailMasked}</span>}
           />
           <ProfileField
             icon={<Shield className="h-4 w-4 text-muted-foreground" />}

@@ -24,6 +24,9 @@ export interface PageRequest {
   page: number
   size: number
   sort?: string
+  status?: string
+  type?: string
+  inventoryNumber?: string
   filter?: Record<string, string>
 }
 
@@ -39,7 +42,12 @@ export interface PageResponse<T> {
  * Device lista (lapozva és szűrve).
  */
 export async function findAllDevices(params: PageRequest): Promise<PageResponse<Device>> {
-  const response = await apiClient.get<PageResponse<Device>>('/api/devices', { params })
+  const { filter, ...queryParams } = params
+  const mergedParams = {
+    ...queryParams,
+    ...(filter?.inventoryNumber ? { inventoryNumber: filter.inventoryNumber } : {}),
+  }
+  const response = await apiClient.get<PageResponse<Device>>('/api/devices', { params: mergedParams })
   return response.data
 }
 
@@ -101,6 +109,30 @@ export async function detachSoftware(deviceId: number, softwareId: number): Prom
 }
 
 /**
+ * Eszköz karbantartásba küldése.
+ */
+export async function sendToMaintenance(deviceId: number, reason?: string): Promise<Device> {
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/maintenance`, { reason })
+  return response.data
+}
+
+/**
+ * Eszköz visszavétele karbantartásból.
+ */
+export async function returnFromMaintenance(deviceId: number): Promise<Device> {
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/return-from-maintenance`)
+  return response.data
+}
+
+/**
+ * Eszköz selejtezése.
+ */
+export async function disposeDevice(deviceId: number, reason?: string): Promise<Device> {
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/dispose`, { reason })
+  return response.data
+}
+
+/**
  * Device API namespace.
  */
 export const deviceApi = {
@@ -113,6 +145,9 @@ export const deviceApi = {
   attachSoftware,
   detachSoftware,
   changeStatus,
+  sendToMaintenance,
+  returnFromMaintenance,
+  disposeDevice,
 }
 
 /**

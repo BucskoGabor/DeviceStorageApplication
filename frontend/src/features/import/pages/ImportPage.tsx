@@ -38,8 +38,9 @@ export function ImportPage() {
       })
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey), { position: 'top-right' })
+      const messageKey = error.response?.data?.messageKey
+      const fallback = t('import.excelError', 'A feltöltött fájl nem feldolgozható vagy érvénytelen szerkezetű Excel fájl.')
+      toast.error(messageKey ? t(messageKey) : fallback, { position: 'top-right' })
     },
   })
 

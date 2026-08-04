@@ -37,6 +37,7 @@ public class UserService {
   private final AppUserRepository appUserRepository;
   private final RefreshTokenRepository refreshTokenRepository;
   private final RoleRepository roleRepository;
+  private final hu.tanszek.device.auth.repository.PermissionRepository permissionRepository;
   private final LocationRepository locationRepository;
   private final Argon2PasswordEncoder passwordEncoder;
 
@@ -180,10 +181,11 @@ public class UserService {
       String roleName,
       Long officeLocationId,
       boolean clearOfficeLocation,
-      Boolean active) {
+      Boolean active,
+      java.util.Set<Long> directPermissionIds) {
     AppUser user =
         appUserRepository
-            .findById(userId)
+            .findWithDetailsById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
     if (roleName != null) {
@@ -207,11 +209,18 @@ public class UserService {
     }
     if (active != null && !active.equals(user.isActive())) {
       user.setActive(active);
-      // Ha deaktiválódik, a session-jét is le kell zárni
       if (!active) {
         int revokedCount = refreshTokenRepository.revokeAllRefreshTokensByUserId(userId);
         log.info("User {} deactivated via update, revoked {} refresh tokens", userId, revokedCount);
       }
+    }
+    if (directPermissionIds != null) {
+      java.util.Set<hu.tanszek.device.auth.entity.Permission> perms = new java.util.HashSet<>();
+      if (!directPermissionIds.isEmpty()) {
+        perms.addAll(permissionRepository.findAllById(directPermissionIds));
+      }
+      user.getPermissions().clear();
+      user.getPermissions().addAll(perms);
     }
 
     AppUser saved = appUserRepository.save(user);

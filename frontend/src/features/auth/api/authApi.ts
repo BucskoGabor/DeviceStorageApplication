@@ -22,6 +22,11 @@ export interface MeResponse {
   role: string
   permissions: string[]
   mustChangePassword: boolean
+  officeLocation?: {
+    id: number
+    name: string
+    type: string
+  } | null
 }
 
 export interface PasswordChangeRequest {

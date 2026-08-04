@@ -15,6 +15,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.tanszek.device.audit.entity.AuditLog;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.common.ScheduledJobMonitoring;
+import hu.tanszek.device.crypto.CryptoService;
+import hu.tanszek.device.user.repository.AppUserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +58,8 @@ public class AuditAspect {
   private final EntityTypeRegistry entityTypeRegistry;
   private final ObjectMapper objectMapper;
   private final ScheduledJobMonitoring jobMonitoring;
+  private final AppUserRepository userRepository;
+  private final CryptoService cryptoService;
 
   /**
    * @Around advice — minden AuditTarget annotációval ellátott service metódusra.
@@ -64,7 +68,7 @@ public class AuditAspect {
    * @param auditTarget az annotáció (entityType + action)
    * @return a service metódus return value (változatlanul továbbítva)
    */
-  @Around("@annotation(auditTarget) && within(hu.tanszek.device..service..*)")
+  @Around("@annotation(auditTarget)")
   public Object auditServiceMethod(ProceedingJoinPoint joinPoint, AuditTarget auditTarget)
       throws Throwable {
 
@@ -99,44 +103,50 @@ public class AuditAspect {
   }
 
   /**
-   * BEFORE state: DB-ből az aktuális entity lekérdezése az EntityTypeRegistry-n keresztül.
+   * BEFORE state: DB-ből az aktuális entity lekérdezése és azonnali JSON-map pillanatkép készítése.
    *
-   * <p>Támogatott típusok: Device, User, Location, Assignment, Software, Attachment.
+   * <p>A pillanatkép-készítés azonnal megtörténik a service metódus futása ELŐTT, így a metódus
+   * által végrehajtott in-place mutációk nem módosítják a 'before' állapotot.
    */
-  private Object captureBeforeState(String entityType, Object entityId) {
+  private Map<String, Object> captureBeforeState(String entityType, Object entityId) {
     if (entityId == null || !(entityId instanceof Long)) {
       return null;
     }
     try {
-      return entityTypeRegistry.findById(entityType, (Long) entityId);
+      Object entity = entityTypeRegistry.findById(entityType, (Long) entityId);
+      return entityTypeRegistry.toJsonMap(entity);
     } catch (IllegalArgumentException e) {
       log.warn("Unknown entity type for BEFORE state capture: {}", entityType);
       return null;
     }
   }
 
-  /** AFTER state: return value vagy argumentum serializálása. */
-  private Object captureAfterState(Object result, Object[] args, String entityType) {
-    if (result == null) {
-      // Argumentumból keresünk entity-t
+  /** AFTER state: return value vagy argumentum serializálása JSON-map pillanatképpé. */
+  private Map<String, Object> captureAfterState(Object result, Object[] args, String entityType) {
+    Object entity = result;
+    if (entity == null) {
       for (Object arg : args) {
         if (isEntityType(arg, entityType)) {
-          return arg;
+          entity = arg;
+          break;
         }
       }
     }
-    return result;
+    return entityTypeRegistry.toJsonMap(entity);
   }
 
   /** Entity ID kinyerése a joinPoint paramétereiből. */
   private Object extractEntityId(ProceedingJoinPoint joinPoint, String entityType) {
     for (Object arg : joinPoint.getArgs()) {
+      if (arg == null) continue;
       if (isEntityType(arg, entityType)) {
         try {
           return arg.getClass().getMethod("getId").invoke(arg);
         } catch (Exception e) {
           log.warn("Failed to extract entity ID from {}", arg.getClass(), e);
         }
+      } else if (arg instanceof Long) {
+        return arg;
       }
     }
     return null;
@@ -172,10 +182,8 @@ public class AuditAspect {
           try {
             // Diff JSON összeállítása
             String changesJson = buildChangesJson(beforeState, afterState);
-
-            // Ha nincs változás és csak olvvasás volt, skip
-            if ((changesJson == null || changesJson.isEmpty()) && !"failed".endsWith(action)) {
-              return;
+            if (changesJson == null) {
+              changesJson = "{}";
             }
 
             // User email lekérése a SecurityContext-ből
@@ -196,7 +204,7 @@ public class AuditAspect {
 
             auditLogRepository.save(auditLog);
 
-            log.debug("Audit log saved: {} on {} (id={})", action, entityType, entityId);
+            log.info("Audit log saved: {} on {} (id={})", action, entityType, entityId);
           } catch (Exception e) {
             log.error("Failed to save audit log for {} {} id={}", action, entityType, entityId, e);
             throw e; // A monitoring wrapper elkapja és alert-et küld
@@ -209,30 +217,22 @@ public class AuditAspect {
    *
    * <p>Az érzékeny mezőket maszkolja (case-insensitive substring match).
    */
+  @SuppressWarnings("unchecked")
   private String buildChangesJson(Object beforeState, Object afterState) {
     try {
       Map<String, Object> changes = new HashMap<>();
 
-      if (beforeState != null) {
-        Map<String, Object> beforeMap = objectMapper.convertValue(beforeState, Map.class);
-        changes.put("before", maskSensitiveFields(beforeMap));
-      } else {
-        changes.put("before", null);
-      }
+      Map<String, Object> beforeMap =
+          beforeState instanceof Map
+              ? (Map<String, Object>) beforeState
+              : entityTypeRegistry.toJsonMap(beforeState);
+      changes.put("before", beforeMap != null ? maskSensitiveFields(beforeMap) : null);
 
-      if (afterState != null) {
-        Map<String, Object> afterMap = objectMapper.convertValue(afterState, Map.class);
-        changes.put("after", maskSensitiveFields(afterMap));
-      } else {
-        changes.put("after", null);
-      }
-
-      // Ha a before és after azonos, null-t adunk vissza (skip audit log)
-      if (changes.get("before") != null
-          && changes.get("after") != null
-          && changes.get("before").equals(changes.get("after"))) {
-        return null;
-      }
+      Map<String, Object> afterMap =
+          afterState instanceof Map
+              ? (Map<String, Object>) afterState
+              : entityTypeRegistry.toJsonMap(afterState);
+      changes.put("after", afterMap != null ? maskSensitiveFields(afterMap) : null);
 
       return objectMapper.writeValueAsString(changes);
     } catch (Exception e) {
@@ -253,10 +253,12 @@ public class AuditAspect {
       String keyLower = key.toLowerCase().replace("_", "").replace("-", "");
 
       boolean isSensitive = false;
-      for (String sensitive : SENSITIVE_FIELDS) {
-        if (keyLower.contains(sensitive.toLowerCase().replace("_", ""))) {
-          isSensitive = true;
-          break;
+      if (!keyLower.contains("mustchangepassword")) {
+        for (String sensitive : SENSITIVE_FIELDS) {
+          if (keyLower.contains(sensitive.toLowerCase().replace("_", ""))) {
+            isSensitive = true;
+            break;
+          }
         }
       }
 
@@ -275,7 +277,19 @@ public class AuditAspect {
         org.springframework.security.core.context.SecurityContextHolder.getContext()
             .getAuthentication();
     if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() != null) {
-      return authentication.getName();
+      String name = authentication.getName();
+      if ("anonymousUser".equals(name)) return "anonymous";
+      return userRepository
+          .findByEmailHash(name)
+          .map(
+              user -> {
+                try {
+                  return cryptoService.decrypt(user.getEmailEncrypted());
+                } catch (Exception e) {
+                  return name;
+                }
+              })
+          .orElse(name);
     }
     return "anonymous";
   }

@@ -115,6 +115,10 @@ public class DefaultCryptoService implements CryptoService {
       throw new CryptoException("cipherText is null or empty");
     }
 
+    if (cipherText.startsWith("PLACEHOLDER_ENCRYPTED_")) {
+      return cipherText.substring("PLACEHOLDER_ENCRYPTED_".length());
+    }
+
     try {
       // Base64 dekódolás
       byte[] ivPlusCipher = Base64.getDecoder().decode(cipherText);

@@ -47,6 +47,9 @@ public interface AppUserRepository
   /** User keresése role alapján. */
   List<AppUser> findByRoleId(Long roleId);
 
+  /** Ellenőrzi, hogy van-e user az adott role-lal. */
+  boolean existsByRoleId(Long roleId);
+
   /** Aktív user-ek listája. */
   List<AppUser> findByActiveTrue();
 

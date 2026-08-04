@@ -1,80 +1,143 @@
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
+import { MapPin, Laptop, Activity } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { DashboardPage } from '@/features/auth/pages/DashboardPage'
 import { deviceApi } from '@/features/device/api/deviceApi'
+import { authApi } from '@/features/auth/api/authApi'
+import { userApi } from '@/features/user/api/userApi'
+import { assignmentApi } from '@/features/assignment/api/assignmentApi'
 
 /**
  * MyDashboardPage — a bejelentkezett user saját dashboardja.
  *
  * Tartalom:
- * - Saját eszközök listája (row-level filter által engedélyezett eszközök)
- * - Statisztika és áttekintés
+ * - Saját / elérhető eszközök listája
+ * - Saját irodai lokáció (userApi.findById(me.id))
+ * - Jóváhagyási és aktivitási áttekintés
  */
-interface MyDashboardPageProps {
-  children?: React.ReactNode
-}
-
-export function MyDashboardPage({ children }: MyDashboardPageProps) {
+export function MyDashboardPage({ children }: { children?: React.ReactNode }) {
   const { t } = useTranslation()
+
+  const { data: me, isLoading: isMeLoading } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => authApi.me(),
+  })
+
+  const { data: myUserDetail, isLoading: isUserDetailLoading } = useQuery({
+    queryKey: ['user-detail', me?.id],
+    queryFn: () => userApi.findById(me!.id),
+    enabled: Boolean(me?.id),
+  })
 
   const { data: devicesData, isLoading: isDevicesLoading } = useQuery({
     queryKey: ['my-devices-summary'],
     queryFn: () => deviceApi.findAll({ page: 0, size: 5 }),
   })
 
+  const { data: pendingAssignments, isLoading: isPendingLoading } = useQuery({
+    queryKey: ['pending-assignments-summary'],
+    queryFn: () => assignmentApi.findPendingAssignments(),
+  })
+
   const devices = devicesData?.content ?? []
+  const office = myUserDetail?.officeLocation
 
   return (
     <DashboardPage>
       {children}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Saját / elérhető eszközök */}
         <Card>
           <CardHeader>
-            <CardTitle>{t('dashboard.myDevices')}</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Laptop className="h-5 w-5 text-primary" />
+              {t('dashboard.myDevices')}
+            </CardTitle>
             <CardDescription>
               {devicesData?.totalElements
-                ? `${devicesData.totalElements} eszköz elérhető`
+                ? `${devicesData.totalElements} ${t('common.itemsPerPage', 'eszköz elérhető')}`
                 : t('dashboard.noDevices')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {isDevicesLoading ? (
-              <p className="text-sm text-muted-foreground">Betöltés...</p>
+              <p className="text-sm text-muted-foreground">{t('common.loading')}...</p>
             ) : devices.length > 0 ? (
               <ul className="space-y-2">
                 {devices.map((device) => (
-                  <li key={device.id} className="flex items-center justify-between text-sm border-b border-border py-1">
-                    <span className="font-medium">{device.inventoryNumber}</span>
-                    <span className="rounded bg-primary/10 px-2 py-0.5 text-xs text-primary font-semibold">
+                  <li
+                    key={device.id}
+                    className="flex items-center justify-between border-b border-border py-1.5 text-sm"
+                  >
+                    <span className="font-mono font-medium">{device.inventoryNumber}</span>
+                    <Badge variant="outline" className="text-xs">
                       {device.type}
-                    </span>
+                    </Badge>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground">{t('dashboard.noDevices')}</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.noDevices')}</p>
             )}
           </CardContent>
         </Card>
 
+        {/* Saját lokációk */}
         <Card>
           <CardHeader>
-            <CardTitle>{t('dashboard.myLocations')}</CardTitle>
-            <CardDescription>Irodai / Hozzárendelt lokációk</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              {t('dashboard.myLocations')}
+            </CardTitle>
+            <CardDescription>{t('users.office', 'Irodai beosztás')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">{t('dashboard.noLocations')}</p>
+            {isMeLoading || isUserDetailLoading ? (
+              <p className="text-sm text-muted-foreground">{t('common.loading')}...</p>
+            ) : office ? (
+              <div className="rounded-md border border-border bg-card p-3 space-y-1">
+                <p className="text-sm font-semibold">{office.name}</p>
+                <p className="text-xs text-muted-foreground font-mono">
+                  Type: {office.type} (#{office.id})
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('dashboard.noLocations')}</p>
+            )}
           </CardContent>
         </Card>
 
+        {/* Aktivitási előzmények / Jóváhagyási sor */}
         <Card>
           <CardHeader>
-            <CardTitle>{t('dashboard.recentAssignments')}</CardTitle>
-            <CardDescription>Aktivitási előzmények</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              {t('dashboard.recentAssignments')}
+            </CardTitle>
+            <CardDescription>{t('assignments.approvalQueue', 'Függőben lévő kérelmek')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">—</p>
+            {isPendingLoading ? (
+              <p className="text-sm text-muted-foreground">{t('common.loading')}...</p>
+            ) : pendingAssignments && pendingAssignments.length > 0 ? (
+              <ul className="space-y-2">
+                {pendingAssignments.slice(0, 4).map((pa) => (
+                  <li
+                    key={pa.id}
+                    className="flex items-center justify-between border-b border-border py-1 text-xs"
+                  >
+                    <span className="font-mono">#{pa.device?.id ?? pa.id}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {pa.status}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nincs függőben lévő kérelem</p>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -6,12 +6,13 @@ import { AdminLayout } from '@/features/admin/layouts/AdminLayout'
 import { PasswordChangeForm } from '@/features/auth/components/PasswordChangeForm'
 import { useAuthStore } from '@/lib/store/authStore'
 import { RequireAuth } from '@/components/auth/RequireAuth'
-import { RequireRole } from '@/components/auth/RequireRole'
+import { RequirePermission } from '@/components/auth/RequirePermission'
 import { DevicesPage } from '@/features/device/pages/DevicesPage'
 import { DeviceDetailPage } from '@/features/attachment/pages/DeviceDetailPage'
 import { AuditPage } from '@/features/audit/pages/AuditPage'
 import { ImportPage } from '@/features/import/pages/ImportPage'
 import { UsersPage } from '@/features/user/pages/UsersPage'
+import { RolesPage } from '@/features/role/pages/RolesPage'
 import { LocationsPage } from '@/features/location/pages/LocationsPage'
 import { SoftwarePage } from '@/features/software/pages/SoftwarePage'
 import { PendingApprovalsPage } from '@/features/assignment/pages/PendingApprovalsPage'
@@ -129,6 +130,7 @@ export function AppRoutes() {
         <Route index element={<AdminIndexPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="users/:id" element={<UserDetailPage />} />
+        <Route path="roles" element={<RolesPage />} />
         <Route path="devices" element={<DevicesPage />} />
         <Route path="devices/:id" element={<DeviceDetailPage />} />
         <Route path="locations" element={<LocationsPage />} />

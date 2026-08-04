@@ -22,28 +22,29 @@ export function resolveToastMessage(
   response: { data?: { messageKey?: string; message?: string } } | undefined | null
 ): string {
   if (!response?.data) {
-    return i18n.t('internalError')
+    return i18n.exists('messages.internalError') ? i18n.t('messages.internalError') : i18n.t('internalError')
   }
 
   const { messageKey, message } = response.data
 
-  // 1. messageKey + i18n resource-ban megvan
-  if (messageKey && i18n.exists(messageKey)) {
-    return i18n.t(messageKey)
+  if (messageKey) {
+    if (i18n.exists(messageKey)) {
+      return i18n.t(messageKey)
+    }
+    if (i18n.exists(`messages.${messageKey}`)) {
+      return i18n.t(`messages.${messageKey}`)
+    }
   }
 
-  // 2. messageKey hiányzik a resource-ból → backend natív message
   if (message) {
     return message
   }
 
-  // 3. messageKey van, de nincs resource ÉS message sincs → fallback i18n kulcs
   if (messageKey) {
-    return i18n.t('internalError')
+    return i18n.exists('messages.internalError') ? i18n.t('messages.internalError') : i18n.t('internalError')
   }
 
-  // 4. Nincs messageKey sem → fallback i18n kulcs
-  return i18n.t('internalError')
+  return i18n.exists('messages.internalError') ? i18n.t('messages.internalError') : i18n.t('internalError')
 }
 
 /**

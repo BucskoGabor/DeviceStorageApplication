@@ -7,6 +7,7 @@ import {
   MapPin,
   FileText,
   Shield,
+  ShieldCheck,
   Upload,
   LayoutDashboard,
   ClipboardCheck,
@@ -14,17 +15,12 @@ import {
 import { DashboardPage } from '@/features/auth/pages/DashboardPage'
 import { cn } from '@/lib/utils'
 
-/**
- * AdminLayout — ROLE_ADMIN route-ok layout-ja: Sidebar + Header + Main content.
- *
- * Az oldalsó menüben az admin aloldalak linkjei. A NavLink aktív státuszt
- * kap a jelenlegi route alapján (React Router).
- */
 const SIDEBAR_WIDTH = 'w-56' // 224px
 
 const sidebarItems = [
   { to: '/admin', icon: LayoutDashboard, labelKey: 'admin.title', end: true },
   { to: '/admin/users', icon: Users, labelKey: 'admin.users' },
+  { to: '/admin/roles', icon: ShieldCheck, labelKey: 'roles.title' },
   { to: '/admin/devices', icon: Laptop, labelKey: 'admin.devices' },
   { to: '/admin/locations', icon: MapPin, labelKey: 'admin.locations' },
   { to: '/admin/software', icon: Shield, labelKey: 'admin.softwares' },
@@ -41,19 +37,20 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { t } = useTranslation()
-  const userRole = useAuthStore((state) => state.role)
   const permissions = useAuthStore((state) => state.permissions)
 
-  const hasPermission = (perm: string) => userRole === 'ROLE_ADMIN' || permissions.includes(perm)
+  const hasPermission = (perm: string) => permissions.includes(perm)
+  const hasAnyPermission = (perms: string[]) => perms.some((p) => permissions.includes(p))
 
   const filteredItems = sidebarItems.filter((item) => {
-    if (item.to === '/admin/users') return hasPermission('USER_READ') || hasPermission('USER_MANAGE')
+    if (item.to === '/admin/users') return hasAnyPermission(['USER_READ', 'USER_MANAGE'])
+    if (item.to === '/admin/roles') return hasAnyPermission(['USER_READ', 'USER_MANAGE'])
     if (item.to === '/admin/devices') return hasPermission('DEVICE_READ')
     if (item.to === '/admin/locations') return hasPermission('LOCATION_READ')
-    if (item.to === '/admin/software') return hasPermission('SOFTWARE_LICENSE_VIEW') || hasPermission('SOFTWARE_MANAGE')
+    if (item.to === '/admin/software') return hasAnyPermission(['SOFTWARE_LICENSE_VIEW', 'SOFTWARE_MANAGE'])
     if (item.to === '/admin/audit') return hasPermission('AUDIT_READ')
     if (item.to === '/admin/approvals') return hasPermission('DEVICE_ASSIGN')
-    if (item.to === '/admin/import') return userRole === 'ROLE_ADMIN'
+    if (item.to === '/admin/import') return hasAnyPermission(['USER_MANAGE', 'DEVICE_CREATE'])
     return true
   })
 
