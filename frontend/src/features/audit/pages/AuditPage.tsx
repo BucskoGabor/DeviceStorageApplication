@@ -22,17 +22,19 @@ export function AuditPage() {
   const [page, setPage] = useState(0)
   const [filterEmail, setFilterEmail] = useState('')
   const [filterEntityType, setFilterEntityType] = useState('')
+  const [filterEntityId, setFilterEntityId] = useState('')
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
   const pageSize = 20
 
   const { data, isLoading } = useQuery({
-    queryKey: ['audit', page, pageSize, filterEmail, filterEntityType],
+    queryKey: ['audit', page, pageSize, filterEmail, filterEntityType, filterEntityId],
     queryFn: () =>
       auditApi.findAll({
         page,
         size: pageSize,
         userEmail: filterEmail || undefined,
         entityType: filterEntityType || undefined,
+        entityId: filterEntityId ? Number(filterEntityId) : undefined,
       }),
   })
 
@@ -81,6 +83,16 @@ export function AuditPage() {
       id: 'entityType',
       accessorKey: 'entityType',
       header: t('audit.entityType'),
+      cell: (info) => {
+        const log = info.row.original
+        return log.entityType ? (
+          <span className="text-xs">
+            {log.entityType} #{log.entityId}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )
+      },
     },
     {
       id: 'httpStatus',
@@ -103,32 +115,49 @@ export function AuditPage() {
     },
   ]
 
+  const hasActiveFilters = Boolean(filterEmail || filterEntityType || filterEntityId)
+
+  const clearFilters = () => {
+    setFilterEmail('')
+    setFilterEntityType('')
+    setFilterEntityId('')
+    setPage(0)
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="mb-4 text-2xl font-semibold">{t('audit.title')}</h1>
 
       {/* Szűrők */}
       <Card className="mb-4">
-        <CardContent className="flex flex-wrap gap-2 p-4">
-          <div className="flex flex-1 items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('audit.user')}
-              value={filterEmail}
-              onChange={(e) => setFilterEmail(e.target.value)}
-              className="max-w-xs"
-            />
-            {filterEmail && (
-              <Button variant="ghost" size="icon" onClick={() => setFilterEmail('')}>
-                <X className="h-4 w-4" />
-              </Button>
-            )}
+        <CardContent className="flex flex-wrap items-center gap-3 p-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            <span>{t('common.search', 'Szűrés')}</span>
           </div>
-          <Select value={filterEntityType} onValueChange={setFilterEntityType}>
+
+          <Input
+            placeholder={t('audit.user')}
+            value={filterEmail}
+            onChange={(e) => {
+              setFilterEmail(e.target.value)
+              setPage(0)
+            }}
+            className="w-56"
+          />
+
+          <Select
+            value={filterEntityType}
+            onValueChange={(val) => {
+              setFilterEntityType(val === '__all__' ? '' : val)
+              setPage(0)
+            }}
+          >
             <SelectTrigger className="w-48">
               <SelectValue placeholder={t('audit.entityType')} />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="__all__">{t('common.all', 'Összes típus')}</SelectItem>
               <SelectItem value="Device">{t('nav.devices')}</SelectItem>
               <SelectItem value="User">{t('nav.users')}</SelectItem>
               <SelectItem value="Location">{t('nav.locations')}</SelectItem>
@@ -137,9 +166,22 @@ export function AuditPage() {
               <SelectItem value="DeviceAttachment">{t('nav.attachments')}</SelectItem>
             </SelectContent>
           </Select>
-          {filterEntityType && (
-            <Button variant="ghost" size="icon" onClick={() => setFilterEntityType('')}>
-              <X className="h-4 w-4" />
+
+          <Input
+            placeholder="Entitás ID (pl. 42)"
+            type="number"
+            value={filterEntityId}
+            onChange={(e) => {
+              setFilterEntityId(e.target.value)
+              setPage(0)
+            }}
+            className="w-36"
+          />
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="mr-1 h-4 w-4" />
+              {t('common.clear', 'Törlés')}
             </Button>
           )}
         </CardContent>
@@ -154,10 +196,6 @@ export function AuditPage() {
         pageSize={pageSize}
         totalElements={data?.totalElements ?? 0}
         onPageChange={setPage}
-        searchColumnId="userEmail"
-        searchValue={filterEmail}
-        onSearchChange={setFilterEmail}
-        searchPlaceholder={t('audit.user')}
       />
 
       {/* Diff side panel */}

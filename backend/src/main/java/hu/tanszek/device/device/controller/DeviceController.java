@@ -24,6 +24,9 @@ import hu.tanszek.device.software.dto.SoftwareDto;
 import hu.tanszek.device.software.entity.Software;
 import hu.tanszek.device.software.repository.SoftwareRepository;
 
+import hu.tanszek.device.user.entity.AppUser;
+import hu.tanszek.device.user.repository.AppUserRepository;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -56,6 +59,7 @@ public class DeviceController {
   private final LocationRepository locationRepository;
   private final SoftwareRepository softwareRepository;
   private final hu.tanszek.device.crypto.CryptoService cryptoService;
+  private final AppUserRepository userRepository;
 
   /**
    * Device lista (lapozva + szűrve). Query params: page, size, sort, filter[inventoryNumber],
@@ -192,9 +196,8 @@ public class DeviceController {
             .findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Device not found: " + id));
 
-    if (request.type() != null) device.setType(request.type());
-    if (request.status() != null) {
-      device.setStatus(hu.tanszek.device.device.entity.DeviceStatus.valueOf(request.status()));
+    if (request.type() != null) {
+      device.setType(request.type());
     }
 
     Device saved = deviceRepository.save(device);
@@ -250,6 +253,46 @@ public class DeviceController {
       @Parameter(description = "Eszköz azonosító") @PathVariable Long id,
       @Valid @RequestBody ChangeStatusRequest request) {
     Device saved = deviceService.changeStatus(id, DeviceStatus.valueOf(request.status()));
+    return ResponseEntity.ok(saved);
+  }
+
+  /** POST /api/devices/{id}/maintenance — Eszköz karbantartásba küldése */
+  @Operation(summary = "Karbantartásba küldés", description = "Eszköz karbantartásba küldése ok megadásával.")
+  @PostMapping("/{id}/maintenance")
+  @RequirePermission("DEVICE_UPDATE")
+  public ResponseEntity<Device> sendToMaintenance(
+      @PathVariable Long id,
+      @RequestBody(required = false) MaintenanceRequest request,
+      Authentication authentication) {
+    Long userId = resolveUserId(authentication);
+    String reason = request != null ? request.reason() : "Nincs megadva";
+    Device saved = deviceService.sendToMaintenance(id, reason, userId);
+    return ResponseEntity.ok(saved);
+  }
+
+  /** POST /api/devices/{id}/return-from-maintenance — Visszavétel karbantartásból */
+  @Operation(summary = "Visszavétel karbantartásból", description = "Karbantartás alatt lévő eszköz visszahozatala IN_STORAGE státuszba.")
+  @PostMapping("/{id}/return-from-maintenance")
+  @RequirePermission("DEVICE_UPDATE")
+  public ResponseEntity<Device> returnFromMaintenance(
+      @PathVariable Long id,
+      Authentication authentication) {
+    Long userId = resolveUserId(authentication);
+    Device saved = deviceService.returnFromMaintenance(id, userId);
+    return ResponseEntity.ok(saved);
+  }
+
+  /** POST /api/devices/{id}/dispose — Eszköz selejtezése */
+  @Operation(summary = "Eszköz selejtezése", description = "Eszköz végleges selejtezése DISPOSED végállapotba.")
+  @PostMapping("/{id}/dispose")
+  @RequirePermission("DEVICE_UPDATE")
+  public ResponseEntity<Device> disposeDevice(
+      @PathVariable Long id,
+      @RequestBody(required = false) DisposeRequest request,
+      Authentication authentication) {
+    Long userId = resolveUserId(authentication);
+    String reason = request != null ? request.reason() : "Nincs megadva";
+    Device saved = deviceService.disposeDevice(id, reason, userId);
     return ResponseEntity.ok(saved);
   }
 
@@ -392,6 +435,18 @@ public class DeviceController {
     }
   }
 
+  private Long resolveUserId(Authentication authentication) {
+    if (authentication == null) {
+      throw new BusinessValidationException("unauthorized", "User is not authenticated");
+    }
+    String emailHash = authentication.getName();
+    AppUser user =
+        userRepository
+            .findByEmailHash(emailHash)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + emailHash));
+    return user.getId();
+  }
+
   // ===== DTO-k =====
 
   public record CreateDeviceRequest(
@@ -399,9 +454,13 @@ public class DeviceController {
       @NotBlank @Size(max = 50) String type,
       @NotBlank String status) {}
 
-  public record UpdateDeviceRequest(@Size(max = 50) String type, String status) {}
+  public record UpdateDeviceRequest(@Size(max = 50) String type) {}
 
   public record AttachSoftwareRequest(@NotNull Long softwareId) {}
 
   public record ChangeStatusRequest(@NotBlank String status) {}
+
+  public record MaintenanceRequest(String reason) {}
+
+  public record DisposeRequest(String reason) {}
 }

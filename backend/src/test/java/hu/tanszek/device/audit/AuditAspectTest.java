@@ -11,6 +11,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.common.ScheduledJobMonitoring;
 
+import hu.tanszek.device.crypto.CryptoService;
+import hu.tanszek.device.user.repository.AppUserRepository;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
@@ -31,7 +34,9 @@ class AuditAspectTest {
             mock(AuditLogRepository.class),
             mock(EntityTypeRegistry.class),
             new ObjectMapper(),
-            mock(ScheduledJobMonitoring.class));
+            mock(ScheduledJobMonitoring.class),
+            mock(AppUserRepository.class),
+            mock(CryptoService.class));
     aspect = real;
   }
 

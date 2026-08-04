@@ -176,6 +176,29 @@ public class AssignmentController {
   }
 
   /**
+   * POST /api/devices/assignments/{assignmentId}/reject Függőben lévő kérelem (assign/unassign) elutasítása.
+   */
+  @Operation(
+      summary = "Kérelem elutasítása",
+      description =
+          "PENDING_ASSIGNMENT vagy PENDING_UNASSIGNMENT kérelem elutasítása (REJECTED). Audit log bejegyzés generálódik.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Kérelem elutasítva"),
+    @ApiResponse(responseCode = "400", description = "Az assignment nem függőben lévő státuszú"),
+    @ApiResponse(responseCode = "404", description = "Assignment nem található"),
+    @ApiResponse(responseCode = "403", description = "DEVICE_ASSIGN permission hiányzik")
+  })
+  @PostMapping("/api/devices/assignments/{assignmentId}/reject")
+  @RequirePermission("DEVICE_ASSIGN")
+  public ResponseEntity<DeviceAssignment> rejectAssignment(
+      @Parameter(description = "Assignment azonosító") @PathVariable Long assignmentId,
+      Authentication authentication) {
+    Long rejectedByUserId = resolveUserId(authentication);
+    DeviceAssignment rejected = deviceService.rejectAssignment(assignmentId, rejectedByUserId);
+    return ResponseEntity.ok(rejected);
+  }
+
+  /**
    * GET /api/devices/{deviceId}/assignments Egy device összes assignment history-ja (lapozva,
    * createdDate desc).
    */

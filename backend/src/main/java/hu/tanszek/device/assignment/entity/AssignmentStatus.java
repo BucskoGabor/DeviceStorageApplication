@@ -20,5 +20,8 @@ public enum AssignmentStatus {
   PENDING_ASSIGNMENT,
 
   /** Unassign kérelem beadva, jóváhagyásra vár */
-  PENDING_UNASSIGNMENT
+  PENDING_UNASSIGNMENT,
+
+  /** Kérelem elutasítva */
+  REJECTED
 }

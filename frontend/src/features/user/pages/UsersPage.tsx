@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Plus, Trash2, Unlock, Pencil, FileText } from 'lucide-react'
+import { Plus, Trash2, Unlock, Pencil, FileText, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { DataTable } from '@/components/DataTable/DataTable'
 import {
@@ -20,6 +20,7 @@ import { userApi, type AppUserDto, type RoleName } from '@/features/user/api/use
 import { useAuthStore } from '@/lib/store/authStore'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { LocationTreeSelector } from '@/features/location/components/LocationTreeSelector'
 
 const ROLE_OPTIONS: RoleName[] = ['ROLE_ADMIN', 'ROLE_TEACHER', 'ROLE_STUDENT']
 
@@ -32,6 +33,9 @@ export function UsersPage() {
   const [page, setPage] = useState(0)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AppUserDto | null>(null)
+  const [editOfficeLocationId, setEditOfficeLocationId] = useState<number | null>(null)
+  const [officeSelectorOpen, setOfficeSelectorOpen] = useState(false)
+
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<RoleName>('ROLE_TEACHER')
 
@@ -90,6 +94,11 @@ export function UsersPage() {
     },
   })
 
+  const openEdit = (user: AppUserDto) => {
+    setEditingUser(user)
+    setEditOfficeLocationId(user.officeLocation?.id ?? null)
+  }
+
   const columns = useMemo<ColumnDef<AppUserDto, unknown>[]>(
     () => [
       {
@@ -99,12 +108,12 @@ export function UsersPage() {
         cell: (info) => <span className="font-mono text-xs">{String(info.getValue())}</span>,
       },
       {
-        id: 'emailMasked',
-        accessorKey: 'emailMasked',
+        id: 'email',
         header: t('users.email'),
-        cell: (info) => (
-          <span className="font-mono text-xs">{String(info.getValue())}</span>
-        ),
+        cell: (info) => {
+          const user = info.row.original
+          return <span className="font-mono text-xs">{user.email || user.emailMasked}</span>
+        },
       },
       {
         id: 'role',
@@ -115,6 +124,18 @@ export function UsersPage() {
             <Badge variant="outline" className="font-medium">
               {t(`roles.${roleName}`, roleName)}
             </Badge>
+          )
+        },
+      },
+      {
+        id: 'officeLocation',
+        header: t('users.office', 'Iroda'),
+        cell: (info) => {
+          const office = info.row.original.officeLocation
+          return office ? (
+            <span className="text-xs">{office.name}</span>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
           )
         },
       },
@@ -148,7 +169,7 @@ export function UsersPage() {
                   variant="ghost"
                   size="icon"
                   title={t('common.edit')}
-                  onClick={() => setEditingUser(user)}
+                  onClick={() => openEdit(user)}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -196,13 +217,22 @@ export function UsersPage() {
     if (!editingUser) return
     const payload: Parameters<typeof userApi.update>[1] = {}
     const newActive = (document.getElementById('edit-active') as HTMLInputElement)?.checked
+    const roleSelect = document.getElementById('edit-role') as HTMLSelectElement
 
-    const roleSelect = (document.getElementById('edit-role') as HTMLSelectElement)
     if (roleSelect && roleSelect.value !== editingUser.role?.name) {
       payload.role = roleSelect.value as RoleName
     }
     if (newActive !== editingUser.active) {
       payload.active = newActive
+    }
+
+    const currentOfficeId = editingUser.officeLocation?.id ?? null
+    if (editOfficeLocationId !== currentOfficeId) {
+      if (editOfficeLocationId === null) {
+        payload.clearOfficeLocation = true
+      } else {
+        payload.officeLocationId = editOfficeLocationId
+      }
     }
 
     if (Object.keys(payload).length === 0) {
@@ -290,7 +320,7 @@ export function UsersPage() {
           <DialogHeader>
             <DialogTitle>{t('users.edit')}</DialogTitle>
             <DialogDescription>
-              #{editingUser?.id} ({editingUser?.emailHash.slice(0, 12)}…)
+              {editingUser?.email || editingUser?.emailMasked || `#${editingUser?.id}`}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-3 py-4">
@@ -310,6 +340,27 @@ export function UsersPage() {
                 ))}
               </select>
             </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">{t('users.office', 'Irodai helyszín')}</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 justify-start"
+                  onClick={() => setOfficeSelectorOpen(true)}
+                >
+                  <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+                  {editOfficeLocationId != null ? `#${editOfficeLocationId}` : t('locations.noParent', 'Nincs iroda beállítva')}
+                </Button>
+                {editOfficeLocationId != null && (
+                  <Button type="button" variant="ghost" onClick={() => setEditOfficeLocationId(null)}>
+                    ×
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="edit-active" className="flex items-center gap-2 text-xs">
                 <input
@@ -340,6 +391,14 @@ export function UsersPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <LocationTreeSelector
+        open={officeSelectorOpen}
+        onOpenChange={setOfficeSelectorOpen}
+        onSelect={(id) => setEditOfficeLocationId(id)}
+        selectedId={editOfficeLocationId}
+        excludeGroupType
+      />
     </div>
   )
 }

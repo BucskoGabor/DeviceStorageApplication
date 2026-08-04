@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Table,
@@ -11,15 +11,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { resolveToastMessage } from '@/lib/utils/toastUtils'
 import { assignmentApi, type DeviceAssignment } from '../api/assignmentApi'
 import { StatusBadge } from './StatusBadge'
 
 /**
  * ApprovalQueue — Jóváhagyásra váró assignment lista (PENDING_ASSIGNMENT + PENDING_UNASSIGNMENT).
  *
- * Az admin/teacher itt tudja jóváhagyni vagy elvetni a függőben lévő kérelmeket.
- * Jelenleg: csak approve gomb (elvetés nincs a state machine-ben — ha el akarjuk vetni,
- * a rekord státusza nem változik, vagy egy `cancel` endpointot kell hozzáadni).
+ * Az admin/teacher itt tudja jóváhagyni vagy elutasítani a függőben lévő kérelmeket.
  */
 export function ApprovalQueue() {
   const { t } = useTranslation()
@@ -40,8 +39,7 @@ export function ApprovalQueue() {
       toast.success(t('assignments.approveAssignmentSuccess'))
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
     },
   })
 
@@ -54,8 +52,20 @@ export function ApprovalQueue() {
       toast.success(t('assignments.approveUnassignmentSuccess'))
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
+    },
+  })
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: number) => assignmentApi.rejectAssignment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast.success(t('assignments.rejectAssignmentSuccess'))
+    },
+    onError: (error: any) => {
+      toast.error(resolveToastMessage(error.response))
     },
   })
 
@@ -106,27 +116,42 @@ export function ApprovalQueue() {
               {new Date(a.createdDate).toLocaleString()}
             </TableCell>
             <TableCell className="text-right">
-              {a.status === 'PENDING_ASSIGNMENT' ? (
+              <div className="flex items-center justify-end space-x-2">
+                {a.status === 'PENDING_ASSIGNMENT' ? (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    disabled={approveAssignmentMutation.isPending || rejectMutation.isPending}
+                    onClick={() => approveAssignmentMutation.mutate(a.id)}
+                  >
+                    <Check className="mr-1 h-4 w-4" />
+                    {t('assignments.approveAssignment')}
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    disabled={approveUnassignmentMutation.isPending || rejectMutation.isPending}
+                    onClick={() => approveUnassignmentMutation.mutate(a.id)}
+                  >
+                    <Check className="mr-1 h-4 w-4" />
+                    {t('assignments.approveUnassignment')}
+                  </Button>
+                )}
                 <Button
                   size="sm"
-                  variant="default"
-                  disabled={approveAssignmentMutation.isPending}
-                  onClick={() => approveAssignmentMutation.mutate(a.id)}
+                  variant="destructive"
+                  disabled={
+                    approveAssignmentMutation.isPending ||
+                    approveUnassignmentMutation.isPending ||
+                    rejectMutation.isPending
+                  }
+                  onClick={() => rejectMutation.mutate(a.id)}
                 >
-                  <Check className="mr-1 h-4 w-4" />
-                  {t('assignments.approveAssignment')}
+                  <X className="mr-1 h-4 w-4" />
+                  {t('assignments.rejectAssignment')}
                 </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="default"
-                  disabled={approveUnassignmentMutation.isPending}
-                  onClick={() => approveUnassignmentMutation.mutate(a.id)}
-                >
-                  <Check className="mr-1 h-4 w-4" />
-                  {t('assignments.approveUnassignment')}
-                </Button>
-              )}
+              </div>
             </TableCell>
           </TableRow>
         ))}

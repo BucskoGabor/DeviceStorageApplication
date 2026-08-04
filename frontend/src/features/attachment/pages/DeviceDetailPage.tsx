@@ -4,10 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { useDropzone } from 'react-dropzone'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Upload, Trash2, FileText, Paperclip, ArrowRightCircle, ArrowLeftCircle, Plus, Key, Eye, Download } from 'lucide-react'
+import { Upload, Trash2, FileText, Paperclip, ArrowRightCircle, ArrowLeftCircle, Plus, Key, Eye, Download, Wrench, RotateCcw } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { attachmentApi, formatFileSize, downloadUrl, previewUrl, canPreview, type DeviceAttachment } from '@/features/attachment/api/attachmentApi'
-import { deviceApi, type Device } from '@/features/device/api/deviceApi'
+import { deviceApi } from '@/features/device/api/deviceApi'
 import { softwareApi } from '@/features/software/api/softwareApi'
 import { assignmentApi } from '@/features/assignment/api/assignmentApi'
 import { useAuthStore } from '@/lib/store/authStore'
@@ -33,13 +34,10 @@ import { AssignmentDialog } from '@/features/assignment/components/AssignmentDia
 import { AssignmentHistoryTable } from '@/features/assignment/components/AssignmentHistoryTable'
 import { StatusBadge } from '@/features/assignment/components/StatusBadge'
 
+import { resolveToastMessage } from '@/lib/utils/toastUtils'
+
 /**
  * DeviceDetailPage — admin/devices/{id} oldal.
- *
- * Három fő szekció:
- * 1. Aktuális hozzárendelés + műveleti gombok (assign kérés / unassign kérés)
- * 2. Attachment-ek drag-drop feltöltése és listázása
- * 3. Assignment history táblázat
  */
 export function DeviceDetailPage() {
   const { t } = useTranslation()
@@ -48,6 +46,10 @@ export function DeviceDetailPage() {
   const queryClient = useQueryClient()
   const permissions = useAuthStore((state) => state.permissions)
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+  const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false)
+  const [maintenanceReason, setMaintenanceReason] = useState('')
+  const [disposeDialogOpen, setDisposeDialogOpen] = useState(false)
+  const [disposeReason, setDisposeReason] = useState('')
 
   const canAssign = permissions.includes('DEVICE_ASSIGN')
   const canUnassign = permissions.includes('DEVICE_UNASSIGN')
@@ -79,21 +81,48 @@ export function DeviceDetailPage() {
       toast.success(t('assignments.requestUnassignmentSuccess'))
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
     },
   })
 
-  const changeStatusMutation = useMutation({
-    mutationFn: (newStatus: Device['status']) => deviceApi.changeStatus(deviceId, newStatus),
+  const sendToMaintenanceMutation = useMutation({
+    mutationFn: (reason: string) => deviceApi.sendToMaintenance(deviceId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
       queryClient.invalidateQueries({ queryKey: ['devices'] })
-      toast.success(t('devices.statusChanged'))
+      queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
+      setMaintenanceDialogOpen(false)
+      setMaintenanceReason('')
+      toast.success(t('devices.sentToMaintenanceSuccess', 'Eszköz karbantartásba küldve'))
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
+    },
+  })
+
+  const returnFromMaintenanceMutation = useMutation({
+    mutationFn: () => deviceApi.returnFromMaintenance(deviceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast.success(t('devices.returnedFromMaintenanceSuccess', 'Eszköz visszavéve karbantartásból'))
+    },
+    onError: (error: any) => {
+      toast.error(resolveToastMessage(error.response))
+    },
+  })
+
+  const disposeMutation = useMutation({
+    mutationFn: (reason: string) => deviceApi.disposeDevice(deviceId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      setDisposeDialogOpen(false)
+      setDisposeReason('')
+      toast.success(t('devices.disposedSuccess', 'Eszköz selejtezve'))
+    },
+    onError: (error: any) => {
+      toast.error(resolveToastMessage(error.response))
     },
   })
 
@@ -115,8 +144,7 @@ export function DeviceDetailPage() {
       toast.success(t('common.success'))
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
     },
   })
 
@@ -137,8 +165,7 @@ export function DeviceDetailPage() {
       setUploadingFileName(null)
     },
     onError: (error: any) => {
-      const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(resolveToastMessage(error.response))
       setUploadProgress(0)
       setUploadingFileName(null)
     },
@@ -160,53 +187,69 @@ export function DeviceDetailPage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc', '.docx'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'text/plain': ['.txt'],
+      'image/*': [],
+      'application/pdf': [],
     },
     maxSize: 5 * 1024 * 1024,
-    maxFiles: 1,
   })
 
   return (
     <div className="space-y-6">
-      <h1 className="mb-2 text-2xl font-semibold">
-        {t('devices.title')} #{deviceId}
-      </h1>
-      {device && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          <span>{device.inventoryNumber}</span>
-          <span>•</span>
-          <span>{device.type}</span>
-          <span>•</span>
-          {canUpdateDevice ? (
-            <Select
-              value={device.status}
-              disabled={changeStatusMutation.isPending}
-              onValueChange={(value: Device['status']) => {
-                if (value !== device.status) {
-                  changeStatusMutation.mutate(value)
-                }
-              }}
-            >
-              <SelectTrigger className="h-8 w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PENDING">{t('devices.statusPending')}</SelectItem>
-                <SelectItem value="IN_STORAGE">{t('devices.statusInStorage')}</SelectItem>
-                <SelectItem value="ASSIGNED">{t('devices.statusAssigned')}</SelectItem>
-                <SelectItem value="MAINTENANCE">{t('devices.statusMaintenance')}</SelectItem>
-                <SelectItem value="DISPOSED">{t('devices.statusDisposed')}</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <span>{t(`devices.status${device.status.charAt(0) + device.status.slice(1).toLowerCase()}`)}</span>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">
+            {t('devices.title')} #{deviceId}
+          </h1>
+          {device && (
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <span>{device.inventoryNumber}</span>
+              <span>•</span>
+              <span>{device.type}</span>
+              <span>•</span>
+              <StatusBadge status={device.status as any} />
+            </div>
           )}
         </div>
-      )}
+
+        {/* Karbantartás és Selejtezés műveleti gombok */}
+        {device && canUpdateDevice && (
+          <div className="flex flex-wrap items-center gap-2">
+            {(device.status === 'IN_STORAGE' || device.status === 'ASSIGNED') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMaintenanceDialogOpen(true)}
+              >
+                <Wrench className="mr-1.5 h-4 w-4 text-amber-600" />
+                {t('devices.sendToMaintenance', 'Karbantartásba küldés')}
+              </Button>
+            )}
+
+            {device.status === 'MAINTENANCE' && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={returnFromMaintenanceMutation.isPending}
+                onClick={() => returnFromMaintenanceMutation.mutate()}
+              >
+                <RotateCcw className="mr-1.5 h-4 w-4 text-emerald-600" />
+                {t('devices.returnFromMaintenance', 'Visszavétel raktárba')}
+              </Button>
+            )}
+
+            {(device.status === 'IN_STORAGE' || device.status === 'MAINTENANCE') && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDisposeDialogOpen(true)}
+              >
+                <Trash2 className="mr-1.5 h-4 w-4" />
+                {t('devices.dispose', 'Selejtezés')}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Aktuális hozzárendelés */}
       <Card>
@@ -228,7 +271,7 @@ export function DeviceDetailPage() {
                 </span>
               </div>
               <div className="flex gap-2">
-                {canAssign && (
+                {canAssign && device?.status === 'IN_STORAGE' && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -260,7 +303,7 @@ export function DeviceDetailPage() {
               <p className="text-sm text-muted-foreground">
                 {t('assignments.noActiveAssignment')}
               </p>
-              {canAssign && (
+              {canAssign && device?.status === 'IN_STORAGE' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -280,6 +323,87 @@ export function DeviceDetailPage() {
         onOpenChange={setAssignDialogOpen}
         deviceId={deviceId}
       />
+
+      {/* Karbantartásba küldés Dialog */}
+      <Dialog open={maintenanceDialogOpen} onOpenChange={setMaintenanceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('devices.sendToMaintenance', 'Karbantartásba küldés')}</DialogTitle>
+            <DialogDescription>
+              {device?.inventoryNumber} #{deviceId}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="maint-reason" className="text-xs text-muted-foreground">
+                {t('devices.maintenanceReason', 'Karbantartás oka')}
+              </Label>
+              <Input
+                id="maint-reason"
+                value={maintenanceReason}
+                onChange={(e) => setMaintenanceReason(e.target.value)}
+                placeholder="pl. kijelző hiba, akkumuilátor csere"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setMaintenanceDialogOpen(false)}
+              disabled={sendToMaintenanceMutation.isPending}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={() => sendToMaintenanceMutation.mutate(maintenanceReason)}
+              disabled={sendToMaintenanceMutation.isPending}
+            >
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Selejtezés Dialog */}
+      <Dialog open={disposeDialogOpen} onOpenChange={setDisposeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('devices.dispose', 'Eszköz selejtezése')}</DialogTitle>
+            <DialogDescription>
+              Figyelem: A selejtezés végleges művelet. A selejtezett eszköz többé nem rendelhető hozzá semmihez.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="dispose-reason" className="text-xs text-muted-foreground">
+                {t('devices.disposeReason', 'Selejtezés indoka')}
+              </Label>
+              <Input
+                id="dispose-reason"
+                value={disposeReason}
+                onChange={(e) => setDisposeReason(e.target.value)}
+                placeholder="pl. javíthatatlan meghibásodás"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDisposeDialogOpen(false)}
+              disabled={disposeMutation.isPending}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => disposeMutation.mutate(disposeReason)}
+              disabled={disposeMutation.isPending}
+            >
+              {t('devices.dispose')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Assignment history */}
       <Card>

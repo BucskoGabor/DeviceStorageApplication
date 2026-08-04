@@ -22,37 +22,40 @@ import hu.tanszek.device.user.entity.AppUser;
  */
 public record UserResponseDto(
     Long id,
+    String email,
     String emailMasked,
     String emailHash,
     boolean active,
     boolean mustChangePassword,
     Role role,
+    java.util.Set<PermissionSummary> directPermissions,
+    java.util.Set<String> effectivePermissions,
     OfficeLocationSummary officeLocationSummary,
     int failedLoginCount,
     Instant lockedUntil,
     Instant createdAt,
     Instant updatedAt) {
   public record OfficeLocationSummary(Long id, String name, String type) {}
+  public record PermissionSummary(Long id, String name) {}
 
   public static UserResponseDto fromEntity(AppUser user, CryptoService cryptoService) {
+    String email = null;
     String emailMasked = null;
     if (user.getEmailEncrypted() != null) {
       try {
-        String decrypted = cryptoService.decrypt(user.getEmailEncrypted());
-        int at = decrypted.indexOf('@');
+        email = cryptoService.decrypt(user.getEmailEncrypted());
+        int at = email.indexOf('@');
         if (at > 1) {
-          emailMasked = decrypted.charAt(0) + "***" + decrypted.substring(at);
+          emailMasked = email.charAt(0) + "***" + email.substring(at);
         } else {
           emailMasked = "***";
         }
       } catch (Exception e) {
+        email = user.getEmailHash();
         emailMasked = "***";
       }
     }
 
-    // Office location: LAZY proxy, ezért csak akkor olvassuk, ha a user
-    // ténylegesen kéri (Transactional(readOnly = true) kell hozzá, amit a
-    // controller biztosít). Ha nincs office location, null marad.
     OfficeLocationSummary officeSummary = null;
     if (user.getOfficeLocation() != null) {
       try {
@@ -66,13 +69,35 @@ public record UserResponseDto(
       }
     }
 
+    java.util.Set<PermissionSummary> directPerms = new java.util.HashSet<>();
+    if (user.getPermissions() != null) {
+      try {
+        user.getPermissions().forEach(p -> directPerms.add(new PermissionSummary(p.getId(), p.getName())));
+      } catch (Exception e) {
+        // LAZY fetch fail
+      }
+    }
+
+    java.util.Set<String> effectivePerms = new java.util.HashSet<>();
+    if (user.getRole() != null && user.getRole().getPermissions() != null) {
+      try {
+        user.getRole().getPermissions().forEach(p -> effectivePerms.add(p.getName()));
+      } catch (Exception e) {
+        // LAZY fetch fail
+      }
+    }
+    directPerms.forEach(p -> effectivePerms.add(p.name()));
+
     return new UserResponseDto(
         user.getId(),
+        email,
         emailMasked,
         user.getEmailHash(),
         user.isActive(),
         user.isMustChangePassword(),
         user.getRole(),
+        directPerms,
+        effectivePerms,
         officeSummary,
         user.getFailedLoginCount(),
         user.getLockedUntil(),

@@ -1,5 +1,6 @@
 package hu.tanszek.device.audit.controller;
 
+import java.time.Instant;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
@@ -11,12 +12,13 @@ import org.springframework.web.bind.annotation.*;
 import hu.tanszek.device.audit.entity.AuditLog;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.auth.RequirePermission;
+import hu.tanszek.device.crypto.CryptoService;
+import hu.tanszek.device.user.repository.AppUserRepository;
 
 import lombok.RequiredArgsConstructor;
 
 /**
- * AuditController — audit log listázás. A rollback endpoint a Task 3.7-ből
- * (AuditRollbackController) van külön.
+ * AuditController — audit log listázás.
  */
 @RestController
 @RequestMapping("/api/audit")
@@ -26,6 +28,55 @@ public class AuditController {
   private static final int MAX_PAGE_SIZE = 50;
 
   private final AuditLogRepository auditLogRepository;
+  private final AppUserRepository userRepository;
+  private final CryptoService cryptoService;
+
+  public record AuditLogDto(
+      Long id,
+      Instant timestamp,
+      String userEmail,
+      String endpoint,
+      String method,
+      String requestPayload,
+      String changesJson,
+      int httpStatus,
+      String entityType,
+      Long entityId,
+      Instant createdAt,
+      Instant updatedAt) {
+
+    public static AuditLogDto fromEntity(
+        AuditLog log, AppUserRepository userRepository, CryptoService cryptoService) {
+      String resolvedEmail = log.getUserEmail();
+      if (resolvedEmail != null && resolvedEmail.length() == 64 && !resolvedEmail.contains("@")) {
+        resolvedEmail =
+            userRepository
+                .findByEmailHash(resolvedEmail)
+                .map(
+                    u -> {
+                      try {
+                        return cryptoService.decrypt(u.getEmailEncrypted());
+                      } catch (Exception e) {
+                        return log.getUserEmail();
+                      }
+                    })
+                .orElse(log.getUserEmail());
+      }
+      return new AuditLogDto(
+          log.getId(),
+          log.getTimestamp(),
+          resolvedEmail,
+          log.getEndpoint(),
+          log.getMethod(),
+          log.getRequestPayload(),
+          log.getChangesJson(),
+          log.getHttpStatus(),
+          log.getEntityType(),
+          log.getEntityId(),
+          log.getCreatedAt(),
+          log.getUpdatedAt());
+    }
+  }
 
   @GetMapping
   @RequirePermission("AUDIT_READ")
@@ -50,9 +101,14 @@ public class AuditController {
       result = auditLogRepository.findAll(pageable);
     }
 
+    var content =
+        result.getContent().stream()
+            .map(log -> AuditLogDto.fromEntity(log, userRepository, cryptoService))
+            .toList();
+
     return ResponseEntity.ok(
         Map.of(
-            "content", result.getContent(),
+            "content", content,
             "totalElements", result.getTotalElements(),
             "totalPages", result.getTotalPages(),
             "size", result.getSize(),

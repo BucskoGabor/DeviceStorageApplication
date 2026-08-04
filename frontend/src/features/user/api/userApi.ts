@@ -4,10 +4,12 @@ export type RoleName = 'ROLE_ADMIN' | 'ROLE_TEACHER' | 'ROLE_STUDENT'
 
 export interface AppUserDto {
   id: number
-  /** Maszkolt email: "a***@tanszek.local" — plain email soha nem kerül a wire-ba. */
-  emailMasked: string
+  /** Visszafejtett email cím. */
+  email: string
+  /** Maszkolt email: "a***@tanszek.local" */
+  emailMasked?: string
   /** SHA-256 hex az emailből (egyediség + gyors keresés). */
-  emailHash: string
+  emailHash?: string
   active: boolean
   mustChangePassword: boolean
   failedLoginCount?: number

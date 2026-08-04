@@ -32,7 +32,7 @@ export interface PageResponse<T> {
 }
 
 /**
- * Lapozott lista.
+ * Location API client.
  */
 export const locationApi = {
   findAll: async (params?: { page?: number; size?: number }): Promise<PageResponse<Location>> => {
@@ -46,6 +46,22 @@ export const locationApi = {
    */
   findTree: async (): Promise<LocationTreeNode[]> => {
     const response = await apiClient.get<LocationTreeNode[]>('/api/locations/tree')
+    return response.data
+  },
+
+  /**
+   * Root helyszínek (parent == null).
+   */
+  findRoots: async (): Promise<Location[]> => {
+    const response = await apiClient.get<Location[]>('/api/locations/roots')
+    return response.data
+  },
+
+  /**
+   * Helyszínek típus szerint.
+   */
+  findByType: async (type: Location['type']): Promise<Location[]> => {
+    const response = await apiClient.get<Location[]>(`/api/locations/by-type/${type}`)
     return response.data
   },
 

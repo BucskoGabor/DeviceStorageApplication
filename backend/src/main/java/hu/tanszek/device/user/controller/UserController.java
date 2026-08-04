@@ -46,6 +46,8 @@ public class UserController {
   private final CryptoService cryptoService;
   private final RoleRepository roleRepository;
 
+  private final PermissionRepository permissionRepository;
+
   @Operation(summary = "Felhasználó lista (lapozott)")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Sikeres lista"),
@@ -92,7 +94,7 @@ public class UserController {
       @Parameter(description = "User azonosító") @PathVariable Long id) {
     AppUser user =
         userRepository
-            .findById(id)
+            .findWithDetailsById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
     return ResponseEntity.ok(UserResponseDto.fromEntity(user, cryptoService));
   }
@@ -120,7 +122,6 @@ public class UserController {
                   "userEmailDuplicate", "Email already in use: " + request.email());
             });
 
-    // Role lookup a roles táblából (pl. "ROLE_ADMIN" → role.id)
     Role role =
         roleRepository
             .findByName(request.role())
@@ -129,12 +130,17 @@ public class UserController {
                     new BusinessValidationException(
                         "invalidRole", "Unknown role: " + request.role()));
 
-    // A jelszó hash placeholder — production-ban az Argon2PasswordEncoder generálja
+    java.util.Set<hu.tanszek.device.auth.entity.Permission> directPerms = new java.util.HashSet<>();
+    if (request.directPermissionIds() != null && !request.directPermissionIds().isEmpty()) {
+      directPerms.addAll(permissionRepository.findAllById(request.directPermissionIds()));
+    }
+
     AppUser user =
         AppUser.builder()
             .emailEncrypted(cryptoService.encrypt(request.email()))
             .emailHash(emailHash)
             .role(role)
+            .permissions(directPerms)
             .passwordHash("$argon2id$PLACEHOLDER_FORCE_RESET")
             .active(request.active() == null || request.active())
             .mustChangePassword(true)
@@ -149,9 +155,7 @@ public class UserController {
   @Operation(
       summary = "Felhasználó módosítása",
       description =
-          "Partial update — csak a nem-null mezők frissülnek. "
-              + "A role név alapján lookup a roles táblában. Ha az active false-ra vált, a user "
-              + "refresh tokenjei automatikusan revokeolódnak (session invalidáció).")
+          "Partial update — csak a nem-null mezők frissülnek.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "User módosítva"),
     @ApiResponse(responseCode = "400", description = "Validációs hiba vagy ismeretlen role"),
@@ -169,7 +173,8 @@ public class UserController {
             request.role(),
             request.officeLocationId(),
             Boolean.TRUE.equals(request.clearOfficeLocation()),
-            request.active());
+            request.active(),
+            request.directPermissionIds());
     return ResponseEntity.ok(saved);
   }
 
@@ -216,8 +221,15 @@ public class UserController {
   }
 
   public record CreateUserRequest(
-      @NotBlank @Email @Size(max = 255) String email, @NotBlank String role, Boolean active) {}
+      @NotBlank @Email @Size(max = 255) String email,
+      @NotBlank String role,
+      Boolean active,
+      java.util.Set<Long> directPermissionIds) {}
 
   public record UpdateUserRequest(
-      String role, Long officeLocationId, Boolean clearOfficeLocation, Boolean active) {}
+      String role,
+      Long officeLocationId,
+      Boolean clearOfficeLocation,
+      Boolean active,
+      java.util.Set<Long> directPermissionIds) {}
 }

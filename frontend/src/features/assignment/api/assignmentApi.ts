@@ -12,6 +12,7 @@ export type AssignmentStatus =
   | 'ASSIGNED'
   | 'PENDING_ASSIGNMENT'
   | 'PENDING_UNASSIGNMENT'
+  | 'REJECTED'
 
 export interface DeviceAssignment {
   id: number
@@ -33,7 +34,7 @@ export interface DeviceAssignment {
 }
 
 export interface CreateAssignmentPayload {
-  targetLocationId: number
+  targetLocationId?: number | null
   targetUserId?: number | null
 }
 
@@ -59,6 +60,17 @@ export async function requestAssignment(
 export async function approveAssignment(assignmentId: number): Promise<DeviceAssignment> {
   const { data } = await apiClient.post<DeviceAssignment>(
     `/api/devices/assignments/${assignmentId}/approve`
+  )
+  return data
+}
+
+/**
+ * POST /api/devices/assignments/{assignmentId}/reject
+ * Függőben lévő kérelem (assign/unassign) elutasítása.
+ */
+export async function rejectAssignment(assignmentId: number): Promise<DeviceAssignment> {
+  const { data } = await apiClient.post<DeviceAssignment>(
+    `/api/devices/assignments/${assignmentId}/reject`
   )
   return data
 }
@@ -120,6 +132,7 @@ export async function findPendingAssignments(): Promise<DeviceAssignment[]> {
 export const assignmentApi = {
   requestAssignment,
   approveAssignment,
+  rejectAssignment,
   requestUnassignment,
   approveUnassignment,
   findAssignmentsByDevice,
