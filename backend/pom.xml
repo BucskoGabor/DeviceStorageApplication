@@ -371,7 +371,7 @@
                 </executions>
             </plugin>
 
-            <!-- Jacoco: 70% coverage gate -->
+            <!-- Jacoco: 80% coverage gate -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -395,7 +395,7 @@
                                 <limit>
                                     <counter>LINE</counter>
                                     <value>COVEREDRATIO</value>
-                                    <minimum>0.70</minimum>
+                                    <minimum>0.80</minimum>
                                 </limit>
                                 <limit>
                                     <counter>BRANCH</counter>

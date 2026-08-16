@@ -26,7 +26,7 @@ This is a single-developer project (developed by an AI agent). The architecture 
 
 ## Testing
 
-- Unit tests: service layer (70% Jacoco coverage gate)
+- Unit tests: service layer (80% Jacoco coverage gate)
 - Integration tests: Testcontainers PostgreSQL
 - Smoke tests: `scripts/smoke-test.sh` after `docker-compose up`
 
