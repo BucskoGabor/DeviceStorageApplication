@@ -1,0 +1,106 @@
+spring:
+  application:
+    name: device-storage
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/tanszek_db}
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:secure_pass}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: ${DB_POOL_MIN:5}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    repair-on-migrate: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  data:
+    web:
+      pageable:
+        default-page-size: ${PAGINATION_DEFAULT_SIZE:20}
+        max-page-size: ${PAGINATION_MAX_SIZE:50}
+
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+
+spring.cloud.refresh.enabled: ${SPRING_CLOUD_REFRESH_ENABLED:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh
+  endpoint:
+    health:
+      show-details: when-authorized
+    refresh:
+      enabled: true
+  health:
+    mail:
+      enabled: false
+
+jwt:
+  access-token-ttl-min: ${JWT_ACCESS_TTL_MIN:15}
+  refresh-token-ttl-days: ${JWT_REFRESH_TTL_DAYS:30}
+  grace-period-sec: ${JWT_KID_GRACE_PERIOD_SEC:3600}
+  # Refresh token cookie secure flag. Dev: false (HTTP). Prod: true (HTTPS terminálás után).
+  cookie-secure: ${JWT_COOKIE_SECURE:false}
+  kids:
+    active: ${JWT_KID_ACTIVE:dGVzdF9zZWNyZXRfa2V5X2Zvcl9kZXZlbG9wbWVudF8xMjM0NTY3ODkw}
+    previous: ${JWT_KID_PREVIOUS:}
+
+crypto:
+  aes-key: ${CRYPTO_AES_KEY:dGVzdF9hZXNfa2V5X2Zvcl9kZXZlbG9wbWVudF8xMjM0NTY3ODkw}
+  argon2:
+    salt-length: 16
+    hash-length: 32
+    parallelism: 1
+    memory-kb: 65536
+    iterations: 3
+
+upload:
+  base-path: ${UPLOAD_BASE_PATH:/var/uploads}
+  max-file-size-bytes: 5242880
+  max-files-per-device: 5
+
+backup:
+  retention-days: ${BACKUP_RETENTION_DAYS:30}
+
+audit:
+  retention-years: ${AUDIT_RETENTION_YEARS:5}
+  alert-email-recipient: ${ALERT_EMAIL_RECIPIENT:admin@tanszek.local}
+
+refresh:
+  cleanup:
+    retention-days: ${REFRESH_CLEANUP_RETENTION_DAYS:7}
+
+logging:
+  level:
+    root: INFO
+    hu.tanszek: DEBUG
+
+# Mail retry konfiguráció (Spring Retry @Retryable)
+mail:
+  retry:
+    max-attempts: 3          # 3 próbálkozás (kezdeti + 2 retry)
+    initial-delay: 1000       # 1 másodperc várakozás az első retry előtt
+    multiplier: 2.0           # Exponential backoff (1s, 2s, 4s)
+    max-delay: 10000          # Maximum 10 másodperc várakozás
