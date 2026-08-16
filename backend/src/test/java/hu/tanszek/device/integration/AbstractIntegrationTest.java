@@ -40,10 +40,10 @@ public abstract class AbstractIntegrationTest {
    * PostgreSQL container — minden teszt osztály egy shared container-t kap. A Testcontainers
    * automatikusan elindítja a konténert az első teszt metódus előtt, és leállítja az utolsó után.
    *
-   * <p>A {@code setPortBindings(List.of("5432:5432"))} biztosítja, hogy a Spring context cache kulcsa
-   * (amely a JDBC URL-t tartalmazza) konzisztens maradjon a teszt osztályok között — máskülönben a
-   * Testcontainers random portot választ, és a második teszt osztály Spring context cache miss-t
-   * okoz ami Hikari connection timeout-hoz vezethet.
+   * <p>A {@code setPortBindings(List.of("5432:5432"))} biztosítja, hogy a Spring context cache
+   * kulcsa (amely a JDBC URL-t tartalmazza) konzisztens maradjon a teszt osztályok között —
+   * máskülönben a Testcontainers random portot választ, és a második teszt osztály Spring context
+   * cache miss-t okoz ami Hikari connection timeout-hoz vezethet.
    */
   @Container
   protected static final PostgreSQLContainer<?> postgresContainer =
