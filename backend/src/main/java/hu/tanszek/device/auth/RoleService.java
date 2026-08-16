@@ -19,9 +19,7 @@ import hu.tanszek.device.user.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * RoleService — Role management business logic & permission assignment.
- */
+/** RoleService — Role management business logic & permission assignment. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -59,7 +57,8 @@ public class RoleService {
     }
 
     if (roleRepository.findByName(formattedName).isPresent()) {
-      throw new BusinessValidationException("roleAlreadyExists", "Role already exists: " + formattedName);
+      throw new BusinessValidationException(
+          "roleAlreadyExists", "Role already exists: " + formattedName);
     }
 
     Set<Permission> permissions = new HashSet<>();
@@ -70,7 +69,11 @@ public class RoleService {
     Role role = Role.builder().name(formattedName).permissions(permissions).build();
 
     Role saved = roleRepository.save(role);
-    log.info("Created new role: {} (id={}) with {} permissions", saved.getName(), saved.getId(), permissions.size());
+    log.info(
+        "Created new role: {} (id={}) with {} permissions",
+        saved.getName(),
+        saved.getId(),
+        permissions.size());
     return saved;
   }
 
@@ -87,10 +90,12 @@ public class RoleService {
 
       if (!formattedName.equals(role.getName())) {
         if (SYSTEM_ROLES.contains(role.getName())) {
-          throw new BusinessValidationException("systemRoleNameCannotBeChanged", "System role name cannot be changed");
+          throw new BusinessValidationException(
+              "systemRoleNameCannotBeChanged", "System role name cannot be changed");
         }
         if (roleRepository.findByName(formattedName).isPresent()) {
-          throw new BusinessValidationException("roleAlreadyExists", "Role already exists: " + formattedName);
+          throw new BusinessValidationException(
+              "roleAlreadyExists", "Role already exists: " + formattedName);
         }
         role.setName(formattedName);
       }
@@ -106,7 +111,11 @@ public class RoleService {
     }
 
     Role saved = roleRepository.save(role);
-    log.info("Updated role: {} (id={}) with {} permissions", saved.getName(), saved.getId(), saved.getPermissions().size());
+    log.info(
+        "Updated role: {} (id={}) with {} permissions",
+        saved.getName(),
+        saved.getId(),
+        saved.getPermissions().size());
     return saved;
   }
 
@@ -116,11 +125,13 @@ public class RoleService {
     Role role = findById(id);
 
     if (SYSTEM_ROLES.contains(role.getName())) {
-      throw new BusinessValidationException("systemRoleCannotBeDeleted", "System roles cannot be deleted");
+      throw new BusinessValidationException(
+          "systemRoleCannotBeDeleted", "System roles cannot be deleted");
     }
 
     if (userRepository.existsByRoleId(id)) {
-      throw new BusinessValidationException("roleInUseCannotBeDeleted", "Role is currently assigned to users");
+      throw new BusinessValidationException(
+          "roleInUseCannotBeDeleted", "Role is currently assigned to users");
     }
 
     roleRepository.delete(role);

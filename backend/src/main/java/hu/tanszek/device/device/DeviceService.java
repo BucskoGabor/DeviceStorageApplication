@@ -83,7 +83,8 @@ public class DeviceService {
   static {
     ALLOWED_TRANSITIONS.put(
         DeviceStatus.PENDING,
-        EnumSet.of(DeviceStatus.IN_STORAGE, DeviceStatus.PENDING_MAINTENANCE, DeviceStatus.MAINTENANCE));
+        EnumSet.of(
+            DeviceStatus.IN_STORAGE, DeviceStatus.PENDING_MAINTENANCE, DeviceStatus.MAINTENANCE));
     ALLOWED_TRANSITIONS.put(
         DeviceStatus.IN_STORAGE,
         EnumSet.of(
@@ -94,9 +95,7 @@ public class DeviceService {
     ALLOWED_TRANSITIONS.put(
         DeviceStatus.ASSIGNED,
         EnumSet.of(
-            DeviceStatus.IN_STORAGE,
-            DeviceStatus.PENDING_MAINTENANCE,
-            DeviceStatus.MAINTENANCE));
+            DeviceStatus.IN_STORAGE, DeviceStatus.PENDING_MAINTENANCE, DeviceStatus.MAINTENANCE));
     ALLOWED_TRANSITIONS.put(
         DeviceStatus.PENDING_MAINTENANCE,
         EnumSet.of(DeviceStatus.MAINTENANCE, DeviceStatus.IN_STORAGE, DeviceStatus.ASSIGNED));
@@ -141,10 +140,12 @@ public class DeviceService {
     if (device.getStatus() != DeviceStatus.IN_STORAGE) {
       throw new BusinessValidationException(
           "deviceNotAssignable",
-          "Only devices in IN_STORAGE status can be assigned. Current status: " + device.getStatus());
+          "Only devices in IN_STORAGE status can be assigned. Current status: "
+              + device.getStatus());
     }
 
-    // Üzleti szabály 2: Vagy location, vagy user megadása kötelező, egyszerre mindkettő vagy egyik sem tilos
+    // Üzleti szabály 2: Vagy location, vagy user megadása kötelező, egyszerre mindkettő vagy egyik
+    // sem tilos
     if ((targetLocationId == null && targetUserId == null)
         || (targetLocationId != null && targetUserId != null)) {
       throw new BusinessValidationException(
@@ -189,6 +190,7 @@ public class DeviceService {
 
     oldAssignmentOpt.ifPresent(
         oldAssignment -> {
+          oldAssignment.setStatus(AssignmentStatus.PENDING_UNASSIGNMENT);
           oldAssignment.setUnassignCreatedDate(Instant.now());
           assignmentRepository.save(oldAssignment);
         });
@@ -271,68 +273,69 @@ public class DeviceService {
    * @return az új PENDING_UNASSIGNMENT rekord (history-szerű)
    */
   @AuditTarget(entityType = "DeviceAssignment", action = "unassign")
-    @Transactional
-    public DeviceAssignment requestUnassignment(Long assignmentId, Long targetLocationId, Long byUserId) {
-        DeviceAssignment assignment =
-                assignmentRepository
-                        .findById(assignmentId)
-                        .orElseThrow(
-                                () ->
-                                        new ResourceNotFoundException(
-                                                "Assignment not found: " + assignmentId));
+  @Transactional
+  public DeviceAssignment requestUnassignment(
+      Long assignmentId, Long targetLocationId, Long byUserId) {
+    DeviceAssignment assignment =
+        assignmentRepository
+            .findById(assignmentId)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Assignment not found: " + assignmentId));
 
-        if (assignment.getStatus() != AssignmentStatus.ASSIGNED) {
-            throw new BusinessValidationException(
-                    "assignmentNotActive", "Assignment not active, cannot unassigned");
-        }
-
-        Location targetLocation = null;
-        if (targetLocationId != null) {
-            targetLocation =
-                    locationRepository
-                            .findById(targetLocationId)
-                            .orElseThrow(
-                                    () ->
-                                            new ResourceNotFoundException(
-                                                    "Location not found: " + targetLocationId));
-            if (targetLocation.getType() != LocationType.STORAGE) {
-                throw new BusinessValidationException(
-                        "unassignTargetMustBeStorage", "Target location must be STORAGE type");
-            }
-        }
-
-        AppUser byUser =
-                userRepository
-                        .findById(byUserId)
-                        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + byUserId));
-
-        // Régi aktív inaktiválása
-        assignment.setUnassignCreatedDate(Instant.now());
-        assignmentRepository.save(assignment);
-
-        // Új PENDING_UNASSIGNMENT rekord (history-szerű)
-        DeviceAssignment unassignmentRequest =
-                DeviceAssignment.builder()
-                        .device(assignment.getDevice())
-                        .fromLocation(assignment.getToLocation())
-                        .fromUser(assignment.getToUser())
-                        .toLocation(targetLocation)
-                        .toUser(null)
-                        .createdByUser(byUser)
-                        .approvedBy(null)
-                        .status(AssignmentStatus.PENDING_UNASSIGNMENT)
-                        .createdDate(Instant.now())
-                        .build();
-
-        DeviceAssignment saved = assignmentRepository.save(unassignmentRequest);
-
-        log.info("Unassignment requested: assignment={}, targetLocation={}, by={}", assignmentId, targetLocationId, byUserId);
-        return saved;
+    if (assignment.getStatus() != AssignmentStatus.ASSIGNED) {
+      throw new BusinessValidationException(
+          "assignmentNotActive", "Assignment not active, cannot unassigned");
     }
 
-    public DeviceAssignment requestUnassignment(Long assignmentId, Long byUserId) {
-        return requestUnassignment(assignmentId, null, byUserId);
+    Location targetLocation = null;
+    if (targetLocationId != null) {
+      targetLocation =
+          locationRepository
+              .findById(targetLocationId)
+              .orElseThrow(
+                  () -> new ResourceNotFoundException("Location not found: " + targetLocationId));
+      if (targetLocation.getType() != LocationType.STORAGE) {
+        throw new BusinessValidationException(
+            "unassignTargetMustBeStorage", "Target location must be STORAGE type");
+      }
     }
+
+    AppUser byUser =
+        userRepository
+            .findById(byUserId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + byUserId));
+
+    // Régi aktív inaktiválása
+    assignment.setUnassignCreatedDate(Instant.now());
+    assignmentRepository.save(assignment);
+
+    // Új PENDING_UNASSIGNMENT rekord (history-szerű)
+    DeviceAssignment unassignmentRequest =
+        DeviceAssignment.builder()
+            .device(assignment.getDevice())
+            .fromLocation(assignment.getToLocation())
+            .fromUser(assignment.getToUser())
+            .toLocation(targetLocation)
+            .toUser(null)
+            .createdByUser(byUser)
+            .approvedBy(null)
+            .status(AssignmentStatus.PENDING_UNASSIGNMENT)
+            .createdDate(Instant.now())
+            .build();
+
+    DeviceAssignment saved = assignmentRepository.save(unassignmentRequest);
+
+    log.info(
+        "Unassignment requested: assignment={}, targetLocation={}, by={}",
+        assignmentId,
+        targetLocationId,
+        byUserId);
+    return saved;
+  }
+
+  public DeviceAssignment requestUnassignment(Long assignmentId, Long byUserId) {
+    return requestUnassignment(assignmentId, null, byUserId);
+  }
 
   /**
    * Unassign jóváhagyása — PENDING_UNASSIGNMENT → IN_STORAGE átmenet.
@@ -405,21 +408,24 @@ public class DeviceService {
                 () -> new ResourceNotFoundException("User not found: " + rejectedByUserId));
 
     AssignmentStatus previousStatus = assignment.getStatus();
-        assignment.setStatus(AssignmentStatus.REJECTED);
-        assignment.setApprovedBy(rejecter);
+    assignment.setStatus(AssignmentStatus.REJECTED);
+    assignment.setApprovedBy(rejecter);
 
-        Device device = assignment.getDevice();
-        if (previousStatus == AssignmentStatus.PENDING_ASSIGNMENT) {
-            device.setStatus(DeviceStatus.IN_STORAGE);
-            // Restore previous active assignment (undo the new-assignment request)
-            assignmentRepository
-                .findFirstByDeviceIdAndStatusOrderByCreatedDateDesc(device.getId(), AssignmentStatus.ASSIGNED)
-                .ifPresent(prev -> {
-                    assignmentRepository.save(prev);
-                });
-        } else if (previousStatus == AssignmentStatus.PENDING_UNASSIGNMENT) {
-            device.setStatus(DeviceStatus.ASSIGNED);
-        } DeviceAssignment saved = assignmentRepository.save(assignment);
+    Device device = assignment.getDevice();
+    if (previousStatus == AssignmentStatus.PENDING_ASSIGNMENT) {
+      device.setStatus(DeviceStatus.IN_STORAGE);
+      // Restore previous active assignment (undo the new-assignment request)
+      assignmentRepository
+          .findFirstByDeviceIdAndStatusOrderByCreatedDateDesc(
+              device.getId(), AssignmentStatus.ASSIGNED)
+          .ifPresent(
+              prev -> {
+                assignmentRepository.save(prev);
+              });
+    } else if (previousStatus == AssignmentStatus.PENDING_UNASSIGNMENT) {
+      device.setStatus(DeviceStatus.ASSIGNED);
+    }
+    DeviceAssignment saved = assignmentRepository.save(assignment);
     log.info("Assignment rejected: id={}, by={}", assignmentId, rejectedByUserId);
     return saved;
   }
@@ -485,7 +491,8 @@ public class DeviceService {
   }
 
   /**
-   * Eszköz karbantartásba küldésének KÉRÉSE (IN_STORAGE vagy ASSIGNED státuszból → PENDING_MAINTENANCE).
+   * Eszköz karbantartásba küldésének KÉRÉSE (IN_STORAGE vagy ASSIGNED státuszból →
+   * PENDING_MAINTENANCE).
    */
   @AuditTarget(entityType = "Device", action = "request_maintenance")
   @Transactional
@@ -495,7 +502,8 @@ public class DeviceService {
             .findById(deviceId)
             .orElseThrow(() -> new ResourceNotFoundException("Device not found: " + deviceId));
 
-    if (device.getStatus() != DeviceStatus.IN_STORAGE && device.getStatus() != DeviceStatus.ASSIGNED) {
+    if (device.getStatus() != DeviceStatus.IN_STORAGE
+        && device.getStatus() != DeviceStatus.ASSIGNED) {
       throw new BusinessValidationException(
           "deviceStatusTransitionNotAllowed",
           "Cannot request maintenance for device in status: " + device.getStatus());
@@ -505,13 +513,12 @@ public class DeviceService {
     device.setStatus(DeviceStatus.PENDING_MAINTENANCE);
     device.setStatusReason(reason);
     Device saved = deviceRepository.save(device);
-    log.info("Maintenance requested for device {} by user {}. Reason: {}", deviceId, byUserId, reason);
+    log.info(
+        "Maintenance requested for device {} by user {}. Reason: {}", deviceId, byUserId, reason);
     return saved;
   }
 
-  /**
-   * Karbantartási kérelem JÓVÁHAGYÁSA (PENDING_MAINTENANCE → MAINTENANCE).
-   */
+  /** Karbantartási kérelem JÓVÁHAGYÁSA (PENDING_MAINTENANCE → MAINTENANCE). */
   @AuditTarget(entityType = "Device", action = "approve_maintenance")
   @Transactional
   public Device approveMaintenance(Long deviceId, Long byUserId) {
@@ -543,9 +550,7 @@ public class DeviceService {
     return saved;
   }
 
-  /**
-   * Karbantartási kérelem ELUTASÍTÁSA (PENDING_MAINTENANCE → previousStatus).
-   */
+  /** Karbantartási kérelem ELUTASÍTÁSA (PENDING_MAINTENANCE → previousStatus). */
   @AuditTarget(entityType = "Device", action = "reject_maintenance")
   @Transactional
   public Device rejectMaintenance(Long deviceId, Long byUserId) {
@@ -565,13 +570,15 @@ public class DeviceService {
     device.setStatusReason(null);
     device.setPreviousStatus(null);
     Device saved = deviceRepository.save(device);
-    log.info("Maintenance rejected for device {} by user {}, reverted to {}", deviceId, byUserId, revertStatus);
+    log.info(
+        "Maintenance rejected for device {} by user {}, reverted to {}",
+        deviceId,
+        byUserId,
+        revertStatus);
     return saved;
   }
 
-  /**
-   * Eszköz visszavétele karbantartásból (MAINTENANCE → IN_STORAGE).
-   */
+  /** Eszköz visszavétele karbantartásból (MAINTENANCE → IN_STORAGE). */
   @AuditTarget(entityType = "Device", action = "return_from_maintenance")
   @Transactional
   public Device returnFromMaintenance(Long deviceId, Long byUserId) {
@@ -593,9 +600,7 @@ public class DeviceService {
     return saved;
   }
 
-  /**
-   * Eszköz selejtezésének KÉRÉSE (IN_STORAGE vagy MAINTENANCE státuszból → PENDING_DISPOSAL).
-   */
+  /** Eszköz selejtezésének KÉRÉSE (IN_STORAGE vagy MAINTENANCE státuszból → PENDING_DISPOSAL). */
   @AuditTarget(entityType = "Device", action = "request_disposal")
   @Transactional
   public Device requestDisposal(Long deviceId, String reason, Long byUserId) {
@@ -604,7 +609,8 @@ public class DeviceService {
             .findById(deviceId)
             .orElseThrow(() -> new ResourceNotFoundException("Device not found: " + deviceId));
 
-    if (device.getStatus() == DeviceStatus.DISPOSED || device.getStatus() == DeviceStatus.PENDING_DISPOSAL) {
+    if (device.getStatus() == DeviceStatus.DISPOSED
+        || device.getStatus() == DeviceStatus.PENDING_DISPOSAL) {
       throw new BusinessValidationException(
           "deviceAlreadyDisposed", "Device is already DISPOSED or PENDING_DISPOSAL");
     }
@@ -623,9 +629,7 @@ public class DeviceService {
     return saved;
   }
 
-  /**
-   * Selejtezési kérelem JÓVÁHAGYÁSA (PENDING_DISPOSAL → DISPOSED végállapot).
-   */
+  /** Selejtezési kérelem JÓVÁHAGYÁSA (PENDING_DISPOSAL → DISPOSED végállapot). */
   @AuditTarget(entityType = "Device", action = "approve_disposal")
   @Transactional
   public Device approveDisposal(Long deviceId, Long byUserId) {
@@ -647,9 +651,7 @@ public class DeviceService {
     return saved;
   }
 
-  /**
-   * Selejtezési kérelem ELUTASÍTÁSA (PENDING_DISPOSAL → previousStatus).
-   */
+  /** Selejtezési kérelem ELUTASÍTÁSA (PENDING_DISPOSAL → previousStatus). */
   @AuditTarget(entityType = "Device", action = "reject_disposal")
   @Transactional
   public Device rejectDisposal(Long deviceId, Long byUserId) {
@@ -669,21 +671,21 @@ public class DeviceService {
     device.setStatusReason(null);
     device.setPreviousStatus(null);
     Device saved = deviceRepository.save(device);
-    log.info("Disposal rejected for device {} by user {}, reverted to {}", deviceId, byUserId, revertStatus);
+    log.info(
+        "Disposal rejected for device {} by user {}, reverted to {}",
+        deviceId,
+        byUserId,
+        revertStatus);
     return saved;
   }
 
-  /**
-   * Függőben lévő karbantartási kérelmek listája.
-   */
+  /** Függőben lévő karbantartási kérelmek listája. */
   @Transactional(readOnly = true)
   public java.util.List<Device> findPendingMaintenanceDevices() {
     return deviceRepository.findByStatusOrderByCreatedAtDesc(DeviceStatus.PENDING_MAINTENANCE);
   }
 
-  /**
-   * Függőben lévő selejtezési kérelmek listája.
-   */
+  /** Függőben lévő selejtezési kérelmek listája. */
   @Transactional(readOnly = true)
   public java.util.List<Device> findPendingDisposalDevices() {
     return deviceRepository.findByStatusOrderByCreatedAtDesc(DeviceStatus.PENDING_DISPOSAL);

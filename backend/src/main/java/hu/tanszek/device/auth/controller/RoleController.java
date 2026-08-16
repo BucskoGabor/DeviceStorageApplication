@@ -18,9 +18,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 
-/**
- * RoleController — REST endpointok a Role entitás CRUD műveleteihez.
- */
+/** RoleController — REST endpointok a Role entitás CRUD műveleteihez. */
 @RestController
 @RequestMapping("/api/roles")
 @RequiredArgsConstructor
@@ -68,8 +66,7 @@ public class RoleController {
     return ResponseEntity.noContent().build();
   }
 
-  public record CreateRoleRequest(
-      @NotBlank @Size(max = 50) String name, Set<Long> permissionIds) {}
+  public record CreateRoleRequest(@NotBlank @Size(max = 50) String name, Set<Long> permissionIds) {}
 
   public record UpdateRoleRequest(@Size(max = 50) String name, Set<Long> permissionIds) {}
 }

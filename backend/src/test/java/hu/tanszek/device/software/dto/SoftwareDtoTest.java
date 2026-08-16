@@ -18,7 +18,7 @@ class SoftwareDtoTest {
   @Test
   void maskFromEncrypted_returnsMaskedFormatWithLast4Chars() {
     String result = SoftwareDto.maskFromEncrypted("abcdefghij1234567890XYZ");
-    assertThat(result).isEqualTo("****-****-****-9XYZ");
+    assertThat(result).isEqualTo("****-****-****-0XYZ");
   }
 
   @Test

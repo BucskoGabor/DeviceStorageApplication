@@ -41,7 +41,8 @@ public class LocationController {
   private final LocationRepository locationRepository;
   private final LocationService locationService;
   private final hu.tanszek.device.device.repository.DeviceRepository deviceRepository;
-  private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
+  private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository
+      assignmentRepository;
 
   /**
    * GET /api/locations/tree A teljes location hierarchia nested DTO formában. Max depth: 10
@@ -118,7 +119,9 @@ public class LocationController {
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
   public ResponseEntity<List<hu.tanszek.device.device.entity.Device>> findCurrentDevices(
       @PathVariable Long id) {
-    locationRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Location not found: " + id));
+    locationRepository
+        .findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException("Location not found: " + id));
     List<hu.tanszek.device.device.entity.Device> devices =
         deviceRepository.findByCurrentLocationIdAndStatusNot(
             id, hu.tanszek.device.device.entity.DeviceStatus.DISPOSED);
@@ -129,9 +132,11 @@ public class LocationController {
   @GetMapping("/{id}/assignments")
   @RequirePermission({"LOCATION_READ", "LOCATION_CREATE", "LOCATION_UPDATE", "LOCATION_DELETE"})
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
-  public ResponseEntity<List<hu.tanszek.device.assignment.entity.DeviceAssignment>> findAssignmentHistory(
-      @PathVariable Long id) {
-    locationRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Location not found: " + id));
+  public ResponseEntity<List<hu.tanszek.device.assignment.entity.DeviceAssignment>>
+      findAssignmentHistory(@PathVariable Long id) {
+    locationRepository
+        .findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException("Location not found: " + id));
     List<hu.tanszek.device.assignment.entity.DeviceAssignment> history =
         assignmentRepository.findByToLocationIdOrFromLocationIdOrderByCreatedDateDesc(id, id);
     return ResponseEntity.ok(history);

@@ -15,9 +15,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-/**
- * PermissionController — Rendszerben elérhető jogosultságok listája.
- */
+/** PermissionController — Rendszerben elérhető jogosultságok listája. */
 @RestController
 @RequestMapping("/api/permissions")
 @RequiredArgsConstructor

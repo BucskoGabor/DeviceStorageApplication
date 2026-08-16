@@ -65,23 +65,25 @@ public class AuditRollbackService {
     Map<String, Object> afterState = (Map<String, Object>) changes.get("after");
 
     String entityType = auditLog.getEntityType();
-        Long entityId = auditLog.getEntityId();
+    Long entityId = auditLog.getEntityId();
 
-        if (entityId == null && afterState != null && afterState.get("id") != null) {
-            try {
-                entityId = Long.valueOf(afterState.get("id").toString());
-            } catch (NumberFormatException ignored) {}
-        }
-        if (entityId == null && beforeState != null && beforeState.get("id") != null) {
-            try {
-                entityId = Long.valueOf(beforeState.get("id").toString());
-            } catch (NumberFormatException ignored) {}
-        }
+    if (entityId == null && afterState != null && afterState.get("id") != null) {
+      try {
+        entityId = Long.valueOf(afterState.get("id").toString());
+      } catch (NumberFormatException ignored) {
+      }
+    }
+    if (entityId == null && beforeState != null && beforeState.get("id") != null) {
+      try {
+        entityId = Long.valueOf(beforeState.get("id").toString());
+      } catch (NumberFormatException ignored) {
+      }
+    }
 
-        if (entityId == null) {
-            throw new BusinessValidationException(
-                    "rollbackEntityIdMissing", "Entity ID is missing for rollback");
-        }
+    if (entityId == null) {
+      throw new BusinessValidationException(
+          "rollbackEntityIdMissing", "Entity ID is missing for rollback");
+    }
 
     // 2. Rollback típus meghatározása
     if (afterState != null && beforeState != null) {

@@ -34,10 +34,13 @@ import static org.mockito.Mockito.when;
  * Unit tesztek a {@link DeviceQueryService}-hez.
  *
  * <p>Teszteli a jogosultság-alapú (Permission-Driven) Specification generálást:
+ *
  * <ul>
  *   <li>Null user (rendszer/admin kontextus) -> Teljes hozzáférés
- *   <li>Globális menedzsment joggal rendelkező user (DEVICE_CREATE / DEVICE_DELETE / USER_MANAGE) -> Teljes hozzáférés
- *   <li>Kiadási joggal (DEVICE_ASSIGN / DEVICE_UNASSIGN) vagy irodával rendelkező user -> Saját + irodai eszközök
+ *   <li>Globális menedzsment joggal rendelkező user (DEVICE_CREATE / DEVICE_DELETE / USER_MANAGE)
+ *       -> Teljes hozzáférés
+ *   <li>Kiadási joggal (DEVICE_ASSIGN / DEVICE_UNASSIGN) vagy irodával rendelkező user -> Saját +
+ *       irodai eszközök
  *   <li>Kizárólag olvasási joggal rendelkező user -> Csak saját aktív eszközök
  *   <li>findAllForCurrentUser lapozással és kiegészítő szűréssel
  * </ul>
@@ -65,8 +68,18 @@ class DeviceQueryServiceTest {
     permAssign = Permission.builder().id(3L).name("DEVICE_ASSIGN").build();
     permRead = Permission.builder().id(4L).name("DEVICE_READ").build();
 
-    adminRole = Role.builder().id(1L).name("ROLE_ADMIN").permissions(Set.of(permCreate, permDelete, permAssign, permRead)).build();
-    teacherRole = Role.builder().id(2L).name("ROLE_TEACHER").permissions(Set.of(permAssign, permRead)).build();
+    adminRole =
+        Role.builder()
+            .id(1L)
+            .name("ROLE_ADMIN")
+            .permissions(Set.of(permCreate, permDelete, permAssign, permRead))
+            .build();
+    teacherRole =
+        Role.builder()
+            .id(2L)
+            .name("ROLE_TEACHER")
+            .permissions(Set.of(permAssign, permRead))
+            .build();
     studentRole = Role.builder().id(3L).name("ROLE_STUDENT").permissions(Set.of(permRead)).build();
 
     office = Location.builder().id(10L).name("Iroda 101").type(LocationType.OFFICE).build();
@@ -82,10 +95,7 @@ class DeviceQueryServiceTest {
   @Test
   @DisplayName("DEVICE_CREATE vagy DEVICE_DELETE joggal rendelkező user minden eszközt lát")
   void buildSpecForManagerReturnsGlobalAccess() {
-    AppUser managerUser = AppUser.builder()
-        .id(10L)
-        .role(adminRole)
-        .build();
+    AppUser managerUser = AppUser.builder().id(10L).role(adminRole).build();
 
     Specification<Device> spec = deviceQueryService.buildSpecForUser(managerUser);
     assertThat(spec).isNotNull();
@@ -94,11 +104,8 @@ class DeviceQueryServiceTest {
   @Test
   @DisplayName("DEVICE_ASSIGN joggal vagy irodával rendelkező user irodai és saját eszközöket lát")
   void buildSpecForTeacherReturnsTeacherAccess() {
-    AppUser teacherUser = AppUser.builder()
-        .id(20L)
-        .role(teacherRole)
-        .officeLocation(office)
-        .build();
+    AppUser teacherUser =
+        AppUser.builder().id(20L).role(teacherRole).officeLocation(office).build();
 
     Specification<Device> spec = deviceQueryService.buildSpecForUser(teacherUser);
     assertThat(spec).isNotNull();
@@ -107,30 +114,26 @@ class DeviceQueryServiceTest {
   @Test
   @DisplayName("Kizárólag DEVICE_READ joggal rendelkező hallgató csak saját aktív eszközeit látja")
   void buildSpecForStudentReturnsConsumerAccess() {
-    AppUser studentUser = AppUser.builder()
-        .id(30L)
-        .role(studentRole)
-        .build();
+    AppUser studentUser = AppUser.builder().id(30L).role(studentRole).build();
 
     Specification<Device> spec = deviceQueryService.buildSpecForUser(studentUser);
     assertThat(spec).isNotNull();
   }
 
   @Test
-  @DisplayName("Közvetlenül hozzárendelt DEVICE_CREATE joggal egy alapvetően hallgatói role-os user is globális elérést kap")
+  @DisplayName(
+      "Közvetlenül hozzárendelt DEVICE_CREATE joggal egy alapvetően hallgatói role-os user is globális elérést kap")
   void buildSpecWithDirectPermissionOverridesRole() {
-    AppUser directPermUser = AppUser.builder()
-        .id(40L)
-        .role(studentRole)
-        .permissions(Set.of(permCreate))
-        .build();
+    AppUser directPermUser =
+        AppUser.builder().id(40L).role(studentRole).permissions(Set.of(permCreate)).build();
 
     Specification<Device> spec = deviceQueryService.buildSpecForUser(directPermUser);
     assertThat(spec).isNotNull();
   }
 
   @Test
-  @DisplayName("findAllForCurrentUser sikeresen meghívja a repository-t a kombinált szűréssel és lapozással")
+  @DisplayName(
+      "findAllForCurrentUser sikeresen meghívja a repository-t a kombinált szűréssel és lapozással")
   void findAllForCurrentUserWithAdditionalSpec() {
     AppUser manager = AppUser.builder().id(10L).role(adminRole).build();
     Pageable pageable = PageRequest.of(0, 10);

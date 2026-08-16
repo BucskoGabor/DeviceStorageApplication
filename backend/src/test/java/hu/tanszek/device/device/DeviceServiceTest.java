@@ -89,7 +89,8 @@ class DeviceServiceTest {
     when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
     when(locationRepository.findById(10L)).thenReturn(Optional.of(office));
     when(userRepository.findById(100L)).thenReturn(Optional.of(byUser));
-    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED)).thenReturn(Optional.empty());
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED))
+        .thenReturn(Optional.empty());
     when(assignmentRepository.save(any(DeviceAssignment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -169,11 +170,7 @@ class DeviceServiceTest {
   @Test
   void approveAssignmentFailsWhenNotPending() {
     DeviceAssignment notPending =
-        DeviceAssignment.builder()
-            .id(50L)
-            .device(device)
-            .status(AssignmentStatus.ASSIGNED)
-            .build();
+        DeviceAssignment.builder().id(50L).device(device).status(AssignmentStatus.ASSIGNED).build();
     when(assignmentRepository.findById(50L)).thenReturn(Optional.of(notPending));
 
     assertThatThrownBy(() -> deviceService.approveAssignment(50L, 100L))

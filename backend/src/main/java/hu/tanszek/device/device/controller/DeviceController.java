@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import hu.tanszek.device.auth.RequirePermission;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
+import hu.tanszek.device.device.DeviceQueryService;
 import hu.tanszek.device.device.DeviceService;
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.device.entity.DeviceStatus;
@@ -23,7 +25,6 @@ import hu.tanszek.device.location.repository.LocationRepository;
 import hu.tanszek.device.software.dto.SoftwareDto;
 import hu.tanszek.device.software.entity.Software;
 import hu.tanszek.device.software.repository.SoftwareRepository;
-
 import hu.tanszek.device.user.entity.AppUser;
 import hu.tanszek.device.user.repository.AppUserRepository;
 
@@ -38,9 +39,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.domain.Specification;
-
-import hu.tanszek.device.device.DeviceQueryService;
 
 /**
  * DeviceController — REST endpointok a Device entity CRUD-hoz.
@@ -193,8 +191,7 @@ public class DeviceController {
                 () ->
                     new ResourceNotFoundException(
                         "Location not found: " + request.storageLocationId()));
-    if (storageLocation.getType()
-        != hu.tanszek.device.location.entity.LocationType.STORAGE) {
+    if (storageLocation.getType() != hu.tanszek.device.location.entity.LocationType.STORAGE) {
       throw new BusinessValidationException(
           "storageLocationRequired",
           "Initial location must be STORAGE type, got: " + storageLocation.getType());
@@ -290,7 +287,9 @@ public class DeviceController {
   }
 
   /** POST /api/devices/{id}/maintenance/request — Karbantartásba küldés kérése */
-  @Operation(summary = "Karbantartásba küldés kérése", description = "Kérelem benyújtása karbantartásra PENDING_MAINTENANCE státusszal.")
+  @Operation(
+      summary = "Karbantartásba küldés kérése",
+      description = "Kérelem benyújtása karbantartásra PENDING_MAINTENANCE státusszal.")
   @PostMapping("/{id}/maintenance/request")
   @RequirePermission("DEVICE_MAINTENANCE_REQUEST")
   public ResponseEntity<Device> requestMaintenance(
@@ -298,37 +297,42 @@ public class DeviceController {
       @RequestBody(required = false) MaintenanceRequest request,
       Authentication authentication) {
     Long userId = resolveUserId(authentication);
-    String reason = request != null && request.reason() != null ? request.reason() : "Nincs megadva";
+    String reason =
+        request != null && request.reason() != null ? request.reason() : "Nincs megadva";
     Device saved = deviceService.requestMaintenance(id, reason, userId);
     return ResponseEntity.ok(saved);
   }
 
   /** POST /api/devices/{id}/maintenance/approve — Karbantartás jóváhagyása */
-  @Operation(summary = "Karbantartás jóváhagyása", description = "Karbantartási kérelem jóváhagyása MAINTENANCE státuszba.")
+  @Operation(
+      summary = "Karbantartás jóváhagyása",
+      description = "Karbantartási kérelem jóváhagyása MAINTENANCE státuszba.")
   @PostMapping("/{id}/maintenance/approve")
   @RequirePermission("DEVICE_MAINTENANCE_APPROVE")
   public ResponseEntity<Device> approveMaintenance(
-      @PathVariable Long id,
-      Authentication authentication) {
+      @PathVariable Long id, Authentication authentication) {
     Long userId = resolveUserId(authentication);
     Device saved = deviceService.approveMaintenance(id, userId);
     return ResponseEntity.ok(saved);
   }
 
   /** POST /api/devices/{id}/maintenance/reject — Karbantartás elutasítása */
-  @Operation(summary = "Karbantartás elutasítása", description = "Karbantartási kérelem elutasítása és visszaállítása az eredeti állapotba.")
+  @Operation(
+      summary = "Karbantartás elutasítása",
+      description = "Karbantartási kérelem elutasítása és visszaállítása az eredeti állapotba.")
   @PostMapping("/{id}/maintenance/reject")
   @RequirePermission("DEVICE_MAINTENANCE_APPROVE")
   public ResponseEntity<Device> rejectMaintenance(
-      @PathVariable Long id,
-      Authentication authentication) {
+      @PathVariable Long id, Authentication authentication) {
     Long userId = resolveUserId(authentication);
     Device saved = deviceService.rejectMaintenance(id, userId);
     return ResponseEntity.ok(saved);
   }
 
   /** GET /api/devices/pending-maintenance — Függőben lévő karbantartási kérelmek */
-  @Operation(summary = "Függő karbantartási kérelmek", description = "Listázza a jóváhagyásra váró karbantartási kérelmeket.")
+  @Operation(
+      summary = "Függő karbantartási kérelmek",
+      description = "Listázza a jóváhagyásra váró karbantartási kérelmeket.")
   @GetMapping("/pending-maintenance")
   @RequirePermission("DEVICE_MAINTENANCE_APPROVE")
   public ResponseEntity<List<Device>> findPendingMaintenance() {
@@ -336,19 +340,22 @@ public class DeviceController {
   }
 
   /** POST /api/devices/{id}/return-from-maintenance — Visszavétel karbantartásból */
-  @Operation(summary = "Visszavétel karbantartásból", description = "Karbantartás alatt lévő eszköz visszahozatala IN_STORAGE státuszba.")
+  @Operation(
+      summary = "Visszavétel karbantartásból",
+      description = "Karbantartás alatt lévő eszköz visszahozatala IN_STORAGE státuszba.")
   @PostMapping("/{id}/return-from-maintenance")
   @RequirePermission({"DEVICE_MAINTENANCE_APPROVE", "DEVICE_UPDATE"})
   public ResponseEntity<Device> returnFromMaintenance(
-      @PathVariable Long id,
-      Authentication authentication) {
+      @PathVariable Long id, Authentication authentication) {
     Long userId = resolveUserId(authentication);
     Device saved = deviceService.returnFromMaintenance(id, userId);
     return ResponseEntity.ok(saved);
   }
 
   /** POST /api/devices/{id}/dispose/request — Selejtezés kérése */
-  @Operation(summary = "Selejtezés kérése", description = "Kérelem benyújtása selejtezésre PENDING_DISPOSAL státusszal.")
+  @Operation(
+      summary = "Selejtezés kérése",
+      description = "Kérelem benyújtása selejtezésre PENDING_DISPOSAL státusszal.")
   @PostMapping("/{id}/dispose/request")
   @RequirePermission("DEVICE_DISPOSE_REQUEST")
   public ResponseEntity<Device> requestDisposal(
@@ -356,37 +363,42 @@ public class DeviceController {
       @RequestBody(required = false) DisposeRequest request,
       Authentication authentication) {
     Long userId = resolveUserId(authentication);
-    String reason = request != null && request.reason() != null ? request.reason() : "Nincs megadva";
+    String reason =
+        request != null && request.reason() != null ? request.reason() : "Nincs megadva";
     Device saved = deviceService.requestDisposal(id, reason, userId);
     return ResponseEntity.ok(saved);
   }
 
   /** POST /api/devices/{id}/dispose/approve — Selejtezés jóváhagyása */
-  @Operation(summary = "Selejtezés jóváhagyása", description = "Selejtezési kérelem végleges jóváhagyása DISPOSED státuszba.")
+  @Operation(
+      summary = "Selejtezés jóváhagyása",
+      description = "Selejtezési kérelem végleges jóváhagyása DISPOSED státuszba.")
   @PostMapping("/{id}/dispose/approve")
   @RequirePermission("DEVICE_DISPOSE_APPROVE")
   public ResponseEntity<Device> approveDisposal(
-      @PathVariable Long id,
-      Authentication authentication) {
+      @PathVariable Long id, Authentication authentication) {
     Long userId = resolveUserId(authentication);
     Device saved = deviceService.approveDisposal(id, userId);
     return ResponseEntity.ok(saved);
   }
 
   /** POST /api/devices/{id}/dispose/reject — Selejtezés elutasítása */
-  @Operation(summary = "Selejtezés elutasítása", description = "Selejtezési kérelem elutasítása és visszaállítása az eredeti állapotba.")
+  @Operation(
+      summary = "Selejtezés elutasítása",
+      description = "Selejtezési kérelem elutasítása és visszaállítása az eredeti állapotba.")
   @PostMapping("/{id}/dispose/reject")
   @RequirePermission("DEVICE_DISPOSE_APPROVE")
   public ResponseEntity<Device> rejectDisposal(
-      @PathVariable Long id,
-      Authentication authentication) {
+      @PathVariable Long id, Authentication authentication) {
     Long userId = resolveUserId(authentication);
     Device saved = deviceService.rejectDisposal(id, userId);
     return ResponseEntity.ok(saved);
   }
 
   /** GET /api/devices/pending-disposal — Függőben lévő selejtezési kérelmek */
-  @Operation(summary = "Függő selejtezési kérelmek", description = "Listázza a jóváhagyásra váró selejtezési kérelmeket.")
+  @Operation(
+      summary = "Függő selejtezési kérelmek",
+      description = "Listázza a jóváhagyásra váró selejtezési kérelmeket.")
   @GetMapping("/pending-disposal")
   @RequirePermission("DEVICE_DISPOSE_APPROVE")
   public ResponseEntity<List<Device>> findPendingDisposal() {

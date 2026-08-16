@@ -2,12 +2,12 @@ package hu.tanszek.device.assignment.entity;
 
 import java.time.Instant;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import hu.tanszek.device.common.BaseEntity;
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.location.entity.Location;
 import hu.tanszek.device.user.entity.AppUser;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -131,5 +131,4 @@ public class DeviceAssignment extends BaseEntity<Long> {
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 30)
   private AssignmentStatus status;
-
 }

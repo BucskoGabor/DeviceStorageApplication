@@ -36,6 +36,7 @@ public record UserResponseDto(
     Instant createdAt,
     Instant updatedAt) {
   public record OfficeLocationSummary(Long id, String name, String type) {}
+
   public record PermissionSummary(Long id, String name) {}
 
   public static UserResponseDto fromEntity(AppUser user, CryptoService cryptoService) {
@@ -75,7 +76,8 @@ public record UserResponseDto(
     java.util.Set<PermissionSummary> directPerms = new java.util.HashSet<>();
     if (user.getPermissions() != null) {
       try {
-        user.getPermissions().forEach(p -> directPerms.add(new PermissionSummary(p.getId(), p.getName())));
+        user.getPermissions()
+            .forEach(p -> directPerms.add(new PermissionSummary(p.getId(), p.getName())));
       } catch (Exception e) {
         // LAZY fetch fail
       }

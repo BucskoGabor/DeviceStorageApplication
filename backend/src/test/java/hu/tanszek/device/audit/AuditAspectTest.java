@@ -10,7 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.common.ScheduledJobMonitoring;
-
 import hu.tanszek.device.crypto.CryptoService;
 import hu.tanszek.device.user.repository.AppUserRepository;
 

@@ -3,11 +3,11 @@ package hu.tanszek.device.device.entity;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import hu.tanszek.device.common.BaseEntity;
 import hu.tanszek.device.location.entity.Location;
 import hu.tanszek.device.software.entity.Software;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

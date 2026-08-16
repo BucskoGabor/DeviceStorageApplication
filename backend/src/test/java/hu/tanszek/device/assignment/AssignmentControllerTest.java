@@ -107,23 +107,20 @@ class AssignmentControllerTest {
         DeviceAssignment.builder().id(101L).status(AssignmentStatus.PENDING_UNASSIGNMENT).build();
     Authentication auth = new UsernamePasswordAuthenticationToken("hash-xyz", null, List.of());
 
-        when(userRepository.findByEmailHash("hash-xyz")).thenReturn(Optional.of(requester));
-        when(deviceService.requestUnassignment(100L, null, 42L)).thenReturn(unassignRequest);
+    when(userRepository.findByEmailHash("hash-xyz")).thenReturn(Optional.of(requester));
+    when(deviceService.requestUnassignment(100L, null, 42L)).thenReturn(unassignRequest);
 
-        var response = controller.requestUnassignment(100L, null, auth);
+    var response = controller.requestUnassignment(100L, null, auth);
 
-        assertThat(response.getStatusCode().value()).isEqualTo(201);
-        assertThat(response.getBody().getStatus()).isEqualTo(AssignmentStatus.PENDING_UNASSIGNMENT);
+    assertThat(response.getStatusCode().value()).isEqualTo(201);
+    assertThat(response.getBody().getStatus()).isEqualTo(AssignmentStatus.PENDING_UNASSIGNMENT);
   }
 
   @Test
   void approveUnassignment_setsStatusToInStorage() {
     AppUser approver = AppUser.builder().id(42L).emailHash("hash-xyz").build();
     DeviceAssignment approved =
-        DeviceAssignment.builder()
-            .id(101L)
-            .status(AssignmentStatus.IN_STORAGE)
-            .build();
+        DeviceAssignment.builder().id(101L).status(AssignmentStatus.IN_STORAGE).build();
     Authentication auth = new UsernamePasswordAuthenticationToken("hash-xyz", null, List.of());
 
     when(userRepository.findByEmailHash("hash-xyz")).thenReturn(Optional.of(approver));

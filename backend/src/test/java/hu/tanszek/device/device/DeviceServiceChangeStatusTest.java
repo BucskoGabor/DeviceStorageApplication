@@ -99,7 +99,10 @@ class DeviceServiceChangeStatusTest {
 
     assertThatThrownBy(() -> deviceService.changeStatus(1L, DeviceStatus.IN_STORAGE))
         .isInstanceOf(BusinessValidationException.class)
-        .hasMessageContaining("deviceStatusTransitionNotAllowed");
+        .satisfies(
+            ex ->
+                assertThat(((BusinessValidationException) ex).getMessageKey())
+                    .isEqualTo("deviceStatusTransitionNotAllowed"));
 
     verify(deviceRepository, never()).save(device);
   }
@@ -111,7 +114,10 @@ class DeviceServiceChangeStatusTest {
 
     assertThatThrownBy(() -> deviceService.changeStatus(1L, DeviceStatus.ASSIGNED))
         .isInstanceOf(BusinessValidationException.class)
-        .hasMessageContaining("deviceStatusTransitionNotAllowed");
+        .satisfies(
+            ex ->
+                assertThat(((BusinessValidationException) ex).getMessageKey())
+                    .isEqualTo("deviceStatusTransitionNotAllowed"));
   }
 
   @Test
@@ -150,7 +156,6 @@ class DeviceServiceChangeStatusTest {
         hu.tanszek.device.assignment.entity.DeviceAssignment.builder()
             .id(10L)
             .device(device)
-
             .build();
     when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
     when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED))

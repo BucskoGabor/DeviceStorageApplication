@@ -61,12 +61,13 @@ public class AuthController {
   private static final long REFRESH_TOKEN_MAX_AGE_SECONDS = 30L * 24 * 60 * 60; // 30 nap
 
   /**
-   * A refresh token cookie secure flag-je. Dev/prod környezetben a backend HTTP-n fut
-   * (Nginx reverse proxy terminálja a TLS-t), tehát a secure flag-et ki kell kapcsolni
-   * a cookie tárolásához és a böngésző általi visszaküldéshez.
+   * A refresh token cookie secure flag-je. Dev/prod környezetben a backend HTTP-n fut (Nginx
+   * reverse proxy terminálja a TLS-t), tehát a secure flag-et ki kell kapcsolni a cookie
+   * tárolásához és a böngésző általi visszaküldéshez.
    *
-   * <p>Production deployment: ha a backend közvetlenül HTTPS-t szolgál ki
-   * (Nginx nélkül), állítsd {@code true}-ra az application.yml-ben:
+   * <p>Production deployment: ha a backend közvetlenül HTTPS-t szolgál ki (Nginx nélkül), állítsd
+   * {@code true}-ra az application.yml-ben:
+   *
    * <pre>
    * jwt:
    *   cookie-secure: true
@@ -168,7 +169,10 @@ public class AuthController {
       // Access token a rotated refresh token user-jéhez (összes effektív jogosultsággal)
       AppUser user = rotated.newRefreshToken().getUser();
       String emailHash = user.getEmailHash();
-      String role = user.getRole() != null ? "ROLE_" + user.getRole().getName().replace("ROLE_", "") : "ROLE_USER";
+      String role =
+          user.getRole() != null
+              ? "ROLE_" + user.getRole().getName().replace("ROLE_", "")
+              : "ROLE_USER";
       List<String> permissions = new java.util.ArrayList<>(user.getEffectivePermissionNames());
 
       String newAccessToken = jwtTokenProvider.generateAccessToken(emailHash, role, permissions);

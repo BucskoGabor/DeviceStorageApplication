@@ -138,22 +138,18 @@ public class AppUser extends BaseEntity<Long> {
     }
     if (role != null && role.getPermissions() != null) {
       boolean inRole =
-          role.getPermissions().stream()
-              .anyMatch(p -> permissionName.equals(p.getName()));
+          role.getPermissions().stream().anyMatch(p -> permissionName.equals(p.getName()));
       if (inRole) {
         return true;
       }
     }
     if (permissions != null) {
-      return permissions.stream()
-          .anyMatch(p -> permissionName.equals(p.getName()));
+      return permissions.stream().anyMatch(p -> permissionName.equals(p.getName()));
     }
     return false;
   }
 
-  /**
-   * Visszaadja a felhasználó összes effektív jogosultságának nevét (role + user direkt jogok).
-   */
+  /** Visszaadja a felhasználó összes effektív jogosultságának nevét (role + user direkt jogok). */
   public Set<String> getEffectivePermissionNames() {
     Set<String> result = new HashSet<>();
     if (role != null && role.getPermissions() != null) {
@@ -168,7 +164,8 @@ public class AppUser extends BaseEntity<Long> {
   @com.fasterxml.jackson.annotation.JsonProperty("email")
   public String getEmail() {
     if (emailEncrypted != null) {
-      hu.tanszek.device.crypto.CryptoService cs = hu.tanszek.device.crypto.CryptoHolder.getInstance();
+      hu.tanszek.device.crypto.CryptoService cs =
+          hu.tanszek.device.crypto.CryptoHolder.getInstance();
       if (cs != null) {
         try {
           return cs.decrypt(emailEncrypted);

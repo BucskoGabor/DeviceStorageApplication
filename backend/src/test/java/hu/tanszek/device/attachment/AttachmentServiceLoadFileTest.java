@@ -104,7 +104,10 @@ class AttachmentServiceLoadFileTest {
     // Files.readAllBytes könyvtárra IOException-t dob
     assertThatThrownBy(() -> attachmentService.loadFileBytes(42L))
         .isInstanceOf(BusinessValidationException.class)
-        .hasMessageContaining("attachmentReadError");
+        .satisfies(
+            ex ->
+                assertThat(((BusinessValidationException) ex).getMessageKey())
+                    .isEqualTo("attachmentReadError"));
 
     Files.deleteIfExists(tempDir);
   }

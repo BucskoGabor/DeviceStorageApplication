@@ -45,7 +45,9 @@ class UserServiceTest {
   @Mock private hu.tanszek.device.auth.repository.RoleRepository roleRepository;
   @Mock private hu.tanszek.device.auth.repository.PermissionRepository permissionRepository;
   @Mock private hu.tanszek.device.location.repository.LocationRepository locationRepository;
-  @Mock private hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
+
+  @Mock
+  private hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
 
   private Argon2PasswordEncoder passwordEncoder;
 
