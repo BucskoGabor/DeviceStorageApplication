@@ -267,7 +267,9 @@ public class ImportService {
 
     for (int i = 1; i <= sheet.getLastRowNum(); i++) {
       Row row = sheet.getRow(i);
-      if (row == null) continue;
+      if (row == null) {
+        continue;
+      }
 
       List<String> cells = new ArrayList<>();
       for (int j = 0; j < row.getLastCellNum(); j++) {
@@ -309,7 +311,9 @@ public class ImportService {
 
     for (List<String> row : rows) {
       // Row formátum: [rowNumber, entityType, ...cells]
-      if (row.size() < 3) continue;
+      if (row.size() < 3) {
+        continue;
+      }
 
       int rowNumber;
       String entityType;

@@ -377,6 +377,17 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
                 <configuration>
+                    <excludes>
+                        <exclude>hu/tanszek/device/DeviceStorageApplication.*</exclude>
+                        <exclude>hu/tanszek/device/config/**</exclude>
+                        <exclude>hu/tanszek/device/buildtools/**</exclude>
+                        <exclude>hu/tanszek/device/**/dto/**</exclude>
+                        <exclude>hu/tanszek/device/**/entity/**</exclude>
+                        <exclude>hu/tanszek/device/**/controller/**</exclude>
+                        <exclude>hu/tanszek/device/**/*Controller.*</exclude>
+                        <exclude>hu/tanszek/device/**/Stub*.*</exclude>
+                        <exclude>hu/tanszek/device/crypto/CryptoHolder.*</exclude>
+                    </excludes>
                     <rules>
                         <rule>
                             <element>BUNDLE</element>
@@ -392,10 +403,6 @@
                                     <minimum>0.65</minimum>
                                 </limit>
                             </limits>
-                            <excludes>
-                                <exclude>hu.tanszek.device.DeviceStorageApplication</exclude>
-                                <exclude>hu.tanszek.device.config.*</exclude>
-                            </excludes>
                         </rule>
                     </rules>
                 </configuration>

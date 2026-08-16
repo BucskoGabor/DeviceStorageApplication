@@ -47,7 +47,9 @@ import java.util.Properties;
  * <p>A script a Maven build előtt fut (process-resources phase), így a frontend build mindig friss
  * i18n-keys.ts-t használ.
  */
-public class GenerateI18nKeys {
+public final class GenerateI18nKeys {
+
+  private GenerateI18nKeys() {}
 
   /**
    * Fő metódus — argumentumok: {@code <hu-properties-path> <en-properties-path> <output-ts-path>}.
@@ -70,7 +72,7 @@ public class GenerateI18nKeys {
     List<String> keys = new ArrayList<>(huProps.stringPropertyNames());
     keys.sort(String::compareTo);
 
-    // 3. TypeScript fájl generálása
+    // 3. TypeScript fájl generálása (Prettier kompatibilis formátumban)
     StringBuilder ts = new StringBuilder();
     ts.append("/**\n");
     ts.append(" * i18n keys — generated from backend messages bundles\n");
@@ -78,17 +80,12 @@ public class GenerateI18nKeys {
     ts.append(" * Source: messages_hu.properties + messages_en.properties\n");
     ts.append(" */\n\n");
     ts.append("export const i18nKeys = [\n");
-    for (int i = 0; i < keys.size(); i++) {
-      String key = keys.get(i);
+    for (String key : keys) {
       String escaped = key.replace("'", "\\'");
-      ts.append("    '").append(escaped).append("'");
-      if (i < keys.size() - 1) {
-        ts.append(",");
-      }
-      ts.append("\n");
+      ts.append("  '").append(escaped).append("',\n");
     }
-    ts.append("] as const;\n\n");
-    ts.append("export type MessageKey = (typeof i18nKeys)[number];\n\n");
+    ts.append("] as const\n\n");
+    ts.append("export type MessageKey = (typeof i18nKeys)[number]\n\n");
     ts.append("/**\n");
     ts.append(" * Default messages (Hungarian fallback).\n");
     ts.append(" */\n");
@@ -96,14 +93,16 @@ public class GenerateI18nKeys {
     for (String key : keys) {
       String huValue = huProps.getProperty(key, "");
       String escaped =
-          huValue
-              .replace("\\", "\\\\")
-              .replace("\"", "\\\"")
-              .replace("\n", "\\n")
-              .replace("\r", "");
-      ts.append("    \"").append(key).append("\": \"").append(escaped).append("\",\n");
+          huValue.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "");
+      String formattedKey = key.matches("^[a-zA-Z_$][a-zA-Z0-9_$]*$") ? key : "'" + key + "'";
+      String singleLine = "  " + formattedKey + ": '" + escaped + "',";
+      if (singleLine.length() > 100) {
+        ts.append("  ").append(formattedKey).append(":\n    '").append(escaped).append("',\n");
+      } else {
+        ts.append(singleLine).append("\n");
+      }
     }
-    ts.append("};\n");
+    ts.append("}\n");
 
     // 4. Könyvtár létrehozása + fájl írása
     Files.createDirectories(outputPath.getParent());
