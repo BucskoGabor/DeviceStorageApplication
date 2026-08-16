@@ -655,7 +655,14 @@ public class DeviceService {
   /**
    * Device végleges törlése.
    *
-   * <p>Üzleti szabály: Eszközt CSAK akkor lehet törölni, ha már selejtezve van (DISPOSED státusz).
+   * <p>Audit és integritási szabály:
+   * <ul>
+   *   <li>Ha az eszközhöz már tartoztak hozzárendelési előzmények (DeviceAssignment rekordok),
+   *       az eszköz NEM törölhető véglegesen az auditálhatóság és elszámoltathatóság megőrzése érdekében.
+   *       Ilyenkor a lezárás hivatalos módja a selejtezés (DISPOSED státusz).
+   *   <li>Ha az eszközhöz nem tartozik semmilyen hozzárendelés (pl. téves felvitel), akkor a fizikai
+   *       törlés engedélyezett (csatolmányok és join tábla törlésével).
+   * </ul>
    *
    * @param id az eszköz azonosítója
    */
@@ -667,20 +674,16 @@ public class DeviceService {
             .findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Device not found: " + id));
 
-    if (device.getStatus() != DeviceStatus.DISPOSED) {
-      throw new BusinessValidationException(
-          "deviceNotDisposedForDeletion",
-          "Eszközt csak akkor lehet törölni, ha már selejtezve van (DISPOSED státusz).");
-    }
-
-    // 1. Kapcsolódó hozzárendelési előzmények törlése
+    // 1. Audit védelem: ellenőrizzük, van-e hozzárendelési előzmény
     List<DeviceAssignment> assignments =
         assignmentRepository.findByDeviceIdOrderByCreatedDateDesc(id);
     if (!assignments.isEmpty()) {
-      assignmentRepository.deleteAll(assignments);
+      throw new BusinessValidationException(
+          "deviceHasAssignmentHistory",
+          "Az eszköz nem törölhető véglegesen, mert hozzárendelési előzményekkel rendelkezik. Az életciklus lezárásához használja a selejtezést (DISPOSED státusz).");
     }
 
-    // 2. Kapcsolódó csatolmányok és fájlok törlése
+    // 2. Kapcsolódó csatolmányok és fizikai fájlok törlése
     if (attachmentService != null) {
       attachmentService.deleteByDevice(id);
     }
@@ -692,6 +695,6 @@ public class DeviceService {
 
     // 4. Eszköz törlése
     deviceRepository.delete(device);
-    log.info("Device deleted: id={}, inventoryNumber={}", id, device.getInventoryNumber());
+    log.info("Device permanently deleted: id={}, inventoryNumber={}", id, device.getInventoryNumber());
   }
 }

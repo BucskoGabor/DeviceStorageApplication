@@ -235,35 +235,45 @@ class DeviceServiceTest {
   // ===== delete =====
 
   @Test
-  void deleteSuccessWhenDeviceIsDisposed() {
-    Device disposedDevice =
-        Device.builder()
-            .id(1L)
-            .type("laptop")
-            .inventoryNumber("INV-001")
-            .status(DeviceStatus.DISPOSED)
-            .build();
-    when(deviceRepository.findById(1L)).thenReturn(Optional.of(disposedDevice));
-
-    deviceService.delete(1L);
-
-    verify(deviceRepository, times(1)).delete(disposedDevice);
-  }
-
-  @Test
-  void deleteThrowsWhenDeviceIsNotDisposed() {
-    Device storageDevice =
+  void deleteSuccessWhenDeviceHasNoAssignmentHistory() {
+    Device freshDevice =
         Device.builder()
             .id(1L)
             .type("laptop")
             .inventoryNumber("INV-001")
             .status(DeviceStatus.IN_STORAGE)
             .build();
-    when(deviceRepository.findById(1L)).thenReturn(Optional.of(storageDevice));
+    when(deviceRepository.findById(1L)).thenReturn(Optional.of(freshDevice));
+    when(assignmentRepository.findByDeviceIdOrderByCreatedDateDesc(1L))
+        .thenReturn(java.util.List.of());
+
+    deviceService.delete(1L);
+
+    verify(deviceRepository, times(1)).delete(freshDevice);
+  }
+
+  @Test
+  void deleteThrowsWhenDeviceHasAssignmentHistory() {
+    Device existingDevice =
+        Device.builder()
+            .id(1L)
+            .type("laptop")
+            .inventoryNumber("INV-001")
+            .status(DeviceStatus.DISPOSED)
+            .build();
+    DeviceAssignment assignment =
+        DeviceAssignment.builder()
+            .id(10L)
+            .device(existingDevice)
+            .status(AssignmentStatus.IN_STORAGE)
+            .build();
+    when(deviceRepository.findById(1L)).thenReturn(Optional.of(existingDevice));
+    when(assignmentRepository.findByDeviceIdOrderByCreatedDateDesc(1L))
+        .thenReturn(java.util.List.of(assignment));
 
     assertThatThrownBy(() -> deviceService.delete(1L))
         .isInstanceOf(BusinessValidationException.class)
-        .hasFieldOrPropertyWithValue("messageKey", "deviceNotDisposedForDeletion");
+        .hasFieldOrPropertyWithValue("messageKey", "deviceHasAssignmentHistory");
 
     verify(deviceRepository, never()).delete(any(Device.class));
   }

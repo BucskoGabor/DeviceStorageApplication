@@ -462,6 +462,7 @@
     "deviceNotPendingMaintenance": "Device is not in pending maintenance status",
     "deviceNotPendingDisposal": "Device is not in pending disposal status",
     "deviceNotDisposedForDeletion": "A device can only be deleted if it has been disposed (DISPOSED status)",
+    "deviceHasAssignmentHistory": "The device cannot be permanently deleted because it has assignment history. Please dispose of the device instead (DISPOSED status).",
     "userHasActiveAssignments": "The user cannot be deleted while they have active or pending device assignments"
   }
 }
