@@ -4,6 +4,7 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HexFormat;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -162,7 +163,13 @@ public class LocalAuthProvider implements AuthProvider {
     }
   }
 
-  /** UsernamePasswordAuthenticationToken összeállítása a role + permission authorities-kkal. */
+  /**
+   * UsernamePasswordAuthenticationToken összeállítása a role + permission authorities-kkal.
+   *
+   * <p>A role-t ELŐRE tesszük a collection-be, és LinkedHashSet-et használunk, hogy az iterációs
+   * sorrend determinisztikus legyen — így az AuthController_login azonosítja a role-t (ne egy
+   * ROLE_* prefixű permissiont, pl. "ROLE_READ").
+   */
   private Authentication buildAuthentication(AppUser user) {
     Set<hu.tanszek.device.auth.entity.Permission> userPermissions = user.getPermissions();
     List<GrantedAuthority> roleAuthorities =
@@ -180,7 +187,7 @@ public class LocalAuthProvider implements AuthProvider {
                     Stream.of(new SimpleGrantedAuthority(user.getRole().getName())),
                     roleAuthorities.stream()),
                 userSpecificAuthorities.stream())
-            .collect(Collectors.toSet());
+            .collect(Collectors.toCollection(LinkedHashSet::new));
 
     return new UsernamePasswordAuthenticationToken(user.getEmailHash(), null, allAuthorities);
   }
