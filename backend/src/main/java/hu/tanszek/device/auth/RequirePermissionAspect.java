@@ -30,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>JwtAuthenticationFilter betölti a SecurityContext-et (JWT payload-ból)
  *   <li>SecurityFilterChain hitelesíti a user-t ({@code .authenticated()})
  *   <li>RequirePermissionAspect ellenőrzi a permission-t (ez az aspektus)
- *   <li>Service-szintű row-level filter (Task 3.2-ben)
+ *   <li>Service-szintű row-level filter
  *   <li>Controller method body végrehajtódik
  * </ol>
  */

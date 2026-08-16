@@ -66,4 +66,4 @@ docker compose logs -f backend
 - Backup ellenőrzés: `docker compose exec backup ls -la /var/backups/`
 - Hoszt gépről: `docker volume inspect backup_data` → `Mountpoint` könyvtárban vannak a `.sql` fájlok.
 
-Részletek: [`runbook.md`](./runbook.md) (Task 5.4-ben készül el).
+Részletek az üzemeltetésről: [`runbook.md`](./runbook.md).

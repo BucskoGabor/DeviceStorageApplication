@@ -276,7 +276,7 @@ public class AuthController {
     return ResponseEntity.noContent().build();
   }
 
-  /** Password change endpoint (Task 2.2-ből). */
+  /** Password change endpoint. */
   @PostMapping("/password-change")
   public ResponseEntity<Void> changePassword(
       Authentication authentication, @Valid @RequestBody PasswordChangeRequest request) {

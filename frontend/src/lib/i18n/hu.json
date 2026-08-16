@@ -458,6 +458,7 @@
     "unassignTargetMustBeStorage": "A visszavételi célhelyszín kizárólag RAKTÁR típusú lehet",
     "assignedDeviceCannotBeDisposed": "Hozzárendelt eszköz nem selejtezhető közvetlenül, előbb vissza kell venni vagy karbantartásba kell küldeni",
     "deviceAlreadyDisposed": "Az eszköz már selejtezve van",
+    "deviceHasAssignmentHistory": "Az eszköz nem törölhető véglegesen, mert hozzárendelési előzményekkel rendelkezik. Az életciklus lezárásához használja a selejtezést (DISPOSED státusz).",
     "deviceNotInMaintenance": "Az eszköz nincs karbantartás alatt",
     "deviceNotPendingMaintenance": "Az eszköz nincs jóváhagyásra váró karbantartási státuszban",
     "deviceNotPendingDisposal": "Az eszköz nincs jóváhagyásra váró selejtezési státuszban",

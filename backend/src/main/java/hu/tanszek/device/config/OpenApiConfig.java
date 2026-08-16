@@ -14,9 +14,9 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 /**
  * OpenApiConfig — Springdoc OpenAPI integráció testreszabása.
  *
- * <p>A {@code springdoc-openapi-starter-webmvc-ui} dependency már a pom.xml-ben van (Task 1.2), és
- * a Spring Boot auto-config aktiválja az alapértelmezett {@code /v3/api-docs} (JSON) és {@code
- * /swagger-ui.html} (UI) endpoint-okat.
+ * <p>A {@code springdoc-openapi-starter-webmvc-ui} dependency a Spring Boot auto-configgal
+ * aktiválja az alapértelmezett {@code /v3/api-docs} (JSON) és {@code /swagger-ui.html} (UI)
+ * endpoint-okat.
  *
  * <p>Ez az osztály testreszabja:
  *
@@ -24,9 +24,6 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
  *   <li>Project info (title, version, description, contact, license)
  *   <li>JWT Bearer security scheme (Authorization: Bearer xxx header)
  * </ul>
- *
- * <p>A controller-eken a @Operation, @ApiResponse, @Parameter annotációk a Task 4.x-ben (controller
- * endpoint implementáláskor) kerülnek hozzáadásra.
  */
 @Configuration
 public class OpenApiConfig {

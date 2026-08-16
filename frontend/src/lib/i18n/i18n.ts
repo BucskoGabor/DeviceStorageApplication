@@ -12,8 +12,7 @@ import { i18nKeys, defaultMessages } from './i18n-keys'
  *   2. navigator.language (Accept-Language header helyett böngészőben)
  *   3. hu (fallback)
  *
- * A i18nKeys és defaultMessages a Maven code generator-ből jön (Task 2.8),
- * most placeholder.
+ * A i18nKeys és defaultMessages a backend üzenetállományaiból generálódik.
  */
 void i18nKeys
 void defaultMessages

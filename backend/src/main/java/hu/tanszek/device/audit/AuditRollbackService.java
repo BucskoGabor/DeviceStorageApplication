@@ -163,20 +163,13 @@ public class AuditRollbackService {
         entityId);
   }
 
-  /**
-   * DELETE rollback: az entitás újra-létrehozása a before state-ből.
-   *
-   * <p>FIGYELEM: törölt entitás újralétrehozása FK ütközés és ID konfliktus kockázatával jár. A
-   * jelenlegi implementáció warning log-ot ír és admin manuális beavatkozást igényel.
-   */
+  /** DELETE rollback: az entitás újra-létrehozása a before state-ből. */
   private void rollbackDelete(String entityType, Long entityId, Map<String, Object> beforeState) {
-    log.warn(
-        "DELETE rollback requested: entityType={}, entityId={} — "
-            + "automatic recreation is not supported due to FK/ID conflict risk. "
-            + "Manual admin action required. Before state: {}",
+    entityTypeRegistry.recreateEntity(entityType, entityId, beforeState);
+    log.info(
+        "DELETE rollback applied (entity recreated): entityType={}, originalEntityId={}",
         entityType,
-        entityId,
-        beforeState);
+        entityId);
   }
 
   /** changes_json parse-olása Map-é. */

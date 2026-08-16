@@ -15,8 +15,8 @@ import hu.tanszek.device.device.entity.DeviceStatus;
 /**
  * Device repository.
  *
- * <p>A {@link JpaSpecificationExecutor} a Fázis 3-ban (Task 3.2) lesz használva a row-level
- * szűréshez (STUDENT/TEACHER csak a saját eszközeiket látják).
+ * <p>A {@link JpaSpecificationExecutor} a row-level szűréshez és egyedi feltételrendszerekhez
+ * biztosít támogatást.
  *
  * @see Device
  */

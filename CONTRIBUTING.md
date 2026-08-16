@@ -1,35 +1,43 @@
-# Contributing
+# Fejlesztési és Hozzájárulási Útmutató (Contributing)
 
-This is a single-developer project (developed by an AI agent). The architecture and design decisions are documented in [`implementation_plan.md`](./implementation_plan.md), and the task tracking lives in [`agent_progress.md`](./agent_progress.md).
+Köszönjük az érdeklődést a Tanszéki Nyilvántartó Rendszer fejlesztése iránt! Kérjük, tartsd be az alábbi irányelveket a kódminőség és a stabilitás megőrzése érdekében.
 
-## Development Workflow
+## Fejlesztési Folyamat
 
-1. Pick the next task from `agent_progress.md` (Next 3 Task section)
-2. Implement according to the design in `implementation_plan.md`
-3. Self-review against the Definition of Done
-4. Commit with a descriptive message referencing the task ID
-5. Update the task status in `agent_progress.md` (e.g., `[ ]` → `[~]` → `[x]`)
+1. Hozz létre egy új branch-et a feladatodhoz (`feature/<nev>` vagy `fix/<nev>`).
+2. Implementáld a szükséges módosításokat a megadott kódolási konvenciók betartásával.
+3. Készíts egység- és integrációs teszteket a módosításokhoz.
+4. Futtasd le a helyi formázási és teszt ellenőrzéseket a commitolás előtt.
+5. Nyiss egy Pull Request-et a `dev` vagy `main` branch felé részletes leírással.
 
-## Coding Conventions
+## Kódolási Konvenciók
 
-- **Backend:** Java 21, Spring Boot 3.3+, Maven, feature-based packages
-- **Frontend:** React 18, TypeScript, Vite, Tailwind + shadcn/ui
-- **Style:** `.editorconfig` enforced (4 spaces for Java, 2 for JS/TS)
-- **Java formatting:** Google Java Format via Spotless (see CI pipeline)
-- **Linting:** Checkstyle (Java), ESLint (TS, coming in Task 1.2/1.7)
+- **Backend:**
+  - Java 21, Spring Boot 3.3+, Maven.
+  - Csomagolási elv: feature-based packages (`hu.tanszek.device.*`).
+  - Kódformázás: Google Java Format (ellenőrzés: `mvn spotless:check`, formázás: `mvn spotless:apply`).
+  - Statikus analízis: Checkstyle szabályok (`mvn checkstyle:check`).
+- **Frontend:**
+  - React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui.
+  - Formázás és linting: ESLint és Prettier (`npm run lint`, `npx prettier --check 'src/**/*.{ts,tsx,css}'`).
+- **Általános:**
+  - `.editorconfig` beállítások betartása (4 szóköz Java, 2 szóköz TypeScript/HTML/JSON esetén).
 
-## Security
+## Biztonsági Irányelvek
 
-- Never commit `.env`, `backup.env`, or any secrets — only `.env.example`
-- API tokens, JWT secrets, and SMTP passwords are environment-injected
-- See `implementation_plan.md` §3 for the security architecture
+- **Soha ne commitolj `.env`, `backup.env` vagy egyéb titkos adatot tartalmazó fájlt!** Csak a `.env.example` és `backup.env.example` fájlok verziókövetettek.
+- Minden érzékeny adatot környezeti változókon keresztül juttassunk el az alkalmazáshoz.
 
-## Testing
+## Tesztelés
 
-- Unit tests: service layer (80% Jacoco coverage gate)
-- Integration tests: Testcontainers PostgreSQL
-- Smoke tests: `scripts/smoke-test.sh` after `docker-compose up`
+- **Backend:**
+  - Egységtesztek: `mvn test`
+  - Integrációs tesztek (Testcontainers PostgreSQL): `mvn verify`
+- **Frontend:**
+  - Vitest tesztek: `npm run test`
+- **Rendszerteszt:**
+  - Smoke teszt: `./scripts/smoke-test.sh` (elindított Docker konténerek mellett).
 
-## Questions or Issues
+## Kérdések és Hibajelzés
 
-Open an issue on GitHub or check `docs/runbook.md` for common problems.
+Kérjük, nyiss egy új GitHub Issue-t, vagy olvasd el a rendszer üzemeltetési kézikönyvét a [`docs/runbook.md`](./docs/runbook.md) fájlban.

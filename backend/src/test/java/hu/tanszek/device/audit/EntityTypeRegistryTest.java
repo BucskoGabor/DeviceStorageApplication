@@ -32,6 +32,7 @@ import hu.tanszek.device.user.repository.AppUserRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -249,5 +250,49 @@ class EntityTypeRegistryTest {
     assertThat(roleMap.get("name")).isEqualTo("ROLE_VIEWER");
     registry.applyJsonMap(role, Map.of("name", "ROLE_EDITOR"));
     assertThat(role.getName()).isEqualTo("ROLE_EDITOR");
+  }
+
+  @Test
+  void recreateEntity_Device() {
+    when(deviceRepository.findByInventoryNumber("INV-999")).thenReturn(Optional.empty());
+    when(deviceRepository.save(any(Device.class))).thenAnswer(i -> i.getArgument(0));
+
+    Map<String, Object> fields =
+        Map.of(
+            "type", "Monitor",
+            "inventoryNumber", "INV-999",
+            "status", "DISPOSED");
+
+    Object result = registry.recreateEntity("Device", 10L, fields);
+
+    assertThat(result).isInstanceOf(Device.class);
+    Device dev = (Device) result;
+    assertThat(dev.getType()).isEqualTo("Monitor");
+    assertThat(dev.getInventoryNumber()).isEqualTo("INV-999");
+    assertThat(dev.getStatus()).isEqualTo(DeviceStatus.DISPOSED);
+  }
+
+  @Test
+  void recreateEntity_Location_Software_Role_User() {
+    when(locationRepository.save(any(Location.class))).thenAnswer(i -> i.getArgument(0));
+    when(softwareRepository.save(any(Software.class))).thenAnswer(i -> i.getArgument(0));
+    when(roleRepository.save(any(Role.class))).thenAnswer(i -> i.getArgument(0));
+    when(userRepository.findByEmailHash(any())).thenReturn(Optional.empty());
+    when(userRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
+
+    Object loc =
+        registry.recreateEntity("Location", 1L, Map.of("name", "Room 404", "type", "CLASSROOM"));
+    assertThat(loc).isInstanceOf(Location.class);
+
+    Object sw = registry.recreateEntity("Software", 2L, Map.of("name", "IntelliJ"));
+    assertThat(sw).isInstanceOf(Software.class);
+
+    Object role = registry.recreateEntity("Role", 3L, Map.of("name", "ROLE_DEV"));
+    assertThat(role).isInstanceOf(Role.class);
+
+    Object user =
+        registry.recreateEntity(
+            "User", 4L, Map.of("email", "test@tanszek.local", "emailHash", "h123"));
+    assertThat(user).isInstanceOf(AppUser.class);
   }
 }

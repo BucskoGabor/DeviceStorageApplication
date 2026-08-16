@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import hu.tanszek.device.assignment.entity.AssignmentStatus;
 import hu.tanszek.device.assignment.entity.DeviceAssignment;
 import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
+import hu.tanszek.device.attachment.AttachmentService;
 import hu.tanszek.device.auth.entity.Role;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
@@ -32,18 +33,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Unit tesztek a {@link DeviceService}-hez.
- *
- * <p>Teszteli:
- *
- * <ul>
- *   <li>requestAssignment: sikeres, hibás device státusz, GROUP location
- *   <li>approveAssignment: sikeres, nem PENDING státusz
- *   <li>requestUnassignment: sikeres, nem aktív assignment
- *   <li>approveUnassignment: sikeres
- * </ul>
- */
+/** Unit tesztek a {@link DeviceService}-hez. */
 @ExtendWith(MockitoExtension.class)
 class DeviceServiceTest {
 
@@ -51,6 +41,7 @@ class DeviceServiceTest {
   @Mock private DeviceAssignmentRepository assignmentRepository;
   @Mock private LocationRepository locationRepository;
   @Mock private AppUserRepository userRepository;
+  @Mock private AttachmentService attachmentService;
 
   @InjectMocks private DeviceService deviceService;
 
@@ -242,35 +233,45 @@ class DeviceServiceTest {
   // ===== delete =====
 
   @Test
-  void deleteSuccessWhenDeviceIsDisposed() {
-    Device disposedDevice =
-        Device.builder()
-            .id(1L)
-            .type("laptop")
-            .inventoryNumber("INV-001")
-            .status(DeviceStatus.DISPOSED)
-            .build();
-    when(deviceRepository.findById(1L)).thenReturn(Optional.of(disposedDevice));
-
-    deviceService.delete(1L);
-
-    verify(deviceRepository, times(1)).delete(disposedDevice);
-  }
-
-  @Test
-  void deleteThrowsWhenDeviceIsNotDisposed() {
-    Device storageDevice =
+  void deleteSuccessWhenDeviceHasNoAssignmentHistory() {
+    Device freshDevice =
         Device.builder()
             .id(1L)
             .type("laptop")
             .inventoryNumber("INV-001")
             .status(DeviceStatus.IN_STORAGE)
             .build();
-    when(deviceRepository.findById(1L)).thenReturn(Optional.of(storageDevice));
+    when(deviceRepository.findById(1L)).thenReturn(Optional.of(freshDevice));
+    when(assignmentRepository.findByDeviceIdOrderByCreatedDateDesc(1L))
+        .thenReturn(java.util.List.of());
+
+    deviceService.delete(1L);
+
+    verify(deviceRepository, times(1)).delete(freshDevice);
+  }
+
+  @Test
+  void deleteThrowsWhenDeviceHasAssignmentHistory() {
+    Device existingDevice =
+        Device.builder()
+            .id(1L)
+            .type("laptop")
+            .inventoryNumber("INV-001")
+            .status(DeviceStatus.DISPOSED)
+            .build();
+    DeviceAssignment assignment =
+        DeviceAssignment.builder()
+            .id(10L)
+            .device(existingDevice)
+            .status(AssignmentStatus.IN_STORAGE)
+            .build();
+    when(deviceRepository.findById(1L)).thenReturn(Optional.of(existingDevice));
+    when(assignmentRepository.findByDeviceIdOrderByCreatedDateDesc(1L))
+        .thenReturn(java.util.List.of(assignment));
 
     assertThatThrownBy(() -> deviceService.delete(1L))
         .isInstanceOf(BusinessValidationException.class)
-        .hasFieldOrPropertyWithValue("messageKey", "deviceNotDisposedForDeletion");
+        .hasFieldOrPropertyWithValue("messageKey", "deviceHasAssignmentHistory");
 
     verify(deviceRepository, never()).delete(any(Device.class));
   }

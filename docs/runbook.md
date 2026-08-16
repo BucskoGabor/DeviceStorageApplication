@@ -1,6 +1,6 @@
-# Runbook
+# Rendszerüzemeltetési Kézikönyv (Runbook)
 
-> Ez a dokumentum a Task 5.4-ben készült, 7 szekcióval az üzemeltetési kézikönyvhöz.
+> Rendszerüzemeltetési, katasztrófa-helyreállítási és karbantartási útmutató.
 
 ## 1. Első telepítés (Production)
 
@@ -247,7 +247,7 @@ docker compose up -d backend
    - 72 órán belül: felhasználók értesítése (ha jelszavak kompromittálódtak)
 
 6. **Post-incident:**
-   - Audit log review (Task 5.4)
-   - Jelszó force-reset minden user számára
-   - JWT secret rotáció (Task 5.4 6. szekció)
-   - Incident report készítése
+   - Audit logok részletes áttekintése
+   - Jelszó kötelező megújítása (force-reset) az érintett felhasználók számára
+   - JWT secret rotáció végrehajtása
+   - Részletes incidens jelentés (Post-mortem) készítése

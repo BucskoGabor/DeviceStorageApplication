@@ -22,6 +22,7 @@ import hu.tanszek.device.device.entity.Device;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -88,7 +89,7 @@ class AuditRollbackServiceTest {
   }
 
   @Test
-  void rollback_delete_logsWarningAndDoesNotThrow() {
+  void rollback_delete_recreatesEntitySuccessfully() {
     String changesJson = "{\"before\": {\"id\": 1, \"type\": \"Laptop\"}, \"after\": null}";
     AuditLog log =
         AuditLog.builder()
@@ -104,6 +105,7 @@ class AuditRollbackServiceTest {
     AuditLog rollbackLog = auditRollbackService.rollback(102L);
 
     assertThat(rollbackLog).isNotNull();
+    verify(entityTypeRegistry).recreateEntity(eq("Device"), eq(1L), any());
   }
 
   @Test
