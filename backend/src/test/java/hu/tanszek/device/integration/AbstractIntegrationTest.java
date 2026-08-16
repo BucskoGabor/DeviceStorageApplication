@@ -2,6 +2,7 @@ package hu.tanszek.device.integration;
 
 import java.util.List;
 
+import com.github.dockerjava.api.model.PortBinding;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -52,7 +53,8 @@ public abstract class AbstractIntegrationTest {
           .withUsername("admin")
           .withPassword("test_password")
           .withReuse(true)
-          .withCreateContainerCmdModifier(cmd -> cmd.withPortBindings(List.of("5432:5432")));
+          .withCreateContainerCmdModifier(
+              cmd -> cmd.withPortBindings(List.of(PortBinding.parse("5432:5432"))));
 
   /**
    * Spring environment beállítása a container URL-jére. A Flyway ez alapján fog lefutni az
