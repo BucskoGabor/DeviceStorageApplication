@@ -72,7 +72,7 @@ class AuthProviderFactoryTest {
     AuthProvider onlyProvider = mock(AuthProvider.class);
     when(onlyProvider.getProviderId()).thenReturn("OAUTH2");
     when(configRepository.findByKey("AUTH_PROVIDER"))
-        .thenReturn(Optional.of(new Config("AUTH_PROVIDER", "OAUTH2")));
+        .thenReturn(Optional.of(new Config("AUTH_PROVIDER", "MISSING")));
     AuthProviderFactory isolatedFactory =
         new AuthProviderFactory(List.of(onlyProvider), configRepository);
     isolatedFactory.init();

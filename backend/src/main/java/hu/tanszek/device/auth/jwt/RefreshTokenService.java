@@ -58,6 +58,16 @@ public class RefreshTokenService {
    */
   @Transactional
   public IssueResult issue(AppUser user) {
+    IssueResult newIssue = createNewToken(user);
+    newIssue.refreshToken().setId(refreshTokenRepository.save(newIssue.refreshToken()).getId());
+    log.info(
+        "Issued refresh token for user {}, expires at {}",
+        newIssue.refreshToken().getUser().getEmailHash(),
+        newIssue.refreshToken().getExpiresAt());
+    return newIssue;
+  }
+
+  private IssueResult createNewToken(AppUser user) {
     byte[] tokenBytes = new byte[TOKEN_LENGTH];
     secureRandom.nextBytes(tokenBytes);
     String plainToken = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
@@ -73,9 +83,6 @@ public class RefreshTokenService {
             .revoked(false)
             .build();
 
-    refreshToken = refreshTokenRepository.save(refreshToken);
-
-    log.info("Issued refresh token for user {}, expires at {}", user.getEmailHash(), expiresAt);
     return new IssueResult(plainToken, refreshToken);
   }
 
@@ -118,8 +125,8 @@ public class RefreshTokenService {
 
     // Sikeres rotáció
     token.setRevoked(true);
-    IssueResult newIssue = issue(token.getUser());
-    newIssue.refreshToken().setReplacedBy(token);
+    IssueResult newIssue = createNewToken(token.getUser());
+    token.setReplacedBy(newIssue.refreshToken());
     refreshTokenRepository.save(newIssue.refreshToken());
     refreshTokenRepository.save(token);
 
@@ -157,9 +164,9 @@ public class RefreshTokenService {
     while (current != null) {
       if (!current.isRevoked()) {
         current.setRevoked(true);
-        refreshTokenRepository.save(current);
         revokedCount++;
       }
+      refreshTokenRepository.save(current);
       // Előre haladva (replacedBy láncolás)
       current = current.getReplacedBy();
     }
