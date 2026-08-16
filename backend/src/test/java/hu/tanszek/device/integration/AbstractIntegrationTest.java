@@ -40,7 +40,7 @@ public abstract class AbstractIntegrationTest {
    *
    * <p>A {@code withFixedExposedPort(5432, 5432)} biztosítja, hogy a Spring context cache kulcsa
    * (amely a JDBC URL-t tartalmazza) konzisztens maradjon a teszt osztályok között — máskülönben a
-   * Testcontainers random portot választ, és a második teszt osztály Spring context cache miss-t okoz,
+   * Testcontainers random portot választ, és a második teszt osztály Spring context cache miss-t okoz
    * ami Hikari connection timeout-hoz vezethet.
    */
   @Container
