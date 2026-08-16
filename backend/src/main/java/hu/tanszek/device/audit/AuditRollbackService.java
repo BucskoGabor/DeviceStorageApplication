@@ -102,12 +102,11 @@ public class AuditRollbackService {
 
     String changesJsonStr;
     try {
-      changesJsonStr =
-          objectMapper.writeValueAsString(
-              Map.of(
-                  "rollbackOf", auditLogId,
-                  "before", beforeState,
-                  "after", afterState));
+      Map<String, Object> rollbackMap = new java.util.HashMap<>();
+      rollbackMap.put("rollbackOf", auditLogId);
+      rollbackMap.put("before", beforeState);
+      rollbackMap.put("after", afterState);
+      changesJsonStr = objectMapper.writeValueAsString(rollbackMap);
     } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
       changesJsonStr = "{}";
     }

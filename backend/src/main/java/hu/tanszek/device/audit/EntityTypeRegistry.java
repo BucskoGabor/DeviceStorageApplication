@@ -93,13 +93,21 @@ public class EntityTypeRegistry {
 
   /** Managed entity mentése (UPDATE rollback-hez, ha nem JPA dirty checking-gel megy). */
   public void saveEntity(Object entity) {
-    if (entity instanceof Device d) deviceRepository.save(d);
-    else if (entity instanceof AppUser u) userRepository.save(u);
-    else if (entity instanceof Location l) locationRepository.save(l);
-    else if (entity instanceof DeviceAssignment a) assignmentRepository.save(a);
-    else if (entity instanceof Software s) softwareRepository.save(s);
-    else if (entity instanceof DeviceAttachment att) attachmentRepository.save(att);
-    else if (entity instanceof Role r) roleRepository.save(r);
+    if (entity instanceof Device d) {
+      deviceRepository.save(d);
+    } else if (entity instanceof AppUser u) {
+      userRepository.save(u);
+    } else if (entity instanceof Location l) {
+      locationRepository.save(l);
+    } else if (entity instanceof DeviceAssignment a) {
+      assignmentRepository.save(a);
+    } else if (entity instanceof Software s) {
+      softwareRepository.save(s);
+    } else if (entity instanceof DeviceAttachment att) {
+      attachmentRepository.save(att);
+    } else if (entity instanceof Role r) {
+      roleRepository.save(r);
+    }
   }
 
   /**
@@ -186,7 +194,9 @@ public class EntityTypeRegistry {
    * @param fields a JSON map (a before/after-ből)
    */
   public void applyJsonMap(Object entity, Map<String, Object> fields) {
-    if (entity == null || fields == null) return;
+    if (entity == null || fields == null) {
+      return;
+    }
 
     if (entity instanceof Device device) {
       if (fields.get("type") instanceof String s && !"***".equals(s)) {
@@ -202,15 +212,19 @@ public class EntityTypeRegistry {
     } else if (entity instanceof AppUser user) {
       if (fields.containsKey("active") && fields.get("active") != null) {
         Object val = fields.get("active");
-        if (val instanceof Boolean b) user.setActive(b);
-        else if (val instanceof String s && !"***".equals(s))
+        if (val instanceof Boolean b) {
+          user.setActive(b);
+        } else if (val instanceof String s && !"***".equals(s)) {
           user.setActive(Boolean.parseBoolean(s));
+        }
       }
       if (fields.containsKey("mustChangePassword") && fields.get("mustChangePassword") != null) {
         Object val = fields.get("mustChangePassword");
-        if (val instanceof Boolean b) user.setMustChangePassword(b);
-        else if (val instanceof String s && !"***".equals(s))
+        if (val instanceof Boolean b) {
+          user.setMustChangePassword(b);
+        } else if (val instanceof String s && !"***".equals(s)) {
           user.setMustChangePassword(Boolean.parseBoolean(s));
+        }
       }
     } else if (entity instanceof Location location) {
       if (fields.get("name") instanceof String s && !"***".equals(s)) {

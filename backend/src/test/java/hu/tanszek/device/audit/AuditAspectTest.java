@@ -3,40 +3,64 @@ package hu.tanszek.device.audit;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import hu.tanszek.device.audit.entity.AuditLog;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.common.ScheduledJobMonitoring;
 import hu.tanszek.device.crypto.CryptoService;
+import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.user.repository.AppUserRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-/**
- * Unit tesztek az AuditAspect maszkoló és diff logikájához.
- *
- * <p>Az AOP @Around advice-t nem teszteljük unit szinten (integrációs tesztben lenne értelme, Task
- * 5.3). A maszkoló és diff segédmetódusokat közvetlenül hívjuk reflection-nel.
- */
+/** Unit tesztek az AuditAspect maszkoló és diff logikájához és az AOP @Around advice-hoz. */
 class AuditAspectTest {
 
   private AuditAspect aspect;
+  private AuditLogRepository auditLogRepository;
+  private EntityTypeRegistry entityTypeRegistry;
+  private ScheduledJobMonitoring jobMonitoring;
+  private AppUserRepository userRepository;
+  private CryptoService cryptoService;
 
   @BeforeEach
-  void setUp() throws Exception {
-    AuditAspect real =
+  void setUp() {
+    auditLogRepository = mock(AuditLogRepository.class);
+    entityTypeRegistry = mock(EntityTypeRegistry.class);
+    jobMonitoring = mock(ScheduledJobMonitoring.class);
+    userRepository = mock(AppUserRepository.class);
+    cryptoService = mock(CryptoService.class);
+
+    doAnswer(
+            invocation -> {
+              Runnable runnable = invocation.getArgument(1);
+              runnable.run();
+              return null;
+            })
+        .when(jobMonitoring)
+        .run(eq("audit-log-write"), any(Runnable.class));
+
+    aspect =
         new AuditAspect(
-            mock(AuditLogRepository.class),
-            mock(EntityTypeRegistry.class),
+            auditLogRepository,
+            entityTypeRegistry,
             new ObjectMapper(),
-            mock(ScheduledJobMonitoring.class),
-            mock(AppUserRepository.class),
-            mock(CryptoService.class));
-    aspect = real;
+            jobMonitoring,
+            userRepository,
+            cryptoService);
   }
 
   @Test
@@ -136,5 +160,52 @@ class AuditAspectTest {
     String json = (String) method.invoke(aspect, same, same);
 
     assertThat(json).isNull();
+  }
+
+  @Test
+  void auditServiceMethod_success() throws Throwable {
+    ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+    MethodSignature signature = mock(MethodSignature.class);
+    AuditTarget auditTarget = mock(AuditTarget.class);
+
+    when(auditTarget.entityType()).thenReturn("Device");
+    when(auditTarget.action()).thenReturn("update");
+
+    Device device = Device.builder().id(1L).type("Laptop").build();
+    when(joinPoint.getArgs()).thenReturn(new Object[] {1L, device});
+    when(joinPoint.getSignature()).thenReturn(signature);
+    when(signature.getParameterNames()).thenReturn(new String[] {"id", "device"});
+
+    when(entityTypeRegistry.findById("Device", 1L)).thenReturn(device);
+    when(entityTypeRegistry.toJsonMap(device)).thenReturn(Map.of("id", 1L, "type", "Laptop"));
+
+    when(joinPoint.proceed()).thenReturn(device);
+
+    Object result = aspect.auditServiceMethod(joinPoint, auditTarget);
+
+    assertThat(result).isEqualTo(device);
+    verify(auditLogRepository).save(any(AuditLog.class));
+  }
+
+  @Test
+  void auditServiceMethod_throwsAndLogsFailure() throws Throwable {
+    ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+    MethodSignature signature = mock(MethodSignature.class);
+    AuditTarget auditTarget = mock(AuditTarget.class);
+
+    when(auditTarget.entityType()).thenReturn("Device");
+    when(auditTarget.action()).thenReturn("delete");
+
+    when(joinPoint.getArgs()).thenReturn(new Object[] {1L});
+    when(joinPoint.getSignature()).thenReturn(signature);
+    when(signature.getParameterNames()).thenReturn(new String[] {"id"});
+
+    when(joinPoint.proceed()).thenThrow(new RuntimeException("DB error"));
+
+    assertThatThrownBy(() -> aspect.auditServiceMethod(joinPoint, auditTarget))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("DB error");
+
+    verify(auditLogRepository).save(any(AuditLog.class));
   }
 }
