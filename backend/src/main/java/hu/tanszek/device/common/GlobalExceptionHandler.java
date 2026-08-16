@@ -92,18 +92,24 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
   }
 
-  /** UnauthorizedActionException — 401 vagy 403 (messageKey alapján). */
+  /**
+   * UnauthorizedActionException — 401 (authRequired, invalidCredentials) vagy 403 (többi). Az
+   * authRequired és invalidCredentials azt jelenti, hogy a user nincs hitelesítve; minden más
+   * UnauthorizedActionException kontextusfüggő jogosultsági hiba (pl. permission denied egy
+   * védett endpoint-hoz).
+   */
   @ExceptionHandler(UnauthorizedActionException.class)
   public ResponseEntity<Map<String, Object>> handleUnauthorized(
       UnauthorizedActionException ex, WebRequest request) {
     String messageKey = ex.getMessageKey();
-    boolean isForbidden = !"authRequired".equals(messageKey);
-    HttpStatus status = isForbidden ? HttpStatus.FORBIDDEN : HttpStatus.UNAUTHORIZED;
+    boolean isUnauthorized =
+        "authRequired".equals(messageKey) || "invalidCredentials".equals(messageKey);
+    HttpStatus status = isUnauthorized ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN;
 
     Map<String, Object> body =
         createBody(
             status.value(),
-            isForbidden ? "Forbidden" : "Unauthorized",
+            isUnauthorized ? "Unauthorized" : "Forbidden",
             messageKey,
             ex.getMessage(),
             getPath(request),
