@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import hu.tanszek.device.assignment.entity.AssignmentStatus;
 import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
+import hu.tanszek.device.auth.repository.RoleRepository;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.device.DeviceService;
 import hu.tanszek.device.device.entity.Device;
@@ -35,6 +36,7 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
   @Autowired private AppUserRepository userRepository;
   @Autowired private LocationRepository locationRepository;
   @Autowired private DeviceAssignmentRepository assignmentRepository;
+  @Autowired private RoleRepository roleRepository;
 
   @Test
   @Transactional
@@ -54,6 +56,7 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
                 .emailEncrypted("encrypted")
                 .emailHash("int-test-hash")
                 .passwordHash("$argon2id$test")
+                .role(roleRepository.findByName("ROLE_TEACHER").orElseThrow())
                 .mustChangePassword(false)
                 .failedLoginCount(0)
                 .passwordChangedAt(java.time.Instant.now())
@@ -123,6 +126,7 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
                 .emailEncrypted("enc")
                 .emailHash("h2")
                 .passwordHash("$argon2id$x")
+                .role(roleRepository.findByName("ROLE_TEACHER").orElseThrow())
                 .mustChangePassword(false)
                 .failedLoginCount(0)
                 .passwordChangedAt(java.time.Instant.now())
