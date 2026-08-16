@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import hu.tanszek.device.assignment.entity.AssignmentStatus;
 import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
@@ -149,10 +150,10 @@ class DeviceServiceChangeStatusTest {
         hu.tanszek.device.assignment.entity.DeviceAssignment.builder()
             .id(10L)
             .device(device)
-            .active(true)
+
             .build();
     when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
-    when(assignmentRepository.findByDeviceIdAndActiveTrue(1L))
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED))
         .thenReturn(Optional.of(activeAssignment));
     when(assignmentRepository.save(activeAssignment)).thenReturn(activeAssignment);
     when(deviceRepository.save(device)).thenReturn(device);
@@ -160,7 +161,7 @@ class DeviceServiceChangeStatusTest {
     Device result = deviceService.changeStatus(1L, DeviceStatus.IN_STORAGE);
 
     assertThat(result.getStatus()).isEqualTo(DeviceStatus.IN_STORAGE);
-    assertThat(activeAssignment.isActive()).isFalse();
+    assertThat(activeAssignment.getStatus()).isNotEqualTo(AssignmentStatus.ASSIGNED);
     assertThat(activeAssignment.getUnassignCreatedDate()).isNotNull();
     verify(assignmentRepository).save(activeAssignment);
   }

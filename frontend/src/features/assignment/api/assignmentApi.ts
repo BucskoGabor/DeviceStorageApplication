@@ -79,9 +79,9 @@ export async function rejectAssignment(assignmentId: number): Promise<DeviceAssi
  * POST /api/devices/assignments/{assignmentId}/unassign
  * Aktív assignment visszavételi kérése (PENDING_UNASSIGNMENT).
  */
-export async function requestUnassignment(assignmentId: number): Promise<DeviceAssignment> {
+export async function requestUnassignment(assignmentId: number, targetLocationId?: number): Promise<DeviceAssignment> {
   const { data } = await apiClient.post<DeviceAssignment>(
-    `/api/devices/assignments/${assignmentId}/unassign`
+    `/api/devices/assignments/${assignmentId}/unassign`, null, { params: targetLocationId ? { targetLocationId } : undefined }
   )
   return data
 }

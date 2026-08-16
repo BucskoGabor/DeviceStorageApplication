@@ -31,7 +31,7 @@ export function RequireAuth({ children }: RequireAuthProps) {
     if (accessToken && !role) {
       authApi.me()
         .then((me) => {
-          setAuth(accessToken, me.emailHash, me.role, me.permissions, me.mustChangePassword)
+          setAuth(accessToken, me.email || me.emailHash, me.role, me.permissions, me.mustChangePassword)
         })
         .catch(() => {
           // 401 → access token lejárt

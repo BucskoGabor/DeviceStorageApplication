@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -19,26 +20,25 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-
 export function SoftwarePage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const permissions = useAuthStore((state) => state.permissions)
-  const canManage = permissions.includes('SOFTWARE_MANAGE')
+  const canCreate = permissions.includes('SOFTWARE_CREATE')
+  const canUpdate = permissions.includes('SOFTWARE_UPDATE')
+  const canDelete = permissions.includes('SOFTWARE_DELETE')
   const canViewKey = permissions.includes('SOFTWARE_LICENSE_VIEW')
-
   const [page, setPage] = useState(0)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingSoftware, setEditingSoftware] = useState<Software | null>(null)
+  const [deleteSoftwareId, setDeleteSoftwareId] = useState<number | null>(null)
   const [name, setName] = useState('')
   const [licenseKey, setLicenseKey] = useState('')
   const pageSize = 20
-
   const { data, isLoading } = useQuery({
     queryKey: ['software', page, pageSize],
     queryFn: () => softwareApi.findAll({ page, size: pageSize }),
   })
-
   const createMutation = useMutation({
     mutationFn: softwareApi.create,
     onSuccess: () => {
@@ -52,7 +52,6 @@ export function SoftwarePage() {
       toast.error(t('common.error', 'Hiba történt'))
     },
   })
-
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: { name?: string; licenseKey?: string } }) =>
       softwareApi.update(id, payload),
@@ -67,7 +66,6 @@ export function SoftwarePage() {
       toast.error(t('common.error', 'Hiba történt'))
     },
   })
-
   const deleteMutation = useMutation({
     mutationFn: softwareApi.delete,
     onSuccess: () => {
@@ -75,13 +73,11 @@ export function SoftwarePage() {
       toast.success(t('common.deleted', 'Sikeresen törölve'))
     },
   })
-
   const openEdit = (sw: Software) => {
     setEditingSoftware(sw)
     setName(sw.name)
     setLicenseKey(sw.licenseKey ?? '')
   }
-
   const columns = useMemo<ColumnDef<Software, unknown>[]>(
     () => [
       {
@@ -118,7 +114,7 @@ export function SoftwarePage() {
           const sw = info.row.original
           return (
             <div className="flex gap-1">
-              {canManage && (
+              {canUpdate && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -128,16 +124,12 @@ export function SoftwarePage() {
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
-              {canManage && (
+              {canDelete && (
                 <Button
                   variant="ghost"
                   size="icon"
                   title={t('common.delete', 'Törlés')}
-                  onClick={() => {
-                    if (confirm(t('softwares.confirmDelete', 'Biztosan törlöd?'))) {
-                      deleteMutation.mutate(sw.id)
-                    }
-                  }}
+                  onClick={() => setDeleteSoftwareId(sw.id)}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -147,15 +139,13 @@ export function SoftwarePage() {
         },
       },
     ],
-    [t, deleteMutation, canViewKey, canManage]
+    [t, deleteMutation, canViewKey, canUpdate, canDelete]
   )
-
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name || !licenseKey) return
     createMutation.mutate({ name, licenseKey })
   }
-
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingSoftware) return
@@ -168,19 +158,17 @@ export function SoftwarePage() {
     }
     updateMutation.mutate({ id: editingSoftware.id, payload })
   }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t('admin.softwares', 'Szoftverek és Licencek')}</h1>
-        {canManage && (
+        {canCreate && (
           <Button onClick={() => setIsCreateOpen(!isCreateOpen)}>
             <Plus className="mr-2 h-4 w-4" />
             {t('softwares.create', 'Új szoftver')}
           </Button>
         )}
       </div>
-
       {isCreateOpen && (
         <div className="rounded-lg border border-border bg-card p-6 shadow-lg space-y-4 max-w-lg">
           <h2 className="text-lg font-semibold">{t('softwares.create', 'Új szoftver és licenc')}</h2>
@@ -214,7 +202,6 @@ export function SoftwarePage() {
           </form>
         </div>
       )}
-
       <DataTable
         data={data?.content ?? []}
         columns={columns}
@@ -224,7 +211,17 @@ export function SoftwarePage() {
         totalElements={data?.totalElements ?? 0}
         onPageChange={setPage}
       />
-
+      <ConfirmDialog
+        open={deleteSoftwareId !== null}
+        onOpenChange={(open) => !open && setDeleteSoftwareId(null)}
+        description={t('softwares.confirmDelete', 'Biztosan törlöd ezt a szoftvert?')}
+        onConfirm={() => {
+          if (deleteSoftwareId) {
+            deleteMutation.mutate(deleteSoftwareId)
+            setDeleteSoftwareId(null)
+          }
+        }}
+      />
       {/* Edit Dialog */}
       <Dialog
         open={editingSoftware !== null}
@@ -292,11 +289,9 @@ export function SoftwarePage() {
     </div>
   )
 }
-
 function LicenseKeyCell({ software, canView }: { software: Software; canView: boolean }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
-
   if (canView && software.licenseKey) {
     const handleCopy = () => {
       navigator.clipboard.writeText(software.licenseKey!)
@@ -312,14 +307,12 @@ function LicenseKeyCell({ software, canView }: { software: Software; canView: bo
       </div>
     )
   }
-
   return (
     <Badge variant="outline" className="font-mono text-xs">
       {software.licenseKeyMasked ?? '****-****-****-'}
     </Badge>
   )
 }
-
 function DevicesCell({ softwareId }: { softwareId: number }) {
   const { t } = useTranslation()
   const { data: devices, isLoading } = useQuery({
@@ -327,15 +320,12 @@ function DevicesCell({ softwareId }: { softwareId: number }) {
     queryFn: () => softwareApi.findDevicesBySoftware(softwareId),
     staleTime: 60000,
   })
-
   if (isLoading) {
     return <span className="text-xs text-muted-foreground">…</span>
   }
-
   if (!devices || devices.length === 0) {
     return <span className="text-xs text-muted-foreground">—</span>
   }
-
   return (
     <div className="flex max-w-[200px] flex-wrap gap-1">
       {devices.slice(0, 3).map((d) => (

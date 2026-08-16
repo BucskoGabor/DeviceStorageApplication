@@ -40,6 +40,8 @@ public class LocationController {
 
   private final LocationRepository locationRepository;
   private final LocationService locationService;
+  private final hu.tanszek.device.device.repository.DeviceRepository deviceRepository;
+  private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
 
   /**
    * GET /api/locations/tree A teljes location hierarchia nested DTO formában. Max depth: 10
@@ -55,7 +57,7 @@ public class LocationController {
     @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
   })
   @GetMapping("/tree")
-  @RequirePermission("LOCATION_READ")
+  @RequirePermission({"LOCATION_READ", "LOCATION_CREATE", "LOCATION_UPDATE", "LOCATION_DELETE"})
   public ResponseEntity<List<LocationTreeDto>> findTree() {
     return ResponseEntity.ok(locationService.buildTree());
   }
@@ -66,13 +68,19 @@ public class LocationController {
     @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
   })
   @GetMapping
-  @RequirePermission("LOCATION_READ")
+  @RequirePermission({"LOCATION_READ", "LOCATION_CREATE", "LOCATION_UPDATE", "LOCATION_DELETE"})
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
   public ResponseEntity<Map<String, Object>> findAll(
       @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
-    if (size > MAX_PAGE_SIZE) size = MAX_PAGE_SIZE;
-    if (size < 1) size = 1;
-    if (page < 0) page = 0;
+    if (size > MAX_PAGE_SIZE) {
+      size = MAX_PAGE_SIZE;
+    }
+    if (size < 1) {
+      size = 1;
+    }
+    if (page < 0) {
+      page = 0;
+    }
 
     var pageable = PageRequest.of(page, size, Sort.by("name").ascending());
     Page<Location> result = locationRepository.findAll(pageable);
@@ -93,7 +101,7 @@ public class LocationController {
     @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
   })
   @GetMapping("/{id}")
-  @RequirePermission("LOCATION_READ")
+  @RequirePermission({"LOCATION_READ", "LOCATION_CREATE", "LOCATION_UPDATE", "LOCATION_DELETE"})
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
   public ResponseEntity<Location> findById(
       @Parameter(description = "Helyszín azonosító") @PathVariable Long id) {
@@ -104,6 +112,31 @@ public class LocationController {
     return ResponseEntity.ok(location);
   }
 
+  @Operation(summary = "Helyszínen lévő jelenlegi eszközök")
+  @GetMapping("/{id}/devices")
+  @RequirePermission({"LOCATION_READ", "LOCATION_CREATE", "LOCATION_UPDATE", "LOCATION_DELETE"})
+  @org.springframework.transaction.annotation.Transactional(readOnly = true)
+  public ResponseEntity<List<hu.tanszek.device.device.entity.Device>> findCurrentDevices(
+      @PathVariable Long id) {
+    locationRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Location not found: " + id));
+    List<hu.tanszek.device.device.entity.Device> devices =
+        deviceRepository.findByCurrentLocationIdAndStatusNot(
+            id, hu.tanszek.device.device.entity.DeviceStatus.DISPOSED);
+    return ResponseEntity.ok(devices);
+  }
+
+  @Operation(summary = "Helyszín hozzárendelési előzményei")
+  @GetMapping("/{id}/assignments")
+  @RequirePermission({"LOCATION_READ", "LOCATION_CREATE", "LOCATION_UPDATE", "LOCATION_DELETE"})
+  @org.springframework.transaction.annotation.Transactional(readOnly = true)
+  public ResponseEntity<List<hu.tanszek.device.assignment.entity.DeviceAssignment>> findAssignmentHistory(
+      @PathVariable Long id) {
+    locationRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Location not found: " + id));
+    List<hu.tanszek.device.assignment.entity.DeviceAssignment> history =
+        assignmentRepository.findByToLocationIdOrFromLocationIdOrderByCreatedDateDesc(id, id);
+    return ResponseEntity.ok(history);
+  }
+
   @Operation(
       summary = "Root helyszínek",
       description = "Visszaadja a parent == null node-okat (legfelső szint).")
@@ -112,7 +145,7 @@ public class LocationController {
     @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
   })
   @GetMapping("/roots")
-  @RequirePermission("LOCATION_READ")
+  @RequirePermission({"LOCATION_READ", "LOCATION_CREATE", "LOCATION_UPDATE", "LOCATION_DELETE"})
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
   public ResponseEntity<List<Location>> findRoots() {
     return ResponseEntity.ok(locationRepository.findByParentIsNull());
@@ -127,7 +160,7 @@ public class LocationController {
     @ApiResponse(responseCode = "403", description = "LOCATION_READ permission hiányzik")
   })
   @GetMapping("/by-type/{type}")
-  @RequirePermission("LOCATION_READ")
+  @RequirePermission({"LOCATION_READ", "LOCATION_CREATE", "LOCATION_UPDATE", "LOCATION_DELETE"})
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
   public ResponseEntity<List<Location>> findByType(
       @Parameter(description = "Helyszín típus (CLASSROOM/OFFICE/STORAGE/GROUP)") @PathVariable
@@ -145,10 +178,10 @@ public class LocationController {
     @ApiResponse(responseCode = "201", description = "Helyszín létrehozva"),
     @ApiResponse(responseCode = "400", description = "Validációs hiba vagy ciklus"),
     @ApiResponse(responseCode = "404", description = "Parent location nem található"),
-    @ApiResponse(responseCode = "403", description = "LOCATION_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "LOCATION_CREATE permission hiányzik")
   })
   @PostMapping
-  @RequirePermission("LOCATION_MANAGE")
+  @RequirePermission("LOCATION_CREATE")
   @org.springframework.transaction.annotation.Transactional
   public ResponseEntity<Location> create(@Valid @RequestBody CreateLocationRequest request) {
     // Cycle check: a parentId nem vezethet ciklusba
@@ -189,10 +222,10 @@ public class LocationController {
     @ApiResponse(responseCode = "200", description = "Helyszín módosítva"),
     @ApiResponse(responseCode = "400", description = "Ciklus vagy validációs hiba"),
     @ApiResponse(responseCode = "404", description = "Helyszín nem található"),
-    @ApiResponse(responseCode = "403", description = "LOCATION_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "LOCATION_UPDATE permission hiányzik")
   })
   @PutMapping("/{id}")
-  @RequirePermission("LOCATION_MANAGE")
+  @RequirePermission("LOCATION_UPDATE")
   @org.springframework.transaction.annotation.Transactional
   public ResponseEntity<Location> update(
       @Parameter(description = "Helyszín azonosító") @PathVariable Long id,
@@ -238,10 +271,10 @@ public class LocationController {
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Helyszín törölve"),
     @ApiResponse(responseCode = "404", description = "Helyszín nem található"),
-    @ApiResponse(responseCode = "403", description = "LOCATION_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "LOCATION_DELETE permission hiányzik")
   })
   @DeleteMapping("/{id}")
-  @RequirePermission("LOCATION_MANAGE")
+  @RequirePermission("LOCATION_DELETE")
   public ResponseEntity<Void> delete(
       @Parameter(description = "Helyszín azonosító") @PathVariable Long id) {
     if (!locationRepository.existsById(id)) {

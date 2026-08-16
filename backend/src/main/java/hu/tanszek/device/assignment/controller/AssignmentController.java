@@ -113,7 +113,7 @@ public class AssignmentController {
     @ApiResponse(responseCode = "403", description = "DEVICE_ASSIGN permission hiányzik")
   })
   @PostMapping("/api/devices/assignments/{assignmentId}/approve")
-  @RequirePermission("DEVICE_ASSIGN")
+  @RequirePermission("ASSIGNMENT_APPROVE")
   public ResponseEntity<DeviceAssignment> approveAssignment(
       @Parameter(description = "Assignment azonosító") @PathVariable Long assignmentId,
       Authentication authentication) {
@@ -137,15 +137,17 @@ public class AssignmentController {
     @ApiResponse(responseCode = "404", description = "Assignment nem található"),
     @ApiResponse(responseCode = "403", description = "DEVICE_UNASSIGN permission hiányzik")
   })
-  @PostMapping("/api/devices/assignments/{assignmentId}/unassign")
-  @RequirePermission("DEVICE_UNASSIGN")
-  public ResponseEntity<DeviceAssignment> requestUnassignment(
-      @Parameter(description = "Aktív assignment azonosító") @PathVariable Long assignmentId,
-      Authentication authentication) {
-    Long byUserId = resolveUserId(authentication);
-    DeviceAssignment unassignRequest = deviceService.requestUnassignment(assignmentId, byUserId);
-    return ResponseEntity.status(HttpStatus.CREATED).body(unassignRequest);
-  }
+    @PostMapping("/api/devices/assignments/{assignmentId}/unassign")
+    @RequirePermission("DEVICE_UNASSIGN")
+    public ResponseEntity<DeviceAssignment> requestUnassignment(
+            @Parameter(description = "Aktív assignment azonosító") @PathVariable Long assignmentId,
+            @Parameter(description = "Cél raktár azonosító") @RequestParam(required = false) Long targetLocationId,
+            Authentication authentication) {
+        Long byUserId = resolveUserId(authentication);
+        DeviceAssignment unassignRequest =
+                deviceService.requestUnassignment(assignmentId, targetLocationId, byUserId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(unassignRequest);
+    }
 
   /**
    * POST /api/devices/assignments/{unassignmentId}/approve-unassign PENDING_UNASSIGNMENT →
@@ -165,7 +167,7 @@ public class AssignmentController {
     @ApiResponse(responseCode = "403", description = "DEVICE_UNASSIGN permission hiányzik")
   })
   @PostMapping("/api/devices/assignments/{unassignmentId}/approve-unassign")
-  @RequirePermission("DEVICE_UNASSIGN")
+  @RequirePermission("ASSIGNMENT_APPROVE")
   public ResponseEntity<DeviceAssignment> approveUnassignment(
       @Parameter(description = "PENDING_UNASSIGNMENT assignment azonosító") @PathVariable
           Long unassignmentId,
@@ -189,7 +191,7 @@ public class AssignmentController {
     @ApiResponse(responseCode = "403", description = "DEVICE_ASSIGN permission hiányzik")
   })
   @PostMapping("/api/devices/assignments/{assignmentId}/reject")
-  @RequirePermission("DEVICE_ASSIGN")
+  @RequirePermission("ASSIGNMENT_APPROVE")
   public ResponseEntity<DeviceAssignment> rejectAssignment(
       @Parameter(description = "Assignment azonosító") @PathVariable Long assignmentId,
       Authentication authentication) {
@@ -213,7 +215,7 @@ public class AssignmentController {
     @ApiResponse(responseCode = "403", description = "DEVICE_READ permission hiányzik")
   })
   @GetMapping("/api/devices/{deviceId}/assignments")
-  @RequirePermission("DEVICE_READ")
+  @RequirePermission({"DEVICE_READ", "DEVICE_MANAGE"})
   public ResponseEntity<Map<String, Object>> findByDevice(
       @Parameter(description = "Eszköz azonosító") @PathVariable Long deviceId,
       @Parameter(description = "Oldalszám (0-tól)") @RequestParam(defaultValue = "0") int page,
@@ -255,7 +257,7 @@ public class AssignmentController {
     @ApiResponse(responseCode = "403", description = "DEVICE_ASSIGN permission hiányzik")
   })
   @GetMapping("/api/assignments/pending")
-  @RequirePermission("DEVICE_ASSIGN")
+  @RequirePermission("ASSIGNMENT_APPROVE")
   public ResponseEntity<List<DeviceAssignment>> findPending() {
     List<DeviceAssignment> pending =
         assignmentRepository.findAll(
@@ -277,5 +279,5 @@ public class AssignmentController {
     return user.getId();
   }
 
-  public record CreateAssignmentRequest(@NotNull Long targetLocationId, Long targetUserId) {}
+  public record CreateAssignmentRequest(Long targetLocationId, Long targetUserId) {}
 }

@@ -1,16 +1,7 @@
 -- ============================================================================
 -- V1__init_schema.sql
--- Egyetemi Informatikai Tanszéki Nyilvántartó Rendszer
--- 11 tábla + BaseEntity mezők (created_at, updated_at) minden táblán
---
--- Sorrend: függőségi sorrend (FK-k mindig korábbi táblára hivatkoznak)
---
--- BaseEntity (@MappedSuperclass) mezők minden táblán:
---   - created_at TIMESTAMP NOT NULL DEFAULT NOW()
---   - updated_at TIMESTAMP NOT NULL DEFAULT NOW()
---
--- A JPA Auditing (@PrePersist/@PreUpdate) runtime felülírja ezeket save-kor,
--- de a DB default backup ha a JPA valamiért nem állítaná be (defense in depth).
+-- Egyetemi Informatikai Tanszéki Nyilvántartó Rendszer (Clean Initial Schema)
+-- 14 tábla + BaseEntity mezők (created_at, updated_at) minden táblán
 -- ============================================================================
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -28,7 +19,7 @@ CREATE TABLE configs (
 COMMENT ON TABLE configs IS 'Rendszer konfigurációs kulcs-érték párok (pl. AUTH_PROVIDER, BACKUP_RETENTION_DAYS)';
 
 -- ============================================================================
--- 2. permissions tábla — 14 permission granularitású jogosultság
+-- 2. permissions tábla — granularitású jogosultságok
 -- ============================================================================
 CREATE TABLE permissions (
     id BIGSERIAL PRIMARY KEY,
@@ -37,10 +28,10 @@ CREATE TABLE permissions (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE permissions IS 'Granularitású jogosultságok (DEVICE_CREATE, DEVICE_READ, USER_MANAGE, stb.)';
+COMMENT ON TABLE permissions IS 'Granuláris jogosultságok (DEVICE_CREATE, DEVICE_READ, USER_MANAGE, stb.)';
 
 -- ============================================================================
--- 3. roles tábla — 3 role (ADMIN, TEACHER, STUDENT)
+-- 3. roles tábla — felhasználói szerepkörök (jogosultság-gyűjtők)
 -- ============================================================================
 CREATE TABLE roles (
     id BIGSERIAL PRIMARY KEY,
@@ -49,7 +40,7 @@ CREATE TABLE roles (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE roles IS 'Felhasználói role-ok (ROLE_ADMIN, ROLE_TEACHER, ROLE_STUDENT)';
+COMMENT ON TABLE roles IS 'Felhasználói szerepkörök (ROLE_ADMIN, ROLE_TEACHER, ROLE_STUDENT)';
 
 -- ============================================================================
 -- 4. locations tábla — hierarchikus helyszínek (parent_id self-reference)
@@ -68,8 +59,8 @@ CREATE TABLE locations (
 CREATE INDEX idx_locations_parent_id ON locations(parent_id);
 CREATE INDEX idx_locations_type ON locations(type);
 
-COMMENT ON TABLE locations IS 'Hierarchikus helyszínek (épület → terem → csoport)';
-COMMENT ON COLUMN locations.type IS 'CLASSROOM/terem, OFFICE/iroda, STORAGE/raktár, GROUP/csoport (utóbbira NEM lehet eszközt assignolni)';
+COMMENT ON TABLE locations IS 'Hierarchikus helyszínek (épület -> terem -> csoport)';
+COMMENT ON COLUMN locations.type IS 'CLASSROOM/terem, OFFICE/iroda, STORAGE/raktár, GROUP/csoport';
 COMMENT ON COLUMN locations.version IS 'Optimistic lock — párhuzamos módosítás ellen';
 
 -- ============================================================================
@@ -78,7 +69,7 @@ COMMENT ON COLUMN locations.version IS 'Optimistic lock — párhuzamos módosí
 CREATE TABLE app_users (
     id BIGSERIAL PRIMARY KEY,
     email_encrypted TEXT NOT NULL,
-    email_hash VARCHAR(64) NOT NULL UNIQUE,  -- SHA-256 hex = 64 karakter
+    email_hash VARCHAR(64) NOT NULL UNIQUE,  -- SHA-256 hex
     office_location_id BIGINT,
     password_hash TEXT NOT NULL,
     active BOOLEAN NOT NULL DEFAULT true,
@@ -99,11 +90,11 @@ CREATE INDEX idx_app_users_office_location_id ON app_users(office_location_id);
 CREATE INDEX idx_app_users_locked_until ON app_users(locked_until) WHERE locked_until IS NOT NULL;
 
 COMMENT ON TABLE app_users IS 'Felhasználók (email encrypted + hash, Argon2id jelszó, role, lockout)';
-COMMENT ON COLUMN app_users.email_encrypted IS 'AES-GCM titkosított email (admin megjelenítéshez visszafejthető)';
+COMMENT ON COLUMN app_users.email_encrypted IS 'AES-GCM titkosított email (admin felületen visszafejthető)';
 COMMENT ON COLUMN app_users.email_hash IS 'SHA-256 hash az egyediséghez és gyors kereséshez';
-COMMENT ON COLUMN app_users.password_hash IS 'Argon2id hash (memory-hard, OWASP 2024+)';
-COMMENT ON COLUMN app_users.must_change_password IS 'First-login flag — belépéskor /password-change-re redirect';
-COMMENT ON COLUMN app_users.failed_login_count IS 'Brute-force védelem — 5 próba → 15 min lockout';
+COMMENT ON COLUMN app_users.password_hash IS 'Argon2id hash (OWASP ajánlás)';
+COMMENT ON COLUMN app_users.must_change_password IS 'First-login flag — belépéskor /password-change-re kényszerít';
+COMMENT ON COLUMN app_users.failed_login_count IS 'Brute-force védelem — 5 próba -> 15 min lockout';
 
 -- ============================================================================
 -- 6. role_permissions join table — role-ok és permission-ök many-to-many
@@ -121,7 +112,7 @@ CREATE INDEX idx_role_permissions_permission_id ON role_permissions(permission_i
 COMMENT ON TABLE role_permissions IS 'Join table: melyik role-hoz melyik permission-ök tartoznak';
 
 -- ============================================================================
--- 7. user_permissions join table — user-specifikus extra permission-ök
+-- 7. user_permissions join table — user-specifikus közvetlen jogosultságok
 -- ============================================================================
 CREATE TABLE user_permissions (
     user_id BIGINT NOT NULL,
@@ -133,7 +124,7 @@ CREATE TABLE user_permissions (
 
 CREATE INDEX idx_user_permissions_permission_id ON user_permissions(permission_id);
 
-COMMENT ON TABLE user_permissions IS 'Join table: user-specifikus extra permission-ök (role-on felül)';
+COMMENT ON TABLE user_permissions IS 'Join table: user-specifikus extra jogosultságok (role-on felül)';
 
 -- ============================================================================
 -- 8. softwares tábla — szoftver licence-ek
@@ -146,27 +137,35 @@ CREATE TABLE softwares (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE softwares IS 'Szoftverek és license key-ek (AES-GCM titkosítás)';
-COMMENT ON COLUMN softwares.license_key_encrypted IS 'AES-GCM titkosított license key — csak SOFTWARE_LICENSE_VIEW permission-nel látható';
+COMMENT ON TABLE softwares IS 'Szoftverek és licence kulcsok (AES-GCM titkosítás)';
+COMMENT ON COLUMN softwares.license_key_encrypted IS 'AES-GCM titkosított licence kulcs';
 
 -- ============================================================================
 -- 9. devices tábla — eszközök
 -- ============================================================================
 CREATE TABLE devices (
     id BIGSERIAL PRIMARY KEY,
-    type VARCHAR(50) NOT NULL,  -- max 50 char, service validálja (regex [a-zA-Z0-9\-_]+)
+    type VARCHAR(50) NOT NULL,
     inventory_number VARCHAR(50) NOT NULL UNIQUE,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'ASSIGNED', 'IN_STORAGE', 'MAINTENANCE', 'DISPOSED')),
+    status VARCHAR(32) NOT NULL CHECK (status IN ('PENDING', 'IN_STORAGE', 'ASSIGNED', 'PENDING_MAINTENANCE', 'MAINTENANCE', 'PENDING_DISPOSAL', 'DISPOSED')),
+    status_reason TEXT,
+    previous_status VARCHAR(32),
+    current_location_id BIGINT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_devices_current_location FOREIGN KEY (current_location_id) REFERENCES locations(id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_devices_status ON devices(status);
 CREATE INDEX idx_devices_type ON devices(type);
+CREATE INDEX idx_devices_current_location ON devices(current_location_id);
 
 COMMENT ON TABLE devices IS 'Eszközök (laptop, monitor, projektor, stb.)';
-COMMENT ON COLUMN devices.status IS 'PENDING/ASSIGNED/IN_STORAGE/MAINTENANCE/DISPOSED';
+COMMENT ON COLUMN devices.status IS 'IN_STORAGE/ASSIGNED/PENDING_MAINTENANCE/MAINTENANCE/PENDING_DISPOSAL/DISPOSED';
+COMMENT ON COLUMN devices.status_reason IS 'Karbantartás, selejtezés stb. indoklása';
+COMMENT ON COLUMN devices.previous_status IS 'Kérelem előtti állapot elutasítás esetén';
 COMMENT ON COLUMN devices.inventory_number IS 'Egyedi leltári szám (max 50 karakter)';
+COMMENT ON COLUMN devices.current_location_id IS 'Jelenlegi raktár vagy terem helyszín';
 
 -- ============================================================================
 -- 10. device_softwares join table — devices és softwares many-to-many
@@ -181,10 +180,10 @@ CREATE TABLE device_softwares (
 
 CREATE INDEX idx_device_softwares_software_id ON device_softwares(software_id);
 
-COMMENT ON TABLE device_softwares IS 'Join table: melyik device-ra melyik szoftver van telepítve';
+COMMENT ON TABLE device_softwares IS 'Join table: melyik eszközre melyik szoftver van telepítve';
 
 -- ============================================================================
--- 11. device_attachments tábla — eszközhöz csatolt fájlok (képek, dokumentumok)
+-- 11. device_attachments tábla — eszközhöz csatolt fájlok
 -- ============================================================================
 CREATE TABLE device_attachments (
     id BIGSERIAL PRIMARY KEY,
@@ -205,10 +204,9 @@ CREATE INDEX idx_device_attachments_device_id ON device_attachments(device_id);
 CREATE INDEX idx_device_attachments_uploaded_by_id ON device_attachments(uploaded_by_id);
 
 COMMENT ON TABLE device_attachments IS 'Eszközökhöz csatolt fájlok (max 5MB/fájl, max 5/device)';
-COMMENT ON COLUMN device_attachments.storage_path IS 'Formátum: ./uploads/devices/{device_id}/{uuid}.{ext}';
 
 -- ============================================================================
--- 12. device_assignments tábla — eszköz hozzárendelés (history-szerű)
+-- 12. device_assignments tábla — eszköz hozzárendelés (history-szerű audit napló)
 -- ============================================================================
 CREATE TABLE device_assignments (
     id BIGSERIAL PRIMARY KEY,
@@ -225,8 +223,7 @@ CREATE TABLE device_assignments (
     created_date TIMESTAMP NOT NULL DEFAULT NOW(),
     unassign_date TIMESTAMP,
     unassign_created_date TIMESTAMP,
-    status VARCHAR(30) NOT NULL CHECK (status IN ('IN_STORAGE', 'ASSIGNED', 'PENDING_ASSIGNMENT', 'PENDING_UNASSIGNMENT')),
-    active BOOLEAN NOT NULL DEFAULT false,
+    status VARCHAR(30) NOT NULL CHECK (status IN ('IN_STORAGE', 'ASSIGNED', 'PENDING_ASSIGNMENT', 'PENDING_UNASSIGNMENT', 'REJECTED')),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     CONSTRAINT fk_device_assignments_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE RESTRICT,
@@ -241,19 +238,15 @@ CREATE TABLE device_assignments (
 );
 
 CREATE INDEX idx_device_assignments_device_id ON device_assignments(device_id);
-CREATE INDEX idx_device_assignments_active ON device_assignments(active) WHERE active = true;
 CREATE INDEX idx_device_assignments_to_user_id ON device_assignments(to_user_id) WHERE to_user_id IS NOT NULL;
 CREATE INDEX idx_device_assignments_to_location_id ON device_assignments(to_location_id) WHERE to_location_id IS NOT NULL;
 CREATE INDEX idx_device_assignments_status ON device_assignments(status);
 
-COMMENT ON TABLE device_assignments IS 'Eszköz hozzárendelés (history-szerű, egyetlen tábla, egy device-hoz egy aktív rekord)';
-COMMENT ON COLUMN device_assignments.active IS 'true = jelenlegi aktív hozzárendelés (egy device-hoz csak egy)';
-COMMENT ON COLUMN device_assignments.status IS 'IN_STORAGE/ASSIGNED/PENDING_ASSIGNMENT/PENDING_UNASSIGNMENT';
-COMMENT ON COLUMN device_assignments.date_of_assignment IS 'Amikor végbement (NULL = pending)';
-COMMENT ON COLUMN device_assignments.unassign_date IS 'Amikor vissza lett véve';
+COMMENT ON TABLE device_assignments IS 'Eszköz hozzárendelés történet és állapotgép';
+COMMENT ON COLUMN device_assignments.status IS 'IN_STORAGE/ASSIGNED/PENDING_ASSIGNMENT/PENDING_UNASSIGNMENT/REJECTED';
 
 -- ============================================================================
--- 13. audit_logs tábla — audit log + rollback
+-- 13. audit_logs tábla — audit log + rollback támogatás
 -- ============================================================================
 CREATE TABLE audit_logs (
     id BIGSERIAL PRIMARY KEY,
@@ -278,7 +271,7 @@ CREATE INDEX idx_audit_logs_http_status ON audit_logs(http_status);
 
 COMMENT ON TABLE audit_logs IS 'Audit log minden írási művelethez, rollback támogatással';
 COMMENT ON COLUMN audit_logs.changes_json IS 'JSON diff {before: {...}, after: {...}} a rollback-hez';
-COMMENT ON COLUMN audit_logs.entity_type IS 'Device, User, Location, Assignment, Software, Attachment — rollback target azonosítás';
+COMMENT ON COLUMN audit_logs.entity_type IS 'Device, AppUser, Location, DeviceAssignment, Software, DeviceAttachment';
 
 -- ============================================================================
 -- 14. refresh_tokens tábla — JWT refresh token rotation (RFC 6819)
@@ -301,7 +294,4 @@ CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 CREATE INDEX idx_refresh_tokens_revoked ON refresh_tokens(revoked) WHERE revoked = true;
 CREATE INDEX idx_refresh_tokens_replaced_by_id ON refresh_tokens(replaced_by_id);
 
-COMMENT ON TABLE refresh_tokens IS 'JWT refresh token rotation (RFC 6819 kompatibilis, reuse detection)';
-COMMENT ON COLUMN refresh_tokens.token_hash IS 'SHA-256 hash a refresh token értékből (a plain token soha nincs tárolva)';
-COMMENT ON COLUMN refresh_tokens.replaced_by_id IS 'Rotation chain — ha revoked tokenreuse, az egész chain revokeolódik';
-COMMENT ON COLUMN refresh_tokens.revoked IS 'true = nem használható (rotation vagy logout miatt)';
+COMMENT ON TABLE refresh_tokens IS 'JWT refresh token rotation (RFC 6819 kompatibilis)';

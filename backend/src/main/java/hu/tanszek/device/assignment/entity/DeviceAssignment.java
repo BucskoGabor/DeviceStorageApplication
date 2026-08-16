@@ -132,7 +132,4 @@ public class DeviceAssignment extends BaseEntity<Long> {
   @Column(name = "status", nullable = false, length = 30)
   private AssignmentStatus status;
 
-  /** true = jelenlegi aktív assignment (egy device-hoz csak egy) */
-  @Column(name = "active", nullable = false)
-  private boolean active;
 }

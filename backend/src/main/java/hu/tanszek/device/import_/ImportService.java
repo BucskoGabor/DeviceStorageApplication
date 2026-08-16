@@ -73,6 +73,7 @@ public class ImportService {
   private final LocationRepository locationRepository;
   private final RoleRepository roleRepository;
   private final CryptoService cryptoService;
+  private final org.springframework.security.crypto.argon2.Argon2PasswordEncoder passwordEncoder;
 
   private final Object importLock = new Object();
 
@@ -156,8 +157,7 @@ public class ImportService {
                     .emailEncrypted(emailEncrypted)
                     .emailHash(emailHash)
                     .officeLocation(office)
-                    .passwordHash(
-                        "$argon2id$v=19$m=65536,t=3,p=1$PLACEHOLDER_SALT$PLACEHOLDER_HASH")
+                    .passwordHash(passwordEncoder.encode("ChangeMe123!"))
                     .active(active)
                     .mustChangePassword(true)
                     .role(role)

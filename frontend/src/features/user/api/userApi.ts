@@ -1,6 +1,12 @@
 import { apiClient } from '@/lib/api/axios'
 
-export type RoleName = 'ROLE_ADMIN' | 'ROLE_TEACHER' | 'ROLE_STUDENT'
+import type { Device } from '@/features/device/api/deviceApi'
+import type { DeviceAssignment } from '@/features/assignment/api/assignmentApi'
+
+export interface PermissionDto {
+  id: number
+  name: string
+}
 
 export interface AppUserDto {
   id: number
@@ -16,28 +22,39 @@ export interface AppUserDto {
   lockedUntil?: string | null
   role?: {
     id: number
-    name: RoleName
+    name: string
+    permissions?: PermissionDto[]
   }
+  directPermissions?: PermissionDto[]
+  effectivePermissions?: string[]
+  officeLocationSummary?: {
+    id: number
+    name: string
+    type: string
+  } | null
   officeLocation?: {
     id: number
     name: string
     type: string
   } | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface CreateUserPayload {
   email: string
-  role: RoleName
+  role: string
+  initialPassword?: string
   active?: boolean
+  directPermissionIds?: number[]
 }
 
 export interface UpdateUserPayload {
-  firstName?: string
-  lastName?: string
-  role?: RoleName
+  role?: string
   officeLocationId?: number | null
   clearOfficeLocation?: boolean
   active?: boolean
+  directPermissionIds?: number[]
 }
 
 export interface PageResponse<T> {
@@ -55,6 +72,14 @@ export const userApi = {
   },
   findById: async (id: number): Promise<AppUserDto> => {
     const response = await apiClient.get<AppUserDto>(`/api/users/${id}`)
+    return response.data
+  },
+  findCurrentDevices: async (id: number): Promise<Device[]> => {
+    const response = await apiClient.get<Device[]>(`/api/users/${id}/devices`)
+    return response.data
+  },
+  findAssignmentHistory: async (id: number): Promise<DeviceAssignment[]> => {
+    const response = await apiClient.get<DeviceAssignment[]>(`/api/users/${id}/assignments`)
     return response.data
   },
   create: async (payload: CreateUserPayload): Promise<AppUserDto> => {

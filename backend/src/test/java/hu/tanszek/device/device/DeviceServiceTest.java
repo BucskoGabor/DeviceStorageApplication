@@ -88,19 +88,16 @@ class DeviceServiceTest {
   void requestAssignmentSuccess() {
     when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
     when(locationRepository.findById(10L)).thenReturn(Optional.of(office));
-    when(userRepository.findById(101L)).thenReturn(Optional.of(targetUser));
     when(userRepository.findById(100L)).thenReturn(Optional.of(byUser));
-    when(assignmentRepository.findByDeviceIdAndActiveTrue(1L)).thenReturn(Optional.empty());
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED)).thenReturn(Optional.empty());
     when(assignmentRepository.save(any(DeviceAssignment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    DeviceAssignment result = deviceService.requestAssignment(1L, 10L, 101L, 100L);
+    DeviceAssignment result = deviceService.requestAssignment(1L, 10L, null, 100L);
 
     assertThat(result.getStatus()).isEqualTo(AssignmentStatus.PENDING_ASSIGNMENT);
-    assertThat(result.isActive()).isFalse();
     assertThat(result.getDevice()).isEqualTo(device);
     assertThat(result.getToLocation()).isEqualTo(office);
-    assertThat(result.getToUser()).isEqualTo(targetUser);
     assertThat(result.getCreatedByUser()).isEqualTo(byUser);
   }
 
@@ -109,7 +106,7 @@ class DeviceServiceTest {
     device.setStatus(DeviceStatus.MAINTENANCE);
     when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
 
-    assertThatThrownBy(() -> deviceService.requestAssignment(1L, 10L, 101L, 100L))
+    assertThatThrownBy(() -> deviceService.requestAssignment(1L, 10L, null, 100L))
         .isInstanceOf(BusinessValidationException.class)
         .hasMessageContaining("MAINTENANCE");
 
@@ -121,7 +118,7 @@ class DeviceServiceTest {
     device.setStatus(DeviceStatus.DISPOSED);
     when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
 
-    assertThatThrownBy(() -> deviceService.requestAssignment(1L, 10L, 101L, 100L))
+    assertThatThrownBy(() -> deviceService.requestAssignment(1L, 10L, null, 100L))
         .isInstanceOf(BusinessValidationException.class)
         .hasMessageContaining("DISPOSED");
   }
@@ -131,7 +128,7 @@ class DeviceServiceTest {
     when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
     when(locationRepository.findById(20L)).thenReturn(Optional.of(groupLocation));
 
-    assertThatThrownBy(() -> deviceService.requestAssignment(1L, 20L, 101L, 100L))
+    assertThatThrownBy(() -> deviceService.requestAssignment(1L, 20L, null, 100L))
         .isInstanceOf(BusinessValidationException.class)
         .hasMessageContaining("GROUP");
   }
@@ -140,7 +137,7 @@ class DeviceServiceTest {
   void requestAssignmentFailsWhenDeviceNotFound() {
     when(deviceRepository.findById(99L)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> deviceService.requestAssignment(99L, 10L, 101L, 100L))
+    assertThatThrownBy(() -> deviceService.requestAssignment(99L, 10L, null, 100L))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 
@@ -153,7 +150,6 @@ class DeviceServiceTest {
             .id(50L)
             .device(device)
             .status(AssignmentStatus.PENDING_ASSIGNMENT)
-            .active(false)
             .build();
 
     when(assignmentRepository.findById(50L)).thenReturn(Optional.of(pending));
@@ -164,7 +160,6 @@ class DeviceServiceTest {
     DeviceAssignment result = deviceService.approveAssignment(50L, 100L);
 
     assertThat(result.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
-    assertThat(result.isActive()).isTrue();
     assertThat(result.getApprovedBy()).isEqualTo(byUser);
     assertThat(result.getDateOfAssignment()).isNotNull();
     verify(deviceRepository, times(1)).save(device);
@@ -178,7 +173,6 @@ class DeviceServiceTest {
             .id(50L)
             .device(device)
             .status(AssignmentStatus.ASSIGNED)
-            .active(true)
             .build();
     when(assignmentRepository.findById(50L)).thenReturn(Optional.of(notPending));
 
@@ -198,7 +192,6 @@ class DeviceServiceTest {
             .toLocation(office)
             .toUser(targetUser)
             .status(AssignmentStatus.ASSIGNED)
-            .active(true)
             .build();
     when(assignmentRepository.findById(50L)).thenReturn(Optional.of(active));
     when(userRepository.findById(100L)).thenReturn(Optional.of(byUser));
@@ -207,11 +200,8 @@ class DeviceServiceTest {
 
     DeviceAssignment result = deviceService.requestUnassignment(50L, 100L);
 
-    // Régi aktív inaktiválva
-    assertThat(active.isActive()).isFalse();
-    // Új PENDING_UNASSIGNMENT rekord
+    assertThat(active.getUnassignCreatedDate()).isNotNull();
     assertThat(result.getStatus()).isEqualTo(AssignmentStatus.PENDING_UNASSIGNMENT);
-    assertThat(result.isActive()).isFalse();
     assertThat(result.getDevice()).isEqualTo(device);
   }
 
@@ -221,8 +211,7 @@ class DeviceServiceTest {
         DeviceAssignment.builder()
             .id(50L)
             .device(device)
-            .status(AssignmentStatus.ASSIGNED)
-            .active(false)
+            .status(AssignmentStatus.IN_STORAGE)
             .build();
     when(assignmentRepository.findById(50L)).thenReturn(Optional.of(inactive));
 
@@ -240,7 +229,6 @@ class DeviceServiceTest {
             .id(60L)
             .device(device)
             .status(AssignmentStatus.PENDING_UNASSIGNMENT)
-            .active(false)
             .build();
     when(assignmentRepository.findById(60L)).thenReturn(Optional.of(pendingUnassign));
     when(userRepository.findById(100L)).thenReturn(Optional.of(byUser));
@@ -250,8 +238,53 @@ class DeviceServiceTest {
     DeviceAssignment result = deviceService.approveUnassignment(60L, 100L);
 
     assertThat(result.getStatus()).isEqualTo(AssignmentStatus.IN_STORAGE);
-    assertThat(result.isActive()).isTrue();
     verify(deviceRepository, times(1)).save(device);
     assertThat(device.getStatus()).isEqualTo(DeviceStatus.IN_STORAGE);
+  }
+
+  // ===== delete =====
+
+  @Test
+  void deleteSuccessWhenDeviceIsDisposed() {
+    Device disposedDevice =
+        Device.builder()
+            .id(1L)
+            .type("laptop")
+            .inventoryNumber("INV-001")
+            .status(DeviceStatus.DISPOSED)
+            .build();
+    when(deviceRepository.findById(1L)).thenReturn(Optional.of(disposedDevice));
+
+    deviceService.delete(1L);
+
+    verify(deviceRepository, times(1)).delete(disposedDevice);
+  }
+
+  @Test
+  void deleteThrowsWhenDeviceIsNotDisposed() {
+    Device storageDevice =
+        Device.builder()
+            .id(1L)
+            .type("laptop")
+            .inventoryNumber("INV-001")
+            .status(DeviceStatus.IN_STORAGE)
+            .build();
+    when(deviceRepository.findById(1L)).thenReturn(Optional.of(storageDevice));
+
+    assertThatThrownBy(() -> deviceService.delete(1L))
+        .isInstanceOf(BusinessValidationException.class)
+        .hasFieldOrPropertyWithValue("messageKey", "deviceNotDisposedForDeletion");
+
+    verify(deviceRepository, never()).delete(any(Device.class));
+  }
+
+  @Test
+  void deleteThrowsWhenDeviceNotFound() {
+    when(deviceRepository.findById(999L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> deviceService.delete(999L))
+        .isInstanceOf(ResourceNotFoundException.class);
+
+    verify(deviceRepository, never()).delete(any(Device.class));
   }
 }

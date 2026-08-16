@@ -1,8 +1,9 @@
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Undo2, Filter, X } from 'lucide-react'
+import { Undo2, Filter, X, Eye } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +13,7 @@ import { DataTable } from '@/components/DataTable/DataTable'
 import { type ColumnDef } from '@tanstack/react-table'
 import { auditApi, type AuditLog } from '@/features/audit/api/auditApi'
 import { DiffViewer } from '@/components/DiffViewer/DiffViewer'
+import { useAuthStore } from '@/lib/store/authStore'
 
 /**
  * AuditPage — admin/audit táblázat (szűrő, lapozás, diff side panel, rollback gomb).
@@ -19,11 +21,15 @@ import { DiffViewer } from '@/components/DiffViewer/DiffViewer'
 export function AuditPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const permissions = useAuthStore((state) => state.permissions)
+  const canRollback = permissions.includes('AUDIT_ROLLBACK')
+
   const [page, setPage] = useState(0)
   const [filterEmail, setFilterEmail] = useState('')
   const [filterEntityType, setFilterEntityType] = useState('')
   const [filterEntityId, setFilterEntityId] = useState('')
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
+  const [rollbackConfirmOpen, setRollbackConfirmOpen] = useState(false)
   const pageSize = 20
 
   const { data, isLoading } = useQuery({
@@ -109,6 +115,7 @@ export function AuditPage() {
       header: t('common.actions'),
       cell: (info) => (
         <Button variant="ghost" size="sm" onClick={() => setSelectedLog(info.row.original)}>
+          <Eye className="mr-1.5 h-4 w-4" />
           {t('audit.viewDetails')}
         </Button>
       ),
@@ -125,7 +132,8 @@ export function AuditPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       <h1 className="mb-4 text-2xl font-semibold">{t('audit.title')}</h1>
 
       {/* Szűrők */}
@@ -240,27 +248,77 @@ export function AuditPage() {
               </CardContent>
             </Card>
 
+            {/* Indoklás kiemelés, ha van a payloadban */}
+            {(() => {
+              try {
+                if (selectedLog.requestPayload) {
+                  const parsed = JSON.parse(selectedLog.requestPayload)
+                  if (parsed && parsed.reason) {
+                    return (
+                      <div className="mb-4 rounded-lg border border-border bg-muted/40 p-4">
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {t('audit.reason', 'Indoklás / Megjegyzés')}
+                        </span>
+                        <p className="text-sm font-medium italic text-foreground">
+                          "{parsed.reason}"
+                        </p>
+                      </div>
+                    )
+                  }
+                }
+              } catch {
+                // Ignore parse errors
+              }
+              return null
+            })()}
+
+            {/* Kérelem részletei (Payload) ha elérhető */}
+            {selectedLog.requestPayload && (
+              <Card className="mb-4">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm">{t('audit.requestPayload', 'Kérelem adatai (Request Payload)')}</CardTitle>
+                </CardHeader>
+                <CardContent className="py-2">
+                  <pre className="overflow-x-auto rounded bg-muted/60 p-3 font-mono text-xs whitespace-pre-wrap">
+                    {selectedLog.requestPayload}
+                  </pre>
+                </CardContent>
+              </Card>
+            )}
+
             {selectedLog.changesJson && (
               <div className="mb-4">
                 <DiffViewer changesJson={selectedLog.changesJson} />
               </div>
             )}
 
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (confirm(t('audit.rollbackConfirm'))) {
-                  rollbackMutation.mutate(selectedLog.id)
-                }
-              }}
-              disabled={rollbackMutation.isPending}
-            >
-              <Undo2 className="mr-2 h-4 w-4" />
-              {t('audit.rollback')}
-            </Button>
+            {canRollback && (
+              <Button
+                variant="destructive"
+                onClick={() => setRollbackConfirmOpen(true)}
+                disabled={rollbackMutation.isPending}
+              >
+                <Undo2 className="mr-2 h-4 w-4" />
+                {t('audit.rollback')}
+              </Button>
+            )}
           </div>
         </div>
       )}
     </div>
+
+      <ConfirmDialog
+        open={rollbackConfirmOpen}
+        onOpenChange={setRollbackConfirmOpen}
+        description={t('audit.rollbackConfirm')}
+        loading={rollbackMutation.isPending}
+        onConfirm={() => {
+          if (selectedLog) {
+            rollbackMutation.mutate(selectedLog.id)
+            setRollbackConfirmOpen(false)
+          }
+        }}
+      />
+    </>
   )
 }

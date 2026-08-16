@@ -83,12 +83,13 @@ public class AuditAspect {
     }
 
     // 2. Service method futtatás
+    String requestPayload = extractRequestPayload(joinPoint);
     Object result;
     try {
       result = joinPoint.proceed();
     } catch (Throwable t) {
       // Hiba esetén is logolunk (action='failed')
-      saveAuditLog(entityType, entityId, beforeState, null, action + "_failed", t.getMessage());
+      saveAuditLog(entityType, entityId, beforeState, null, action + "_failed", requestPayload, t.getMessage());
       throw t;
     }
 
@@ -97,7 +98,7 @@ public class AuditAspect {
     Object afterEntityId = entityId != null ? entityId : extractEntityIdFromState(afterState);
 
     // 4. Audit log mentés (csak ha van változás vagy fontos action)
-    saveAuditLog(entityType, afterEntityId, beforeState, afterState, action, null);
+    saveAuditLog(entityType, afterEntityId, beforeState, afterState, action, requestPayload, null);
 
     return result;
   }
@@ -167,6 +168,47 @@ public class AuditAspect {
     return obj != null && obj.getClass().getSimpleName().equals(entityType);
   }
 
+  /** Metódus argumentumok kinyerése requestPayload-ba (érzékeny adatok maszkolásával). */
+  private String extractRequestPayload(ProceedingJoinPoint joinPoint) {
+    try {
+      if (joinPoint.getSignature() instanceof org.aspectj.lang.reflect.MethodSignature sig) {
+        String[] names = sig.getParameterNames();
+        Object[] args = joinPoint.getArgs();
+        if (names != null && args != null && names.length == args.length) {
+          Map<String, Object> map = new HashMap<>();
+          for (int i = 0; i < names.length; i++) {
+            String name = names[i];
+            Object val = args[i];
+            if (val == null) {
+              continue;
+            }
+            boolean sensitive = false;
+            for (String s : SENSITIVE_FIELDS) {
+              if (name.toLowerCase().contains(s)) {
+                sensitive = true;
+                break;
+              }
+            }
+            if (sensitive) {
+              map.put(name, "***");
+            } else if (val instanceof String
+                || val instanceof Number
+                || val instanceof Boolean
+                || val instanceof Enum) {
+              map.put(name, val);
+            }
+          }
+          if (!map.isEmpty()) {
+            return objectMapper.writeValueAsString(map);
+          }
+        }
+      }
+    } catch (Exception e) {
+      log.debug("Failed to extract request payload: {}", e.getMessage());
+    }
+    return null;
+  }
+
   /** Audit log bejegyzés mentése @Async. */
   @Async
   public void saveAuditLog(
@@ -175,6 +217,7 @@ public class AuditAspect {
       Object beforeState,
       Object afterState,
       String action,
+      String requestPayload,
       String errorMessage) {
     jobMonitoring.run(
         "audit-log-write",
@@ -195,7 +238,7 @@ public class AuditAspect {
                     .userEmail(userEmail)
                     .endpoint(action != null ? action : "unknown")
                     .method("INTERNAL")
-                    .requestPayload(null)
+                    .requestPayload(requestPayload)
                     .changesJson(changesJson)
                     .httpStatus(errorMessage != null ? 500 : 200)
                     .entityType(entityType)

@@ -47,7 +47,13 @@ public class RequirePermissionAspect {
   @Around("@annotation(requirePermission)")
   public Object checkPermission(ProceedingJoinPoint joinPoint, RequirePermission requirePermission)
       throws Throwable {
-    String requiredPermission = requirePermission.value();
+    java.util.List<String> requiredPermissions = new java.util.ArrayList<>();
+    if (requirePermission.value() != null && requirePermission.value().length > 0) {
+      requiredPermissions.addAll(java.util.Arrays.asList(requirePermission.value()));
+    }
+    if (requirePermission.anyOf() != null && requirePermission.anyOf().length > 0) {
+      requiredPermissions.addAll(java.util.Arrays.asList(requirePermission.anyOf()));
+    }
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -61,22 +67,22 @@ public class RequirePermissionAspect {
     boolean hasPermission =
         authorities.stream()
             .map(GrantedAuthority::getAuthority)
-            .anyMatch(authority -> authority.equals(requiredPermission));
+            .anyMatch(requiredPermissions::contains);
 
     if (!hasPermission) {
       log.warn(
-          "Permission denied for user {} accessing {} (required: {})",
+          "Permission denied for user {} accessing {} (required any of: {})",
           authentication.getName(),
           joinPoint.getSignature().toShortString(),
-          requiredPermission);
+          requiredPermissions);
       throw new UnauthorizedActionException(
-          "permissionDenied", "User does not have required permission: " + requiredPermission);
+          "permissionDenied", "User does not have any of required permissions: " + requiredPermissions);
     }
 
     log.debug(
-        "Permission check passed for {} (required: {})",
+        "Permission check passed for {} (required any of: {})",
         joinPoint.getSignature().toShortString(),
-        requiredPermission);
+        requiredPermissions);
     return joinPoint.proceed();
   }
 }

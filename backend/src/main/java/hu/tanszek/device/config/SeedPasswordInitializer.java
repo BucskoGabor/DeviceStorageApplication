@@ -40,26 +40,18 @@ public class SeedPasswordInitializer implements ApplicationRunner {
   @Override
   @Transactional
   public void run(ApplicationArguments args) {
-    // Demo admin user keresése email_hash alapján
-    String emailHash = sha256(DEFAULT_ADMIN_EMAIL);
-    userRepository
-        .findByEmailHash(emailHash)
-        .ifPresent(
-            user -> {
-              String currentHash = user.getPasswordHash();
-              if (currentHash != null && currentHash.contains(PLACEHOLDER_MARKER)) {
-                // Placeholder hash → valódi Argon2id hash generálás
-                String newHash = passwordEncoder.encode(DEFAULT_PASSWORD);
-                user.setPasswordHash(newHash);
-                user.setPasswordChangedAt(Instant.now());
-                userRepository.save(user);
-                log.info(
-                    "SeedPasswordInitializer: placeholder password hash replaced for admin user");
-              } else {
-                log.debug(
-                    "SeedPasswordInitializer: admin user password hash already valid (no placeholder)");
-              }
-            });
+    userRepository.findAll().forEach(user -> {
+      String currentHash = user.getPasswordHash();
+      if (currentHash != null && currentHash.contains(PLACEHOLDER_MARKER)) {
+        String newHash = passwordEncoder.encode(DEFAULT_PASSWORD);
+        user.setPasswordHash(newHash);
+        user.setPasswordChangedAt(Instant.now());
+        userRepository.save(user);
+        log.info(
+            "SeedPasswordInitializer: placeholder password hash replaced for user ID {}",
+            user.getId());
+      }
+    });
   }
 
   /** SHA-256 hash az emailből (LocalAuthProvider-rel kompatibilis). */

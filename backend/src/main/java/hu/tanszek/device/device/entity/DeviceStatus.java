@@ -19,8 +19,14 @@ public enum DeviceStatus {
   /** Raktárban van, nincs hozzárendelve */
   IN_STORAGE,
 
+  /** Karbantartási jóváhagyásra vár */
+  PENDING_MAINTENANCE,
+
   /** Karbantartás alatt (nem lehet assignolni/törölni) */
   MAINTENANCE,
+
+  /** Selejtezési jóváhagyásra vár */
+  PENDING_DISPOSAL,
 
   /** Selejtezve (nem lehet assignolni/törölni) */
   DISPOSED

@@ -78,7 +78,7 @@ public class SoftwareController {
     @ApiResponse(responseCode = "403", description = "SOFTWARE_LICENSE_VIEW permission hiányzik")
   })
   @GetMapping
-  @RequirePermission("SOFTWARE_LICENSE_VIEW")
+  @RequirePermission({"SOFTWARE_LICENSE_VIEW", "SOFTWARE_CREATE", "SOFTWARE_UPDATE", "SOFTWARE_DELETE"})
   public ResponseEntity<Map<String, Object>> findAll(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
@@ -116,10 +116,10 @@ public class SoftwareController {
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Szoftver létrehozva"),
     @ApiResponse(responseCode = "400", description = "Validációs hiba"),
-    @ApiResponse(responseCode = "403", description = "SOFTWARE_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "SOFTWARE_CREATE permission hiányzik")
   })
   @PostMapping
-  @RequirePermission("SOFTWARE_MANAGE")
+  @RequirePermission("SOFTWARE_CREATE")
   public ResponseEntity<SoftwareDto> create(
       @Valid @RequestBody CreateSoftwareRequest request, Authentication authentication) {
     boolean canViewKey = hasLicenseViewPermission(authentication);
@@ -143,10 +143,10 @@ public class SoftwareController {
     @ApiResponse(responseCode = "200", description = "Szoftver módosítva"),
     @ApiResponse(responseCode = "400", description = "Validációs hiba"),
     @ApiResponse(responseCode = "404", description = "Szoftver nem található"),
-    @ApiResponse(responseCode = "403", description = "SOFTWARE_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "SOFTWARE_UPDATE permission hiányzik")
   })
   @PutMapping("/{id}")
-  @RequirePermission("SOFTWARE_MANAGE")
+  @RequirePermission("SOFTWARE_UPDATE")
   public ResponseEntity<SoftwareDto> update(
       @PathVariable Long id,
       @Valid @RequestBody UpdateSoftwareRequest request,
@@ -170,10 +170,10 @@ public class SoftwareController {
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Szoftver törölve"),
     @ApiResponse(responseCode = "404", description = "Szoftver nem található"),
-    @ApiResponse(responseCode = "403", description = "SOFTWARE_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "SOFTWARE_DELETE permission hiányzik")
   })
   @DeleteMapping("/{id}")
-  @RequirePermission("SOFTWARE_MANAGE")
+  @RequirePermission("SOFTWARE_DELETE")
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     softwareService.delete(id);
     return ResponseEntity.noContent().build();
@@ -197,7 +197,7 @@ public class SoftwareController {
     @ApiResponse(responseCode = "403", description = "SOFTWARE_LICENSE_VIEW permission hiányzik")
   })
   @GetMapping("/{id}/devices")
-  @RequirePermission("SOFTWARE_LICENSE_VIEW")
+  @RequirePermission({"SOFTWARE_LICENSE_VIEW", "SOFTWARE_CREATE", "SOFTWARE_UPDATE", "SOFTWARE_DELETE"})
   public ResponseEntity<List<Device>> findDevicesBySoftware(@PathVariable Long id) {
     if (!softwareRepository.existsById(id)) {
       throw new ResourceNotFoundException("Software not found: " + id);

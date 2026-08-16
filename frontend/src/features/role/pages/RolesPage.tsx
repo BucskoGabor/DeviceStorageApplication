@@ -24,7 +24,7 @@ export function RolesPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const permissions = useAuthStore((state) => state.permissions)
-  const canManage = permissions.includes('USER_MANAGE')
+  const canManage = permissions.includes('ROLE_MANAGE')
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<RoleDto | null>(null)

@@ -14,16 +14,37 @@ import {
 import { locationApi, type LocationTreeNode } from '../api/locationApi'
 import { useQuery } from '@tanstack/react-query'
 
-interface LocationTreeSelectorProps {
+export interface LocationTreeSelectorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect: (locationId: number | null) => void
+  onSelect: (locationId: number | null, locationNode?: LocationTreeNode | null) => void
   selectedId?: number | null
+  title?: string
+  description?: string
   /**
    * Ha megadva, kizárja a GROUP típusú location-öket
    * (pl. assignment célhelyszín kiválasztásához).
    */
   excludeGroupType?: boolean
+  onlyStorageType?: boolean
+}
+
+/**
+ * Rekurzív kereső a kiválasztott helyszín node és név megtalálásához a fában.
+ */
+export function findLocationNode(
+  nodes: LocationTreeNode[] | undefined | null,
+  id: number | null | undefined
+): LocationTreeNode | null {
+  if (!nodes || id == null) return null
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children && node.children.length > 0) {
+      const found = findLocationNode(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
 }
 
 /**
@@ -40,7 +61,10 @@ export function LocationTreeSelector({
   onOpenChange,
   onSelect,
   selectedId,
+  title,
+  description,
   excludeGroupType = false,
+  onlyStorageType = false,
 }: LocationTreeSelectorProps) {
   const { t } = useTranslation()
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
@@ -64,8 +88,8 @@ export function LocationTreeSelector({
     })
   }
 
-  const handleSelect = (id: number | null) => {
-    onSelect(id)
+  const handleSelect = (node: LocationTreeNode | null) => {
+    onSelect(node ? node.id : null, node)
     onOpenChange(false)
   }
 
@@ -73,8 +97,10 @@ export function LocationTreeSelector({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('locations.selectParent')}</DialogTitle>
-          <DialogDescription>{t('locations.selectParentHelp')}</DialogDescription>
+          <DialogTitle>{title || t('locations.selectParent', 'Helyszín kiválasztása')}</DialogTitle>
+          <DialogDescription>
+            {description || t('locations.selectParentHelp', 'Válaszd ki a megfelelő helyszínt a listából.')}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1 py-4">
@@ -84,16 +110,18 @@ export function LocationTreeSelector({
             <p className="text-muted-foreground">{t('common.noData')}</p>
           ) : (
             <>
-              <button
-                onClick={() => handleSelect(null)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent ${
-                  selectedId == null ? 'bg-accent font-medium' : ''
-                }`}
-              >
-                <span className="w-4" />
-                <span>— {t('locations.noParent')}</span>
-                {selectedId == null && <Check className="ml-auto h-4 w-4" />}
-              </button>
+              {!onlyStorageType && (
+                <button
+                  onClick={() => handleSelect(null)}
+                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent ${
+                    selectedId == null ? 'bg-accent font-medium' : ''
+                  }`}
+                >
+                  <span className="w-4" />
+                  <span>— {t('locations.noParent', 'Nincs kiválasztva')}</span>
+                  {selectedId == null && <Check className="ml-auto h-4 w-4" />}
+                </button>
+              )}
               {tree.map((node) => (
                 <TreeRow
                   key={node.id}
@@ -104,6 +132,7 @@ export function LocationTreeSelector({
                   onSelect={handleSelect}
                   selectedId={selectedId}
                   excludeGroupType={excludeGroupType}
+                  onlyStorageType={onlyStorageType}
                 />
               ))}
             </>
@@ -125,9 +154,10 @@ interface TreeRowProps {
   depth: number
   expandedIds: Set<number>
   onToggle: (id: number) => void
-  onSelect: (id: number | null) => void
+  onSelect: (node: LocationTreeNode | null) => void
   selectedId?: number | null
   excludeGroupType: boolean
+  onlyStorageType?: boolean
 }
 
 function TreeRow({
@@ -138,11 +168,13 @@ function TreeRow({
   onSelect,
   selectedId,
   excludeGroupType,
+  onlyStorageType = false,
 }: TreeRowProps) {
   const hasChildren = node.children.length > 0
   const isExpanded = expandedIds.has(node.id)
   const isSelected = selectedId === node.id
-  const isDisabled = excludeGroupType && node.type === 'GROUP'
+  const isDisabled =
+    (excludeGroupType && node.type === 'GROUP') || (onlyStorageType && node.type !== 'STORAGE')
 
   return (
     <>
@@ -172,7 +204,7 @@ function TreeRow({
           <span className="w-4" />
         )}
         <button
-          onClick={() => !isDisabled && onSelect(node.id)}
+          onClick={() => !isDisabled && onSelect(node)}
           disabled={isDisabled}
           className="flex flex-1 items-center gap-2 text-left disabled:cursor-not-allowed"
         >
@@ -194,6 +226,7 @@ function TreeRow({
             onSelect={onSelect}
             selectedId={selectedId}
             excludeGroupType={excludeGroupType}
+            onlyStorageType={onlyStorageType}
           />
         ))}
     </>

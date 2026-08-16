@@ -62,7 +62,7 @@ public class AttachmentController {
     @ApiResponse(responseCode = "403", description = "DEVICE_READ permission hiányzik")
   })
   @GetMapping("/api/devices/{deviceId}/attachments")
-  @RequirePermission("DEVICE_READ")
+  @RequirePermission({"DEVICE_READ", "DEVICE_MANAGE"})
   public ResponseEntity<List<DeviceAttachment>> findByDevice(
       @Parameter(description = "Eszköz azonosító") @PathVariable Long deviceId) {
     if (!deviceRepository.existsById(deviceId)) {
@@ -79,10 +79,10 @@ public class AttachmentController {
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Melléklet feltöltve"),
     @ApiResponse(responseCode = "400", description = "Fájl méret vagy mime type nem megfelelő"),
-    @ApiResponse(responseCode = "403", description = "DEVICE_UPDATE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "ATTACHMENT_MANAGE permission hiányzik")
   })
   @PostMapping("/api/devices/{deviceId}/attachments")
-  @RequirePermission("DEVICE_UPDATE")
+  @RequirePermission("ATTACHMENT_MANAGE")
   public ResponseEntity<DeviceAttachment> upload(
       @Parameter(description = "Eszköz azonosító") @PathVariable Long deviceId,
       @Parameter(description = "Fájl (max 5MB)") @RequestParam("file") MultipartFile file,
@@ -104,10 +104,10 @@ public class AttachmentController {
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Melléklet törölve"),
     @ApiResponse(responseCode = "404", description = "Melléklet nem található"),
-    @ApiResponse(responseCode = "403", description = "DEVICE_UPDATE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "ATTACHMENT_MANAGE permission hiányzik")
   })
   @DeleteMapping("/api/attachments/{id}")
-  @RequirePermission("DEVICE_UPDATE")
+  @RequirePermission("ATTACHMENT_MANAGE")
   public ResponseEntity<Void> delete(
       @Parameter(description = "Melléklet azonosító") @PathVariable Long id) {
     attachmentService.delete(id);
@@ -140,7 +140,7 @@ public class AttachmentController {
     @ApiResponse(responseCode = "403", description = "DEVICE_READ permission hiányzik")
   })
   @GetMapping("/api/attachments/{id}/file")
-  @RequirePermission("DEVICE_READ")
+  @RequirePermission({"DEVICE_READ", "DEVICE_MANAGE"})
   public ResponseEntity<byte[]> downloadFile(
       @Parameter(description = "Melléklet azonosító") @PathVariable Long id,
       @Parameter(

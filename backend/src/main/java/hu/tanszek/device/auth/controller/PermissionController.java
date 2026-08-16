@@ -28,7 +28,7 @@ public class PermissionController {
 
   @Operation(summary = "Jogosultságok listája")
   @GetMapping
-  @RequirePermission("USER_READ")
+  @RequirePermission({"ROLE_READ", "ROLE_MANAGE", "USER_READ", "USER_CREATE", "USER_UPDATE"})
   public ResponseEntity<List<Permission>> findAll() {
     return ResponseEntity.ok(permissionRepository.findAll());
   }

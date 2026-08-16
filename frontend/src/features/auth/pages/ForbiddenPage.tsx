@@ -50,7 +50,7 @@ export function ForbiddenPage() {
             <CardTitle className="text-2xl">{t('forbidden.title')}</CardTitle>
           </div>
           <CardDescription>
-            {t('permissionDenied')}
+            {t('messages.permissionDenied', t('permissionDenied', 'Nincs megfelelő jogosultsága ehhez a művelethez.'))}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

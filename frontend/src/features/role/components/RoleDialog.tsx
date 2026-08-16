@@ -57,11 +57,14 @@ export function RoleDialog({
 
   const permissionGroups = useMemo<PermissionGroup[]>(() => {
     const getPrefix = (permName: string) => {
-      if (permName.startsWith('DEVICE_')) return { group: 'roles.groupDevice', icon: '📱' }
+      if (permName.startsWith('DEVICE_') || permName.startsWith('ATTACHMENT_') || permName.startsWith('ASSIGNMENT_'))
+        return { group: 'roles.groupDevice', icon: '📱' }
       if (permName.startsWith('USER_')) return { group: 'roles.groupUser', icon: '👥' }
+      if (permName.startsWith('ROLE_')) return { group: 'roles.groupRole', icon: '🔑' }
       if (permName.startsWith('LOCATION_')) return { group: 'roles.groupLocation', icon: '🏢' }
       if (permName.startsWith('AUDIT_')) return { group: 'roles.groupAudit', icon: '🛡️' }
       if (permName.startsWith('SOFTWARE_')) return { group: 'roles.groupSoftware', icon: '💻' }
+      if (permName.startsWith('IMPORT_')) return { group: 'roles.groupImport', icon: '📥' }
       return { group: 'roles.groupOther', icon: '⚙️' }
     }
 

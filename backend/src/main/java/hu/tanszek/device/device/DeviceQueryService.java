@@ -50,25 +50,51 @@ public class DeviceQueryService {
    * @param pageable lapozási paraméterek
    * @return lapozott device lista
    */
+  /**
+   * Device lista lekérdezése row-level filterrel, egyedi szűréssel és lapozással.
+   *
+   * @param currentUser a bejelentkezett user (null = ADMIN / full access)
+   * @param additionalSpec kiegészítő specifikáció (pl. státusz, típus, leltári szám)
+   * @param pageable lapozási paraméterek
+   * @return lapozott device lista
+   */
   @Transactional(readOnly = true)
-  public Page<Device> findAllForCurrentUser(AppUser currentUser, Pageable pageable) {
+  public Page<Device> findAllForCurrentUser(
+      AppUser currentUser, Specification<Device> additionalSpec, Pageable pageable) {
     Specification<Device> spec = buildSpecForUser(currentUser);
+    if (additionalSpec != null) {
+      spec = spec.and(additionalSpec);
+    }
     return deviceRepository.findAll(spec, pageable);
   }
 
-  /** Role-alapú Specification összeállítása. */
-  private Specification<Device> buildSpecForUser(AppUser currentUser) {
+  /** Jogosultság-alapú (Permission-Driven) Specification összeállítása. */
+  public Specification<Device> buildSpecForUser(AppUser currentUser) {
     if (currentUser == null) {
-      return DeviceSpecifications.hasAccess(null); // ADMIN → minden
+      return DeviceSpecifications.hasAccess(null); // No user context → minden eszköz
     }
 
-    String role = currentUser.getRole().getName();
-    if ("ROLE_ADMIN".equals(role)) {
+    // Vezetői / eszközmenedzsment jogosultságokkal rendelkező felhasználók: teljes tanszéki hozzáférés
+    boolean hasGlobalDeviceAccess =
+        currentUser.hasPermission("DEVICE_CREATE")
+            || currentUser.hasPermission("DEVICE_DELETE")
+            || currentUser.hasPermission("USER_MANAGE");
+
+    if (hasGlobalDeviceAccess) {
       return DeviceSpecifications.hasAccess(null);
-    } else if ("ROLE_TEACHER".equals(role)) {
-      return DeviceSpecifications.teacherAccess(currentUser.getId(), currentUser);
-    } else {
-      return DeviceSpecifications.hasAccess(currentUser.getId());
     }
+
+    // Hozzárendelési joggal és/vagy irodai beosztással rendelkező felhasználók: saját és irodai eszközök
+    boolean canAssignOrHasOffice =
+        currentUser.hasPermission("DEVICE_ASSIGN")
+            || currentUser.hasPermission("DEVICE_UNASSIGN")
+            || currentUser.getOfficeLocation() != null;
+
+    if (canAssignOrHasOffice) {
+      return DeviceSpecifications.teacherAccess(currentUser.getId(), currentUser);
+    }
+
+    // Csak olvasási (hallgatói) joggal rendelkező felhasználók: kizárólag a számukra aktívan kiadott eszközök
+    return DeviceSpecifications.hasAccess(currentUser.getId());
   }
 }

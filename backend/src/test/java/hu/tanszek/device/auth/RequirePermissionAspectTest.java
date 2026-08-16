@@ -54,6 +54,21 @@ class RequirePermissionAspectTest {
   }
 
   @Test
+  void allowsMethodWhenUserHasAnyOfMultiplePermissions() {
+    // SecurityContext: user USER_MANAGE permission
+    setAuthenticatedUser(
+        "hash123",
+        List.of(
+            new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("USER_MANAGE")));
+
+    // @RequirePermission({"USER_READ", "USER_MANAGE"}) method mock
+    RequirePermission annotation = mockAnnotation("USER_READ", "USER_MANAGE");
+    Object result = invokeAspect(annotation);
+
+    assertThat(result).isEqualTo("success");
+  }
+
+  @Test
   void throwsExceptionWhenUserMissingPermission() {
     // User csak ROLE_STUDENT, nincs USER_MANAGE
     setAuthenticatedUser(
@@ -87,11 +102,16 @@ class RequirePermissionAspectTest {
     SecurityContextHolder.getContext().setAuthentication(auth);
   }
 
-  private RequirePermission mockAnnotation(String value) {
+  private RequirePermission mockAnnotation(String... values) {
     return new RequirePermission() {
       @Override
-      public String value() {
-        return value;
+      public String[] value() {
+        return values;
+      }
+
+      @Override
+      public String[] anyOf() {
+        return new String[0];
       }
 
       @Override

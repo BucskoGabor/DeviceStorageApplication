@@ -1,8 +1,9 @@
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Plus, Pencil, Trash2, FileText, X, Wrench, RotateCcw } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, X, Wrench, RotateCcw, PackageX } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { DataTable } from '@/components/DataTable/DataTable'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,8 @@ import {
 } from '@/components/ui/dialog'
 import { deviceApi, type Device } from '@/features/device/api/deviceApi'
 import { StatusBadge } from '@/features/assignment/components/StatusBadge'
+import { LocationTreeSelector } from '@/features/location/components/LocationTreeSelector'
+import { locationApi, type LocationTreeNode } from '@/features/location/api/locationApi'
 import { useAuthStore } from '@/lib/store/authStore'
 import { toast } from 'sonner'
 import { resolveToastMessage } from '@/lib/utils/toastUtils'
@@ -26,7 +29,9 @@ const ALL_STATUSES: Device['status'][] = [
   'PENDING',
   'IN_STORAGE',
   'ASSIGNED',
+  'PENDING_MAINTENANCE',
   'MAINTENANCE',
+  'PENDING_DISPOSAL',
   'DISPOSED',
 ]
 
@@ -34,7 +39,9 @@ const STATUS_I18N_KEY: Record<Device['status'], string> = {
   PENDING: 'devices.statusPending',
   ASSIGNED: 'devices.statusAssigned',
   IN_STORAGE: 'devices.statusInStorage',
+  PENDING_MAINTENANCE: 'devices.statusPendingMaintenance',
   MAINTENANCE: 'devices.statusMaintenance',
+  PENDING_DISPOSAL: 'devices.statusPendingDisposal',
   DISPOSED: 'devices.statusDisposed',
 }
 
@@ -42,7 +49,11 @@ export function DevicesPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const permissions = useAuthStore((state) => state.permissions)
+  const canCreate = permissions.includes('DEVICE_CREATE')
   const canUpdate = permissions.includes('DEVICE_UPDATE')
+  const canDelete = permissions.includes('DEVICE_DELETE')
+  const canRequestMaintenance = permissions.includes('DEVICE_MAINTENANCE_REQUEST')
+  const canRequestDisposal = permissions.includes('DEVICE_DISPOSE_REQUEST')
 
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
@@ -56,6 +67,7 @@ export function DevicesPage() {
   const [maintenanceReason, setMaintenanceReason] = useState('')
   const [disposeDeviceItem, setDisposeDeviceItem] = useState<Device | null>(null)
   const [disposeReason, setDisposeReason] = useState('')
+  const [deleteDeviceId, setDeleteDeviceId] = useState<number | null>(null)
 
   const pageSize = 20
 
@@ -84,14 +96,15 @@ export function DevicesPage() {
     },
   })
 
-  const sendToMaintenanceMutation = useMutation({
+  const requestMaintenanceMutation = useMutation({
     mutationFn: ({ id, reason }: { id: number; reason: string }) =>
-      deviceApi.sendToMaintenance(id, reason),
+      deviceApi.requestMaintenance(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['pending-maintenance'] })
       setMaintenanceDevice(null)
       setMaintenanceReason('')
-      toast.success(t('devices.sentToMaintenanceSuccess', 'Eszköz karbantartásba küldve'))
+      toast.success(t('devices.requestMaintenanceSuccess', 'Karbantartási kérelem sikeresen elküldve'))
     },
     onError: (error: any) => {
       toast.error(resolveToastMessage(error.response))
@@ -109,14 +122,27 @@ export function DevicesPage() {
     },
   })
 
-  const disposeMutation = useMutation({
+  const requestDisposalMutation = useMutation({
     mutationFn: ({ id, reason }: { id: number; reason: string }) =>
-      deviceApi.disposeDevice(id, reason),
+      deviceApi.requestDisposal(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['pending-disposal'] })
       setDisposeDeviceItem(null)
       setDisposeReason('')
-      toast.success(t('devices.disposedSuccess', 'Eszköz selejtezve'))
+      toast.success(t('devices.requestDisposalSuccess', 'Selejtezési kérelem sikeresen elküldve'))
+    },
+    onError: (error: any) => {
+      toast.error(resolveToastMessage(error.response))
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deviceApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      setDeleteDeviceId(null)
+      toast.success(t('common.deleted', 'Sikeresen törölve'))
     },
     onError: (error: any) => {
       toast.error(resolveToastMessage(error.response))
@@ -173,8 +199,8 @@ export function DevicesPage() {
           return (
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" asChild title={t('devices.viewDetails')}>
-                <Link to={`/admin/devices/${device.id}`}>
-                  <FileText className="h-4 w-4" />
+                <Link to={`/devices/${device.id}`}>
+                  <Eye className="h-4 w-4" />
                 </Link>
               </Button>
               {canUpdate && (
@@ -188,11 +214,11 @@ export function DevicesPage() {
                     <Pencil className="h-4 w-4" />
                   </Button>
 
-                  {(device.status === 'IN_STORAGE' || device.status === 'ASSIGNED') && (
+                  {(device.status === 'IN_STORAGE' || device.status === 'ASSIGNED') && canRequestMaintenance && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      title={t('devices.sendToMaintenance', 'Karbantartásba küldés')}
+                      title={t('devices.requestMaintenance', 'Karbantartás kérése')}
                       onClick={() => setMaintenanceDevice(device)}
                     >
                       <Wrench className="h-4 w-4 text-amber-500 hover:text-amber-600" />
@@ -210,37 +236,69 @@ export function DevicesPage() {
                     </Button>
                   )}
 
-                  {(device.status === 'IN_STORAGE' || device.status === 'MAINTENANCE') && (
+                  {(device.status === 'IN_STORAGE' || device.status === 'MAINTENANCE') && canRequestDisposal && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      title={t('devices.dispose', 'Selejtezés')}
+                      title={t('devices.requestDisposal', 'Selejtezés kérése')}
                       onClick={() => setDisposeDeviceItem(device)}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive hover:text-destructive/80" />
+                      <PackageX className="h-4 w-4 text-rose-500 hover:text-rose-600" />
                     </Button>
                   )}
                 </>
+              )}
+              {canDelete && device.status === 'DISPOSED' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title={t('common.delete', 'Végleges törlés')}
+                  onClick={() => setDeleteDeviceId(device.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive hover:text-destructive/80" />
+                </Button>
               )}
             </div>
           )
         },
       },
     ],
-    [t, canUpdate, returnFromMaintenanceMutation]
+    [t, canUpdate, canDelete, canRequestMaintenance, canRequestDisposal, returnFromMaintenanceMutation]
   )
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [deviceType, setDeviceType] = useState('laptop')
   const [inventoryNumber, setInventoryNumber] = useState('')
-  const [deviceStatus, setDeviceStatus] = useState<Device['status']>('IN_STORAGE')
+  const [storageLocationId, setStorageLocationId] = useState<number | null>(null)
+  const [storageSelectorOpen, setStorageSelectorOpen] = useState(false)
+
+  const { data: locationTree } = useQuery({
+    queryKey: ['locations', 'tree'],
+    queryFn: () => locationApi.findTree(),
+    staleTime: 30000,
+  })
+
+  const selectedStorageLocation: LocationTreeNode | null = useMemo(() => {
+    if (!locationTree || storageLocationId == null) return null
+    const findInTree = (nodes: LocationTreeNode[]): LocationTreeNode | null => {
+      for (const n of nodes) {
+        if (n.id === storageLocationId) return n
+        const found = findInTree(n.children || [])
+        if (found) return found
+      }
+      return null
+    }
+    return findInTree(locationTree)
+  }, [locationTree, storageLocationId])
 
   const createMutation = useMutation({
     mutationFn: deviceApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
       setIsCreateOpen(false)
       setInventoryNumber('')
+      setStorageLocationId(null)
       toast.success(t('common.created', 'Sikeresen létrehozva'))
     },
     onError: (error: any) => {
@@ -251,12 +309,12 @@ export function DevicesPage() {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!inventoryNumber) return
+    if (!inventoryNumber || storageLocationId == null) return
     createMutation.mutate({
       type: deviceType,
       inventoryNumber,
-      status: deviceStatus,
-    })
+      storageLocationId,
+    } as any)
   }
 
   const hasActiveFilters = Boolean(statusFilter || typeFilter || search)
@@ -272,10 +330,12 @@ export function DevicesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t('devices.title')}</h1>
-        <Button onClick={() => setIsCreateOpen(!isCreateOpen)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('devices.create')}
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setIsCreateOpen(!isCreateOpen)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('devices.create')}
+          </Button>
+        )}
       </div>
 
       {/* Status Quick Filter Tabs */}
@@ -363,31 +423,45 @@ export function DevicesPage() {
               />
             </div>
             <div>
-              <Label htmlFor="dev-status" className="text-xs text-muted-foreground">
-                {t('devices.status')}
+              <Label className="text-xs text-muted-foreground">
+                {t('assignments.toLocation')} <span className="text-destructive">*</span>
               </Label>
-              <select
-                id="dev-status"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={deviceStatus}
-                onChange={(e: any) => setDeviceStatus(e.target.value)}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => setStorageSelectorOpen(true)}
               >
-                {ALL_STATUSES.map((s) => (
-                  <option key={s} value={s}>{t(STATUS_I18N_KEY[s])}</option>
-                ))}
-              </select>
+                {selectedStorageLocation ? (
+                  <span className="font-mono text-xs">
+                    {selectedStorageLocation.name}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {t('assignments.selectLocation')}
+                  </span>
+                )}
+              </Button>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
+              <Button type="submit" disabled={createMutation.isPending || storageLocationId == null}>
                 {t('common.save')}
               </Button>
             </div>
-          </form>
-        </div>
+      </form>
+      </div>
       )}
+
+      <LocationTreeSelector
+        open={storageSelectorOpen}
+        onOpenChange={setStorageSelectorOpen}
+        onSelect={(id) => setStorageLocationId(id)}
+        selectedId={storageLocationId}
+        onlyStorageType
+      />
 
       <DataTable
         data={data?.content ?? []}
@@ -454,25 +528,25 @@ export function DevicesPage() {
           </form>
         </DialogContent>
       </Dialog>
-      {/* Karbantartásba küldés Dialog */}
+      {/* Karbantartás kérése Dialog */}
       <Dialog open={maintenanceDevice !== null} onOpenChange={(open) => !open && setMaintenanceDevice(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('devices.sendToMaintenance', 'Karbantartásba küldés')}</DialogTitle>
+            <DialogTitle>{t('devices.requestMaintenance', 'Karbantartás kérése')}</DialogTitle>
             <DialogDescription>
-              {maintenanceDevice?.inventoryNumber} (#{maintenanceDevice?.id})
+              {maintenanceDevice?.inventoryNumber} (#{maintenanceDevice?.id}) — {t('devices.requestMaintenanceDesc', 'Kérelem benyújtása karbantartásra indoklással.')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
               <Label htmlFor="tbl-maint-reason" className="text-xs text-muted-foreground">
-                {t('devices.maintenanceReason', 'Karbantartás oka')}
+                {t('devices.maintenanceReason', 'Karbantartás indoka')}
               </Label>
               <Input
                 id="tbl-maint-reason"
                 value={maintenanceReason}
                 onChange={(e) => setMaintenanceReason(e.target.value)}
-                placeholder="pl. akkumulátor csere, szervizelés"
+                placeholder={t('devices.maintenanceReasonPlaceholder', 'pl. kijelző hiba, akkumulátor csere')}
               />
             </div>
           </div>
@@ -480,31 +554,31 @@ export function DevicesPage() {
             <Button
               variant="outline"
               onClick={() => setMaintenanceDevice(null)}
-              disabled={sendToMaintenanceMutation.isPending}
+              disabled={requestMaintenanceMutation.isPending}
             >
               {t('common.cancel')}
             </Button>
             <Button
               onClick={() => {
                 if (maintenanceDevice) {
-                  sendToMaintenanceMutation.mutate({ id: maintenanceDevice.id, reason: maintenanceReason })
+                  requestMaintenanceMutation.mutate({ id: maintenanceDevice.id, reason: maintenanceReason })
                 }
               }}
-              disabled={sendToMaintenanceMutation.isPending}
+              disabled={requestMaintenanceMutation.isPending}
             >
-              {t('common.save')}
+              {t('devices.submitRequest', 'Kérelem elküldése')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Selejtezés Dialog */}
+      {/* Selejtezés kérése Dialog */}
       <Dialog open={disposeDeviceItem !== null} onOpenChange={(open) => !open && setDisposeDeviceItem(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('devices.dispose', 'Eszköz selejtezése')}</DialogTitle>
+            <DialogTitle>{t('devices.requestDisposal', 'Selejtezés kérése')}</DialogTitle>
             <DialogDescription>
-              Figyelem: A selejtezés végleges művelet. A selejtezett eszköz többé nem rendelhető hozzá semmihez.
+              {t('devices.requestDisposalDesc', 'Figyelem: A jóváhagyott selejtezés végleges állapotot eredményez.')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -516,7 +590,7 @@ export function DevicesPage() {
                 id="tbl-dispose-reason"
                 value={disposeReason}
                 onChange={(e) => setDisposeReason(e.target.value)}
-                placeholder="pl. javíthatatlan meghibásodás, selejtezett"
+                placeholder={t('devices.disposeReasonPlaceholder', 'pl. gazdaságtalanul javítható')}
               />
             </div>
           </div>
@@ -524,7 +598,7 @@ export function DevicesPage() {
             <Button
               variant="outline"
               onClick={() => setDisposeDeviceItem(null)}
-              disabled={disposeMutation.isPending}
+              disabled={requestDisposalMutation.isPending}
             >
               {t('common.cancel')}
             </Button>
@@ -532,16 +606,28 @@ export function DevicesPage() {
               variant="destructive"
               onClick={() => {
                 if (disposeDeviceItem) {
-                  disposeMutation.mutate({ id: disposeDeviceItem.id, reason: disposeReason })
+                  requestDisposalMutation.mutate({ id: disposeDeviceItem.id, reason: disposeReason })
                 }
               }}
-              disabled={disposeMutation.isPending}
+              disabled={requestDisposalMutation.isPending}
             >
-              {t('devices.dispose')}
+              {t('devices.submitRequest', 'Kérelem elküldése')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteDeviceId !== null}
+        onOpenChange={(open) => !open && setDeleteDeviceId(null)}
+        description={t('devices.confirmDelete', 'Biztosan véglegesen törölni szeretnéd ezt az eszközt?')}
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteDeviceId) {
+            deleteMutation.mutate(deleteDeviceId)
+          }
+        }}
+      />
     </div>
   )
 }

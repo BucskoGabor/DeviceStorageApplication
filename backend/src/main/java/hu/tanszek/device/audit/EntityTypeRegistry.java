@@ -126,6 +126,7 @@ public class EntityTypeRegistry {
       // location_id, softwares nem tároljuk a rollback JSON-ban
     } else if (entity instanceof AppUser user) {
       map.put("id", user.getId());
+      map.put("email", user.getEmail());
       map.put("active", user.isActive());
       map.put("mustChangePassword", user.isMustChangePassword());
       map.put("emailHash", user.getEmailHash());
@@ -149,7 +150,6 @@ public class EntityTypeRegistry {
           "fromUserId", assignment.getFromUser() != null ? assignment.getFromUser().getId() : null);
       map.put("toUserId", assignment.getToUser() != null ? assignment.getToUser().getId() : null);
       map.put("status", assignment.getStatus());
-      map.put("active", assignment.isActive());
     } else if (entity instanceof Software software) {
       map.put("id", software.getId());
       map.put("name", software.getName());
@@ -229,11 +229,6 @@ public class EntityTypeRegistry {
         assignment.setStatus(
             hu.tanszek.device.assignment.entity.AssignmentStatus.valueOf(
                 fields.get("status").toString()));
-      }
-      if (fields.get("active") != null && !"***".equals(fields.get("active"))) {
-        Object val = fields.get("active");
-        if (val instanceof Boolean b) assignment.setActive(b);
-        else if (val instanceof String s && !"***".equals(s)) assignment.setActive(Boolean.parseBoolean(s));
       }
     } else if (entity instanceof Software software) {
       if (fields.get("name") instanceof String s && !"***".equals(s)) {

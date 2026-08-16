@@ -30,6 +30,9 @@ public interface DeviceRepository
   /** Device-ok listája státusz szerint. */
   List<Device> findByStatus(DeviceStatus status);
 
+  /** Device-ok listája státusz szerint időrendben. */
+  List<Device> findByStatusOrderByCreatedAtDesc(DeviceStatus status);
+
   /** Device-ok lapozott listája státusz szerint. */
   Page<Device> findByStatus(DeviceStatus status, Pageable pageable);
 
@@ -44,4 +47,7 @@ public interface DeviceRepository
       "SELECT d FROM Device d JOIN d.softwares s WHERE s.id = :softwareId")
   java.util.List<Device> findDevicesBySoftwareId(
       @org.springframework.data.repository.query.Param("softwareId") Long softwareId);
+
+  /** Egy adott helyszínen (raktár vagy terem) lévő, nem selejtezett eszközök listája. */
+  List<Device> findByCurrentLocationIdAndStatusNot(Long locationId, DeviceStatus status);
 }
