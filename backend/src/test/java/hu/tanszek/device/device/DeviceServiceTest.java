@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import hu.tanszek.device.assignment.entity.AssignmentStatus;
 import hu.tanszek.device.assignment.entity.DeviceAssignment;
 import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
+import hu.tanszek.device.attachment.AttachmentService;
 import hu.tanszek.device.auth.entity.Role;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
@@ -34,15 +35,6 @@ import static org.mockito.Mockito.when;
 
 /**
  * Unit tesztek a {@link DeviceService}-hez.
- *
- * <p>Teszteli:
- *
- * <ul>
- *   <li>requestAssignment: sikeres, hibás device státusz, GROUP location
- *   <li>approveAssignment: sikeres, nem PENDING státusz
- *   <li>requestUnassignment: sikeres, nem aktív assignment
- *   <li>approveUnassignment: sikeres
- * </ul>
  */
 @ExtendWith(MockitoExtension.class)
 class DeviceServiceTest {
@@ -51,6 +43,7 @@ class DeviceServiceTest {
   @Mock private DeviceAssignmentRepository assignmentRepository;
   @Mock private LocationRepository locationRepository;
   @Mock private AppUserRepository userRepository;
+  @Mock private AttachmentService attachmentService;
 
   @InjectMocks private DeviceService deviceService;
 

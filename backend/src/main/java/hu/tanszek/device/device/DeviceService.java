@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import hu.tanszek.device.assignment.entity.AssignmentStatus;
 import hu.tanszek.device.assignment.entity.DeviceAssignment;
 import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
+import hu.tanszek.device.attachment.AttachmentService;
 import hu.tanszek.device.audit.AuditTarget;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
@@ -30,53 +31,12 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * DeviceService — Device CRUD + assign/unassign business logic.
- *
- * <p>State machine (Task 3.3):
- *
- * <pre>
- *   IN_STORAGE → PENDING_ASSIGNMENT (assign kérés) → ASSIGNED (admin approve) → PENDING_UNASSIGNMENT → IN_STORAGE
- * </pre>
- *
- * <p>Üzleti szabályok:
- *
- * <ul>
- *   <li>Device NEM lehet MAINTENANCE vagy DISPOSED státuszú assignkor
- *   <li>Location NEM lehet GROUP típusú (forrás ÉS cél is)
- *   <li>A row-level filter (Task 3.2-ből) a service-szintű assertion-nel van kiegészítve
- * </ul>
- *
- * <p>Approval flow (mostantól bevezetve):
- *
- * <ul>
- *   <li>assign() → PENDING_ASSIGNMENT (kérés jön létre, nem aktív)
- *   <li>approveAssignment() → ASSIGNED (admin/user approve-olja)
- *   <li>unassign() → PENDING_UNASSIGNMENT (kérés)
- *   <li>approveUnassignment() → IN_STORAGE (admin approve)
- * </ul>
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeviceService {
 
-  /**
-   * Eszköz státusz átmenetek state machine — operatív PATCH endpoint-hoz.
-   *
-   * <p><b>Fontos:</b> a {@code → ASSIGNED} átmenetek <b>NEM</b> szerepelnek itt, mert azokat az
-   * assignment workflow ({@code requestAssignment} / {@code approveAssignment}) kezeli — közvetlen
-   * PATCH-csel "ASSIGNED" státuszba rakni az eszközt assignment rekord nélkül inkonzisztens
-   * állapotot okozna.
-   *
-   * <p>Szabályok:
-   *
-   * <ul>
-   *   <li>PENDING → IN_STORAGE / MAINTENANCE (raktárba vagy karbantartásra)
-   *   <li>IN_STORAGE → MAINTENANCE / DISPOSED (karbantartásra vagy selejtezésre)
-   *   <li>ASSIGNED → IN_STORAGE / MAINTENANCE (manuális visszavétel vagy karbantartás)
-   *   <li>MAINTENANCE → IN_STORAGE / DISPOSED (karbantartás kész vagy selejtezés)
-   *   <li>DISPOSED → (végállapot, NINCS visszaút)
-   * </ul>
-   */
   private static final Map<DeviceStatus, Set<DeviceStatus>> ALLOWED_TRANSITIONS =
       new EnumMap<>(DeviceStatus.class);
 
@@ -112,6 +72,7 @@ public class DeviceService {
   private final DeviceAssignmentRepository assignmentRepository;
   private final LocationRepository locationRepository;
   private final AppUserRepository userRepository;
+  private final AttachmentService attachmentService;
 
   /**
    * Assign kérés létrehozása — PENDING_ASSIGNMENT státusszal.
@@ -712,6 +673,24 @@ public class DeviceService {
           "Eszközt csak akkor lehet törölni, ha már selejtezve van (DISPOSED státusz).");
     }
 
+    // 1. Kapcsolódó hozzárendelési előzmények törlése
+    List<DeviceAssignment> assignments =
+        assignmentRepository.findByDeviceIdOrderByCreatedDateDesc(id);
+    if (!assignments.isEmpty()) {
+      assignmentRepository.deleteAll(assignments);
+    }
+
+    // 2. Kapcsolódó csatolmányok és fájlok törlése
+    if (attachmentService != null) {
+      attachmentService.deleteByDevice(id);
+    }
+
+    // 3. Szoftver kapcsolatok bontása (join tábla)
+    if (device.getSoftwares() != null) {
+      device.getSoftwares().clear();
+    }
+
+    // 4. Eszköz törlése
     deviceRepository.delete(device);
     log.info("Device deleted: id={}, inventoryNumber={}", id, device.getInventoryNumber());
   }
