@@ -123,9 +123,12 @@ export function DashboardPage({ children }: DashboardPageProps) {
       </header>
 
       <main className="p-8">
-        {children ?? <p className="text-muted-foreground">{t('dashboard.welcome', 'Üdvözöljük a Tanszéki Nyilvántartó Rendszerben!')}</p>}
+        {children ?? (
+          <p className="text-muted-foreground">
+            {t('dashboard.welcome', 'Üdvözöljük a Tanszéki Nyilvántartó Rendszerben!')}
+          </p>
+        )}
       </main>
     </div>
   )
 }
-

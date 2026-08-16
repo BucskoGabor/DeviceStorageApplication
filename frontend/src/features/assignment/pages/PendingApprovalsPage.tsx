@@ -16,9 +16,7 @@ export function PendingApprovalsPage() {
       <Card>
         <CardHeader>
           <CardTitle>{t('assignments.approvalQueue')}</CardTitle>
-          <CardDescription>
-            {t('assignments.title')}
-          </CardDescription>
+          <CardDescription>{t('assignments.title')}</CardDescription>
         </CardHeader>
         <CardContent>
           <ApprovalQueue />

@@ -29,18 +29,14 @@ export function useSilentRefresh() {
   useEffect(() => {
     // Csak akkor fut, ha NINCS access token ÉS még nem próbálkoztunk
     if (!accessToken && !initialRefreshDone) {
-      authApi.refresh()
+      authApi
+        .refresh()
         .then((resp) => {
           // A /api/auth/refresh response shape: { accessToken, role, permissions, mustChangePassword }
-          setAuth(
-            resp.accessToken,
-            '',
-            resp.role,
-            resp.permissions,
-            resp.mustChangePassword
-          )
+          setAuth(resp.accessToken, '', resp.role, resp.permissions, resp.mustChangePassword)
           // Az email-t külön /me hívással töltjük a display-hez
-          authApi.me()
+          authApi
+            .me()
             .then((me) => {
               setAuth(
                 resp.accessToken,

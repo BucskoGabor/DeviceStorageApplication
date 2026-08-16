@@ -118,21 +118,38 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // 2. Erőforrások
   const resourceItems: NavItem[] = []
-  if (hasAnyPermission(['DEVICE_READ', 'DEVICE_CREATE', 'DEVICE_UPDATE', 'DEVICE_DELETE', 'DEVICE_MANAGE'])) {
+  if (
+    hasAnyPermission([
+      'DEVICE_READ',
+      'DEVICE_CREATE',
+      'DEVICE_UPDATE',
+      'DEVICE_DELETE',
+      'DEVICE_MANAGE',
+    ])
+  ) {
     resourceItems.push({
       to: '/devices',
       icon: Laptop,
       labelKey: 'nav.devices',
     })
   }
-  if (hasAnyPermission(['LOCATION_READ', 'LOCATION_CREATE', 'LOCATION_UPDATE', 'LOCATION_DELETE'])) {
+  if (
+    hasAnyPermission(['LOCATION_READ', 'LOCATION_CREATE', 'LOCATION_UPDATE', 'LOCATION_DELETE'])
+  ) {
     resourceItems.push({
       to: '/locations',
       icon: MapPin,
       labelKey: 'nav.locations',
     })
   }
-  if (hasAnyPermission(['SOFTWARE_LICENSE_VIEW', 'SOFTWARE_CREATE', 'SOFTWARE_UPDATE', 'SOFTWARE_DELETE'])) {
+  if (
+    hasAnyPermission([
+      'SOFTWARE_LICENSE_VIEW',
+      'SOFTWARE_CREATE',
+      'SOFTWARE_UPDATE',
+      'SOFTWARE_DELETE',
+    ])
+  ) {
     resourceItems.push({
       to: '/software',
       icon: Shield,
@@ -221,13 +238,15 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="flex h-16 items-center justify-between border-b border-border px-5">
           <Link
             to="/my-dashboard"
-            className="flex items-center gap-2.5 font-semibold text-foreground tracking-tight hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2.5 font-semibold tracking-tight text-foreground transition-opacity hover:opacity-90"
             onClick={() => setMobileOpen(false)}
           >
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
               <Boxes className="h-5 w-5" />
             </div>
-            <span className="text-base leading-tight font-bold">{t('appName', 'Tanszéki Raktár')}</span>
+            <span className="text-base font-bold leading-tight">
+              {t('appName', 'Tanszéki Raktár')}
+            </span>
           </Link>
           <Button
             variant="ghost"
@@ -240,10 +259,10 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
 
         {/* Navigation Items */}
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        <div className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
           {navGroups.map((group) => (
             <div key={group.groupKey} className="space-y-1.5">
-              <div className="px-3 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase">
+              <div className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                 {t(group.groupKey, group.groupKey)}
               </div>
               <div className="space-y-0.5">
@@ -267,7 +286,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                           : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                       )}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex min-w-0 items-center gap-2.5">
                         <Icon className="h-4 w-4 shrink-0" />
                         <span className="truncate">{t(item.labelKey, item.labelKey)}</span>
                       </div>
@@ -275,8 +294,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                         <Badge
                           variant={isActive ? 'secondary' : 'default'}
                           className={cn(
-                            'ml-2 px-1.5 py-0 text-xs font-semibold shrink-0',
-                            isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary text-primary-foreground'
+                            'ml-2 shrink-0 px-1.5 py-0 text-xs font-semibold',
+                            isActive
+                              ? 'bg-primary-foreground/20 text-primary-foreground'
+                              : 'bg-primary text-primary-foreground'
                           )}
                         >
                           {item.badge}
@@ -291,20 +312,20 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
 
         {/* Sidebar Footer: User Card, Language, Theme, Profile & Logout */}
-        <div className="border-t border-border p-3 space-y-3 bg-muted/20">
+        <div className="space-y-3 border-t border-border bg-muted/20 p-3">
           <div className="flex items-center justify-between px-1">
             <LanguageSelector />
             <ThemeToggle />
           </div>
 
-          <div className="rounded-lg border border-border/80 bg-card p-2.5 shadow-sm space-y-2">
+          <div className="space-y-2 rounded-lg border border-border/80 bg-card p-2.5 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-xs font-semibold text-foreground">
                   {userEmail || 'User'}
                 </p>
                 {role && (
-                  <p className="text-[10px] font-mono text-muted-foreground">
+                  <p className="font-mono text-[10px] text-muted-foreground">
                     {t(`roles.${role}`, roleLabel)}
                   </p>
                 )}
@@ -323,7 +344,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               variant="outline"
               size="sm"
               onClick={handleLogout}
-              className="w-full justify-center h-7 text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40"
+              className="h-7 w-full justify-center text-xs text-muted-foreground hover:border-destructive/40 hover:text-destructive"
             >
               <LogOut className="mr-1.5 h-3.5 w-3.5" />
               {t('nav.logout', 'Kijelentkezés')}
@@ -333,7 +354,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile Top Bar */}
         <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4 md:hidden">
           <div className="flex items-center gap-2">
@@ -345,7 +366,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <span className="font-semibold text-sm">{t('appName', 'Tanszéki Raktár')}</span>
+            <span className="text-sm font-semibold">{t('appName', 'Tanszéki Raktár')}</span>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -358,9 +379,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-          {children ?? <Outlet />}
-        </main>
+        <main className="mx-auto w-full max-w-7xl flex-1 p-6 md:p-8">{children ?? <Outlet />}</main>
       </div>
     </div>
   )

@@ -111,7 +111,9 @@ export function DiffViewer({ changesJson }: DiffViewerProps) {
           {t('audit.changesBefore')} <ArrowRight className="h-3 w-3" /> {t('audit.changesAfter')}
         </CardTitle>
         <CardDescription className="flex flex-wrap gap-2 text-xs">
-          <span>{allKeys.length} {t('audit.fieldsCompared', 'mező')}</span>
+          <span>
+            {allKeys.length} {t('audit.fieldsCompared', 'mező')}
+          </span>
           {summary.added > 0 && <DiffBadge state="added" />}
           {summary.removed > 0 && <DiffBadge state="removed" />}
           {summary.modified > 0 && <DiffBadge state="modified" />}

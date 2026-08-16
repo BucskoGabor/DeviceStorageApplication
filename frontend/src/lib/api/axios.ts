@@ -24,32 +24,28 @@ export const apiClient = axios.create({
 
 // ===== Request Interceptor: Bearer token + CSRF =====
 
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // Access token hozzáadása a Zustand store-ból
-    const accessToken = useAuthStore.getState().accessToken
-    if (accessToken) {
-      config.headers.set('Authorization', `Bearer ${accessToken}`)
-    }
-
-    // CSRF token hozzáadása state-changing kéréseknél
-    const isStateChanging = !['get', 'head', 'options'].includes(
-      (config.method ?? 'get').toLowerCase()
-    )
-    if (isStateChanging) {
-      // A XSRF-TOKEN cookie-ból olvassuk ki (Spring Security által beállítva)
-      const cookies = document.cookie.split(';')
-      const xsrfToken = cookies
-        .find((c) => c.trim().startsWith('XSRF-TOKEN='))
-        ?.split('=')[1]
-      if (xsrfToken) {
-        config.headers.set('X-XSRF-TOKEN', decodeURIComponent(xsrfToken))
-      }
-    }
-
-    return config
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  // Access token hozzáadása a Zustand store-ból
+  const accessToken = useAuthStore.getState().accessToken
+  if (accessToken) {
+    config.headers.set('Authorization', `Bearer ${accessToken}`)
   }
-)
+
+  // CSRF token hozzáadása state-changing kéréseknél
+  const isStateChanging = !['get', 'head', 'options'].includes(
+    (config.method ?? 'get').toLowerCase()
+  )
+  if (isStateChanging) {
+    // A XSRF-TOKEN cookie-ból olvassuk ki (Spring Security által beállítva)
+    const cookies = document.cookie.split(';')
+    const xsrfToken = cookies.find((c) => c.trim().startsWith('XSRF-TOKEN='))?.split('=')[1]
+    if (xsrfToken) {
+      config.headers.set('X-XSRF-TOKEN', decodeURIComponent(xsrfToken))
+    }
+  }
+
+  return config
+})
 
 // ===== Refresh-in-progress lock =====
 
@@ -57,11 +53,7 @@ let refreshPromise: Promise<string | null> | null = null
 
 async function performRefresh(): Promise<string | null> {
   try {
-    const response = await axios.post(
-      `${baseURL}/api/auth/refresh`,
-      {},
-      { withCredentials: true }
-    )
+    const response = await axios.post(`${baseURL}/api/auth/refresh`, {}, { withCredentials: true })
 
     const data = response.data as {
       accessToken: string
@@ -130,8 +122,7 @@ apiClient.interceptors.response.use(
  * Access token lekérdezése a Zustand store-ból.
  * Re-export a régi API kompatibilitáshoz.
  */
-export const getAccessToken = (): string | null =>
-  useAuthStore.getState().accessToken
+export const getAccessToken = (): string | null => useAuthStore.getState().accessToken
 
 /**
  * Access token beállítása a Zustand store-ban.

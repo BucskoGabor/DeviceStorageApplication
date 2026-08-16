@@ -7,10 +7,10 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   accessToken: string
-  expiresIn: number  // másodperc
-  role: string  // pl. "ROLE_ADMIN"
-  permissions: string[]  // pl. ["DEVICE_READ", "USER_MANAGE"]
-  mustChangePassword: boolean  // first-login flag
+  expiresIn: number // másodperc
+  role: string // pl. "ROLE_ADMIN"
+  permissions: string[] // pl. ["DEVICE_READ", "USER_MANAGE"]
+  mustChangePassword: boolean // first-login flag
 }
 
 export interface MeResponse {

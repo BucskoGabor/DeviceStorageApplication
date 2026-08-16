@@ -74,7 +74,7 @@ export function UserDetailPage() {
           variant="ghost"
           size="sm"
           onClick={() => navigate('/users')}
-          className="mb-2 -ml-2 text-muted-foreground hover:text-foreground"
+          className="-ml-2 mb-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t('users.title', 'Felhasználók')}
@@ -117,7 +117,11 @@ export function UserDetailPage() {
             <ProfileField
               icon={<Mail className="h-4 w-4 text-muted-foreground" />}
               label={t('users.email')}
-              value={<span className="font-mono text-sm">{user.email || user.emailMasked || user.emailHash}</span>}
+              value={
+                <span className="font-mono text-sm">
+                  {user.email || user.emailMasked || user.emailHash}
+                </span>
+              }
             />
             <ProfileField
               icon={<Shield className="h-4 w-4 text-muted-foreground" />}
@@ -175,14 +179,15 @@ export function UserDetailPage() {
             {t('myProfile.permissions', 'Jogosultságok')}
           </CardTitle>
           <CardDescription>
-            {user.effectivePermissions?.length ?? (rolePermissions.length + directPermissions.length)}{' '}
+            {user.effectivePermissions?.length ?? rolePermissions.length + directPermissions.length}{' '}
             {t('myProfile.permissionsCount', 'érvényes jogosultság')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              {t('roles.inheritedPermissions', 'Szerepkörből örökölt jogok')} ({rolePermissions.length})
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('roles.inheritedPermissions', 'Szerepkörből örökölt jogok')} (
+              {rolePermissions.length})
             </h4>
             {rolePermissions.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
@@ -193,24 +198,33 @@ export function UserDetailPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">{t('common.noData', 'Nincs jog a szerepkörben')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('common.noData', 'Nincs jog a szerepkörben')}
+              </p>
             )}
           </div>
 
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              {t('users.directPermissions', 'Közvetlenül hozzárendelt jogok')} ({directPermissions.length})
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('users.directPermissions', 'Közvetlenül hozzárendelt jogok')} (
+              {directPermissions.length})
             </h4>
             {directPermissions.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {directPermissions.map((p) => (
-                  <Badge key={p.id} variant="default" className="font-mono text-[11px] bg-primary/80">
+                  <Badge
+                    key={p.id}
+                    variant="default"
+                    className="bg-primary/80 font-mono text-[11px]"
+                  >
                     {p.name}
                   </Badge>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">{t('common.noData', 'Nincsenek egyedi közvetlen jogok')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('common.noData', 'Nincsenek egyedi közvetlen jogok')}
+              </p>
             )}
           </div>
         </CardContent>
@@ -265,18 +279,27 @@ export function UserDetailPage() {
             ) : !currentDevices || currentDevices.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 <Laptop className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-                <p>{t('users.noCurrentDevices', 'A felhasználóhoz jelenleg nincs eszköz hozzárendelve.')}</p>
+                <p>
+                  {t(
+                    'users.noCurrentDevices',
+                    'A felhasználóhoz jelenleg nincs eszköz hozzárendelve.'
+                  )}
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
                     <tr>
-                      <th className="p-3 font-medium">{t('devices.inventoryNumber', 'Leltári szám')}</th>
+                      <th className="p-3 font-medium">
+                        {t('devices.inventoryNumber', 'Leltári szám')}
+                      </th>
                       <th className="p-3 font-medium">{t('devices.type', 'Típus')}</th>
                       <th className="p-3 font-medium">{t('locations.title', 'Helyszín')}</th>
                       <th className="p-3 font-medium">{t('devices.status', 'Státusz')}</th>
-                      <th className="p-3 font-medium text-right">{t('common.actions', 'Műveletek')}</th>
+                      <th className="p-3 text-right font-medium">
+                        {t('common.actions', 'Műveletek')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -318,7 +341,10 @@ export function UserDetailPage() {
         <Card>
           <CardHeader className="py-4">
             <CardTitle className="text-base">
-              {t('users.assignmentHistoryTitle', 'A felhasználó korábbi eszközhozzárendelési előzményei')}
+              {t(
+                'users.assignmentHistoryTitle',
+                'A felhasználó korábbi eszközhozzárendelési előzményei'
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -327,7 +353,12 @@ export function UserDetailPage() {
             ) : !assignmentHistory || assignmentHistory.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 <History className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-                <p>{t('users.noAssignmentHistory', 'Nem található korábbi hozzárendelési előzmény a felhasználóhoz.')}</p>
+                <p>
+                  {t(
+                    'users.noAssignmentHistory',
+                    'Nem található korábbi hozzárendelési előzmény a felhasználóhoz.'
+                  )}
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -339,7 +370,9 @@ export function UserDetailPage() {
                       <th className="p-3 font-medium">{t('assignments.toLocation', 'Hová')}</th>
                       <th className="p-3 font-medium">{t('assignments.date', 'Időpont')}</th>
                       <th className="p-3 font-medium">{t('assignments.status', 'Státusz')}</th>
-                      <th className="p-3 font-medium text-right">{t('common.actions', 'Műveletek')}</th>
+                      <th className="p-3 text-right font-medium">
+                        {t('common.actions', 'Műveletek')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">

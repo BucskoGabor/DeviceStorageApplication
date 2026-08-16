@@ -2,7 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { resolveToastMessage } from '@/lib/utils/toastUtils'
-import { assignmentApi, type DeviceAssignment, type CreateAssignmentPayload } from '../api/assignmentApi'
+import {
+  assignmentApi,
+  type DeviceAssignment,
+  type CreateAssignmentPayload,
+} from '../api/assignmentApi'
 
 /**
  * useAssignmentsByDevice — egy device teljes assignment history lekérdezése.
@@ -75,7 +79,13 @@ export function useRequestUnassignment(deviceId: number) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ assignmentId, targetLocationId }: { assignmentId: number; targetLocationId?: number }) => assignmentApi.requestUnassignment(assignmentId, targetLocationId),
+    mutationFn: ({
+      assignmentId,
+      targetLocationId,
+    }: {
+      assignmentId: number
+      targetLocationId?: number
+    }) => assignmentApi.requestUnassignment(assignmentId, targetLocationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
       queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })

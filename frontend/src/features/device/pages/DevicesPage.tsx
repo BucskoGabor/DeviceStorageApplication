@@ -104,7 +104,9 @@ export function DevicesPage() {
       queryClient.invalidateQueries({ queryKey: ['pending-maintenance'] })
       setMaintenanceDevice(null)
       setMaintenanceReason('')
-      toast.success(t('devices.requestMaintenanceSuccess', 'Karbantartási kérelem sikeresen elküldve'))
+      toast.success(
+        t('devices.requestMaintenanceSuccess', 'Karbantartási kérelem sikeresen elküldve')
+      )
     },
     onError: (error: any) => {
       toast.error(resolveToastMessage(error.response))
@@ -115,7 +117,9 @@ export function DevicesPage() {
     mutationFn: (id: number) => deviceApi.returnFromMaintenance(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
-      toast.success(t('devices.returnedFromMaintenanceSuccess', 'Eszköz visszavéve karbantartásból'))
+      toast.success(
+        t('devices.returnedFromMaintenanceSuccess', 'Eszköz visszavéve karbantartásból')
+      )
     },
     onError: (error: any) => {
       toast.error(resolveToastMessage(error.response))
@@ -214,16 +218,17 @@ export function DevicesPage() {
                     <Pencil className="h-4 w-4" />
                   </Button>
 
-                  {(device.status === 'IN_STORAGE' || device.status === 'ASSIGNED') && canRequestMaintenance && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title={t('devices.requestMaintenance', 'Karbantartás kérése')}
-                      onClick={() => setMaintenanceDevice(device)}
-                    >
-                      <Wrench className="h-4 w-4 text-amber-500 hover:text-amber-600" />
-                    </Button>
-                  )}
+                  {(device.status === 'IN_STORAGE' || device.status === 'ASSIGNED') &&
+                    canRequestMaintenance && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={t('devices.requestMaintenance', 'Karbantartás kérése')}
+                        onClick={() => setMaintenanceDevice(device)}
+                      >
+                        <Wrench className="h-4 w-4 text-amber-500 hover:text-amber-600" />
+                      </Button>
+                    )}
 
                   {device.status === 'MAINTENANCE' && (
                     <Button
@@ -236,16 +241,17 @@ export function DevicesPage() {
                     </Button>
                   )}
 
-                  {(device.status === 'IN_STORAGE' || device.status === 'MAINTENANCE') && canRequestDisposal && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title={t('devices.requestDisposal', 'Selejtezés kérése')}
-                      onClick={() => setDisposeDeviceItem(device)}
-                    >
-                      <PackageX className="h-4 w-4 text-rose-500 hover:text-rose-600" />
-                    </Button>
-                  )}
+                  {(device.status === 'IN_STORAGE' || device.status === 'MAINTENANCE') &&
+                    canRequestDisposal && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={t('devices.requestDisposal', 'Selejtezés kérése')}
+                        onClick={() => setDisposeDeviceItem(device)}
+                      >
+                        <PackageX className="h-4 w-4 text-rose-500 hover:text-rose-600" />
+                      </Button>
+                    )}
                 </>
               )}
               {canDelete && device.status === 'DISPOSED' && (
@@ -263,7 +269,14 @@ export function DevicesPage() {
         },
       },
     ],
-    [t, canUpdate, canDelete, canRequestMaintenance, canRequestDisposal, returnFromMaintenanceMutation]
+    [
+      t,
+      canUpdate,
+      canDelete,
+      canRequestMaintenance,
+      canRequestDisposal,
+      returnFromMaintenanceMutation,
+    ]
   )
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -395,7 +408,7 @@ export function DevicesPage() {
       </div>
 
       {isCreateOpen && (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-lg space-y-4 max-w-lg">
+        <div className="max-w-lg space-y-4 rounded-lg border border-border bg-card p-6 shadow-lg">
           <h2 className="text-lg font-semibold">{t('devices.create')}</h2>
           <form onSubmit={handleCreateSubmit} className="space-y-3">
             <div>
@@ -433,13 +446,9 @@ export function DevicesPage() {
                 onClick={() => setStorageSelectorOpen(true)}
               >
                 {selectedStorageLocation ? (
-                  <span className="font-mono text-xs">
-                    {selectedStorageLocation.name}
-                  </span>
+                  <span className="font-mono text-xs">{selectedStorageLocation.name}</span>
                 ) : (
-                  <span className="text-muted-foreground">
-                    {t('assignments.selectLocation')}
-                  </span>
+                  <span className="text-muted-foreground">{t('assignments.selectLocation')}</span>
                 )}
               </Button>
             </div>
@@ -447,12 +456,15 @@ export function DevicesPage() {
               <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" disabled={createMutation.isPending || storageLocationId == null}>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || storageLocationId == null}
+              >
                 {t('common.save')}
               </Button>
             </div>
-      </form>
-      </div>
+          </form>
+        </div>
       )}
 
       <LocationTreeSelector
@@ -481,7 +493,10 @@ export function DevicesPage() {
       />
 
       {/* Edit Device Dialog */}
-      <Dialog open={editingDevice !== null} onOpenChange={(open) => !open && setEditingDevice(null)}>
+      <Dialog
+        open={editingDevice !== null}
+        onOpenChange={(open) => !open && setEditingDevice(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('devices.edit', 'Eszköz szerkesztése')}</DialogTitle>
@@ -502,13 +517,13 @@ export function DevicesPage() {
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground block mb-1">
+              <Label className="mb-1 block text-xs text-muted-foreground">
                 {t('devices.status')}
               </Label>
               <div className="pt-1">
                 {editingDevice && <StatusBadge status={editingDevice.status as any} />}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1.5">
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
                 A státusz az eszköz hozzárendeléseit tükrözi, nem módosítható közvetlenül.
               </p>
             </div>
@@ -529,12 +544,19 @@ export function DevicesPage() {
         </DialogContent>
       </Dialog>
       {/* Karbantartás kérése Dialog */}
-      <Dialog open={maintenanceDevice !== null} onOpenChange={(open) => !open && setMaintenanceDevice(null)}>
+      <Dialog
+        open={maintenanceDevice !== null}
+        onOpenChange={(open) => !open && setMaintenanceDevice(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('devices.requestMaintenance', 'Karbantartás kérése')}</DialogTitle>
             <DialogDescription>
-              {maintenanceDevice?.inventoryNumber} (#{maintenanceDevice?.id}) — {t('devices.requestMaintenanceDesc', 'Kérelem benyújtása karbantartásra indoklással.')}
+              {maintenanceDevice?.inventoryNumber} (#{maintenanceDevice?.id}) —{' '}
+              {t(
+                'devices.requestMaintenanceDesc',
+                'Kérelem benyújtása karbantartásra indoklással.'
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -546,7 +568,10 @@ export function DevicesPage() {
                 id="tbl-maint-reason"
                 value={maintenanceReason}
                 onChange={(e) => setMaintenanceReason(e.target.value)}
-                placeholder={t('devices.maintenanceReasonPlaceholder', 'pl. kijelző hiba, akkumulátor csere')}
+                placeholder={t(
+                  'devices.maintenanceReasonPlaceholder',
+                  'pl. kijelző hiba, akkumulátor csere'
+                )}
               />
             </div>
           </div>
@@ -561,7 +586,10 @@ export function DevicesPage() {
             <Button
               onClick={() => {
                 if (maintenanceDevice) {
-                  requestMaintenanceMutation.mutate({ id: maintenanceDevice.id, reason: maintenanceReason })
+                  requestMaintenanceMutation.mutate({
+                    id: maintenanceDevice.id,
+                    reason: maintenanceReason,
+                  })
                 }
               }}
               disabled={requestMaintenanceMutation.isPending}
@@ -573,12 +601,18 @@ export function DevicesPage() {
       </Dialog>
 
       {/* Selejtezés kérése Dialog */}
-      <Dialog open={disposeDeviceItem !== null} onOpenChange={(open) => !open && setDisposeDeviceItem(null)}>
+      <Dialog
+        open={disposeDeviceItem !== null}
+        onOpenChange={(open) => !open && setDisposeDeviceItem(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('devices.requestDisposal', 'Selejtezés kérése')}</DialogTitle>
             <DialogDescription>
-              {t('devices.requestDisposalDesc', 'Figyelem: A jóváhagyott selejtezés végleges állapotot eredményez.')}
+              {t(
+                'devices.requestDisposalDesc',
+                'Figyelem: A jóváhagyott selejtezés végleges állapotot eredményez.'
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -606,7 +640,10 @@ export function DevicesPage() {
               variant="destructive"
               onClick={() => {
                 if (disposeDeviceItem) {
-                  requestDisposalMutation.mutate({ id: disposeDeviceItem.id, reason: disposeReason })
+                  requestDisposalMutation.mutate({
+                    id: disposeDeviceItem.id,
+                    reason: disposeReason,
+                  })
                 }
               }}
               disabled={requestDisposalMutation.isPending}
@@ -620,7 +657,10 @@ export function DevicesPage() {
       <ConfirmDialog
         open={deleteDeviceId !== null}
         onOpenChange={(open) => !open && setDeleteDeviceId(null)}
-        description={t('devices.confirmDelete', 'Biztosan véglegesen törölni szeretnéd ezt az eszközt?')}
+        description={t(
+          'devices.confirmDelete',
+          'Biztosan véglegesen törölni szeretnéd ezt az eszközt?'
+        )}
         loading={deleteMutation.isPending}
         onConfirm={() => {
           if (deleteDeviceId) {

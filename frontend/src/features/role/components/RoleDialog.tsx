@@ -57,7 +57,11 @@ export function RoleDialog({
 
   const permissionGroups = useMemo<PermissionGroup[]>(() => {
     const getPrefix = (permName: string) => {
-      if (permName.startsWith('DEVICE_') || permName.startsWith('ATTACHMENT_') || permName.startsWith('ASSIGNMENT_'))
+      if (
+        permName.startsWith('DEVICE_') ||
+        permName.startsWith('ATTACHMENT_') ||
+        permName.startsWith('ASSIGNMENT_')
+      )
         return { group: 'roles.groupDevice', icon: '📱' }
       if (permName.startsWith('USER_')) return { group: 'roles.groupUser', icon: '👥' }
       if (permName.startsWith('ROLE_')) return { group: 'roles.groupRole', icon: '🔑' }
@@ -68,7 +72,10 @@ export function RoleDialog({
       return { group: 'roles.groupOther', icon: '⚙️' }
     }
 
-    const groupsMap = new Map<string, { nameKey: string; icon: string; permissions: PermissionDto[] }>()
+    const groupsMap = new Map<
+      string,
+      { nameKey: string; icon: string; permissions: PermissionDto[] }
+    >()
 
     allPermissions.forEach((perm) => {
       const { group, icon } = getPrefix(perm.name)
@@ -105,14 +112,19 @@ export function RoleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
-            {role ? t('roles.editRole', 'Szerepkör módosítása') : t('roles.createRole', 'Új szerepkör')}
+            {role
+              ? t('roles.editRole', 'Szerepkör módosítása')
+              : t('roles.createRole', 'Új szerepkör')}
           </DialogTitle>
           <DialogDescription>
-            {t('roles.dialogDescription', 'Adja meg a szerepkör nevét és állítsa be a jogosultságokat.')}
+            {t(
+              'roles.dialogDescription',
+              'Adja meg a szerepkör nevét és állítsa be a jogosultságokat.'
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -137,7 +149,8 @@ export function RoleDialog({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-semibold">
-                {t('roles.permissions', 'Jogosultságok')} ({selectedPermissionIds.length} / {allPermissions.length})
+                {t('roles.permissions', 'Jogosultságok')} ({selectedPermissionIds.length} /{' '}
+                {allPermissions.length})
               </Label>
               <div className="flex gap-2">
                 <Button
@@ -167,9 +180,9 @@ export function RoleDialog({
                 const allSelected = groupIds.every((id) => selectedPermissionIds.includes(id))
 
                 return (
-                  <div key={group.nameKey} className="rounded-lg border p-3 space-y-3 bg-card">
+                  <div key={group.nameKey} className="space-y-3 rounded-lg border bg-card p-3">
                     <div className="flex items-center justify-between border-b pb-2">
-                      <span className="font-medium text-xs flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 text-xs font-medium">
                         <span>{group.icon}</span>
                         {t(group.nameKey, group.nameKey)}
                       </span>
@@ -186,21 +199,21 @@ export function RoleDialog({
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {group.permissions.map((perm) => {
                         const isChecked = selectedPermissionIds.includes(perm.id)
                         return (
                           <label
                             key={perm.id}
-                            className={`flex items-center space-x-2.5 rounded-md p-2 text-xs border transition-colors cursor-pointer ${
+                            className={`flex cursor-pointer items-center space-x-2.5 rounded-md border p-2 text-xs transition-colors ${
                               isChecked
-                                ? 'bg-primary/10 border-primary/40 font-medium'
-                                : 'hover:bg-accent border-transparent'
+                                ? 'border-primary/40 bg-primary/10 font-medium'
+                                : 'border-transparent hover:bg-accent'
                             }`}
                           >
                             <input
                               type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
+                              className="h-4 w-4 rounded border-gray-300 text-primary accent-primary focus:ring-primary"
                               checked={isChecked}
                               onChange={() => togglePermission(perm.id)}
                             />

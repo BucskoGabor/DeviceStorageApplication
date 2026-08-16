@@ -169,7 +169,11 @@ export function UsersPage() {
         header: t('users.email'),
         cell: (info) => {
           const user = info.row.original
-          return <span className="font-mono text-xs">{user.email || user.emailMasked || user.emailHash}</span>
+          return (
+            <span className="font-mono text-xs">
+              {user.email || user.emailMasked || user.emailHash}
+            </span>
+          )
         },
       },
       {
@@ -181,11 +185,15 @@ export function UsersPage() {
           const directCount = user.directPermissions?.length ?? 0
           return (
             <div className="flex flex-wrap items-center gap-1.5">
-              <Badge variant="outline" className="font-medium text-xs">
+              <Badge variant="outline" className="text-xs font-medium">
                 {t(`roles.${roleName}`, roleName)}
               </Badge>
               {directCount > 0 && (
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0" title={t('users.directPermissions', 'Közvetlen jogok')}>
+                <Badge
+                  variant="secondary"
+                  className="px-1.5 py-0 text-[10px]"
+                  title={t('users.directPermissions', 'Közvetlen jogok')}
+                >
                   +{directCount} jog
                 </Badge>
               )}
@@ -317,7 +325,7 @@ export function UsersPage() {
       </div>
 
       {isCreateOpen && (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-lg space-y-4 max-w-2xl">
+        <div className="max-w-2xl space-y-4 rounded-lg border border-border bg-card p-6 shadow-lg">
           <h2 className="text-lg font-semibold">{t('users.create')}</h2>
           <form onSubmit={handleCreateSubmit} className="space-y-4">
             <div>
@@ -335,7 +343,10 @@ export function UsersPage() {
             </div>
             <div>
               <Label htmlFor="user-initial-password" className="text-xs text-muted-foreground">
-                {t('users.initialPassword', 'Kezdeti jelszó (opcionális, alapértelmezett: ChangeMe123!)')}
+                {t(
+                  'users.initialPassword',
+                  'Kezdeti jelszó (opcionális, alapértelmezett: ChangeMe123!)'
+                )}
               </Label>
               <Input
                 id="user-initial-password"
@@ -344,8 +355,11 @@ export function UsersPage() {
                 value={initialPassword}
                 onChange={(e) => setInitialPassword(e.target.value)}
               />
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {t('users.mustChangePasswordHelp', 'Az első bejelentkezéskor a felhasználónak kötelezően meg kell változtatnia ezt a jelszót.')}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t(
+                  'users.mustChangePasswordHelp',
+                  'Az első bejelentkezéskor a felhasználónak kötelezően meg kell változtatnia ezt a jelszót.'
+                )}
               </p>
             </div>
             <div>
@@ -371,9 +385,12 @@ export function UsersPage() {
                 <Label className="text-xs text-muted-foreground">
                   {t('users.directPermissions', 'Közvetlen jogosultságok (opcionális extra jogok)')}
                 </Label>
-                <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto border border-border rounded-md p-3 bg-muted/20">
+                <div className="grid max-h-44 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-border bg-muted/20 p-3">
                   {allPermissions.map((perm) => (
-                    <label key={perm.id} className="flex items-center gap-2 text-xs cursor-pointer hover:text-foreground">
+                    <label
+                      key={perm.id}
+                      className="flex cursor-pointer items-center gap-2 text-xs hover:text-foreground"
+                    >
                       <input
                         type="checkbox"
                         checked={selectedDirectPerms.includes(perm.id)}
@@ -427,7 +444,7 @@ export function UsersPage() {
           if (!open) setEditingUser(null)
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t('users.edit')}</DialogTitle>
             <DialogDescription>
@@ -452,7 +469,9 @@ export function UsersPage() {
               </select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">{t('users.office', 'Irodai helyszín')}</Label>
+              <Label className="text-xs text-muted-foreground">
+                {t('users.office', 'Irodai helyszín')}
+              </Label>
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -462,11 +481,17 @@ export function UsersPage() {
                 >
                   <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
                   {editOfficeLocationName ? (
-                    <span className="font-medium text-xs text-foreground">{editOfficeLocationName}</span>
+                    <span className="text-xs font-medium text-foreground">
+                      {editOfficeLocationName}
+                    </span>
                   ) : editOfficeLocationId != null ? (
-                    <span className="font-medium text-xs text-foreground">Helyszín #{editOfficeLocationId}</span>
+                    <span className="text-xs font-medium text-foreground">
+                      Helyszín #{editOfficeLocationId}
+                    </span>
                   ) : (
-                    <span className="text-muted-foreground">{t('locations.noParent', 'Nincs iroda beállítva')}</span>
+                    <span className="text-muted-foreground">
+                      {t('locations.noParent', 'Nincs iroda beállítva')}
+                    </span>
                   )}
                 </Button>
                 {editOfficeLocationId != null && (
@@ -489,9 +514,12 @@ export function UsersPage() {
                 <Label className="text-xs text-muted-foreground">
                   {t('users.directPermissions', 'Közvetlen jogosultságok')}
                 </Label>
-                <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto border border-border rounded-md p-3 bg-muted/20">
+                <div className="grid max-h-44 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-border bg-muted/20 p-3">
                   {allPermissions.map((perm) => (
-                    <label key={perm.id} className="flex items-center gap-2 text-xs cursor-pointer hover:text-foreground">
+                    <label
+                      key={perm.id}
+                      className="flex cursor-pointer items-center gap-2 text-xs hover:text-foreground"
+                    >
                       <input
                         type="checkbox"
                         checked={editDirectPerms.includes(perm.id)}
@@ -506,7 +534,10 @@ export function UsersPage() {
             )}
 
             <div>
-              <Label htmlFor="edit-active" className="flex items-center gap-2 text-xs cursor-pointer">
+              <Label
+                htmlFor="edit-active"
+                className="flex cursor-pointer items-center gap-2 text-xs"
+              >
                 <input
                   id="edit-active"
                   type="checkbox"
@@ -515,9 +546,7 @@ export function UsersPage() {
                 />
                 {t('users.active')}
               </Label>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t('users.activeChangeWarning')}
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{t('users.activeChangeWarning')}</p>
             </div>
             <DialogFooter>
               <Button

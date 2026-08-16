@@ -42,11 +42,7 @@ export function ConfirmDialog({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <DialogFooter>
-          <Button
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            disabled={loading}
-          >
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
             {cancelText || t('common.cancel', 'Mégse')}
           </Button>
           <Button

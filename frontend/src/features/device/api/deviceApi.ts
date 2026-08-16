@@ -8,7 +8,14 @@ export interface Device {
   id: number
   type: string
   inventoryNumber: string
-  status: 'PENDING' | 'ASSIGNED' | 'IN_STORAGE' | 'PENDING_MAINTENANCE' | 'MAINTENANCE' | 'PENDING_DISPOSAL' | 'DISPOSED'
+  status:
+    | 'PENDING'
+    | 'ASSIGNED'
+    | 'IN_STORAGE'
+    | 'PENDING_MAINTENANCE'
+    | 'MAINTENANCE'
+    | 'PENDING_DISPOSAL'
+    | 'DISPOSED'
   statusReason?: string | null
   previousStatus?: string | null
   currentLocation?: {
@@ -54,7 +61,9 @@ export async function findAllDevices(params: PageRequest): Promise<PageResponse<
     ...queryParams,
     ...(filter?.inventoryNumber ? { inventoryNumber: filter.inventoryNumber } : {}),
   }
-  const response = await apiClient.get<PageResponse<Device>>('/api/devices', { params: mergedParams })
+  const response = await apiClient.get<PageResponse<Device>>('/api/devices', {
+    params: mergedParams,
+  })
   return response.data
 }
 
@@ -69,7 +78,9 @@ export async function findDeviceById(id: number): Promise<Device> {
 /**
  * Új device létrehozása.
  */
-export async function createDevice(device: Omit<Device, 'id' | 'createdAt' | 'updatedAt'>): Promise<Device> {
+export async function createDevice(
+  device: Omit<Device, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Device> {
   const response = await apiClient.post<Device>('/api/devices', device)
   return response.data
 }
@@ -100,11 +111,13 @@ export async function findSoftwareByDevice(deviceId: number): Promise<DeviceSoft
 /**
  * Szoftver hozzárendelése egy device-hoz.
  */
-export async function attachSoftware(deviceId: number, softwareId: number): Promise<DeviceSoftware> {
-  const response = await apiClient.post<DeviceSoftware>(
-    `/api/devices/${deviceId}/software`,
-    { softwareId }
-  )
+export async function attachSoftware(
+  deviceId: number,
+  softwareId: number
+): Promise<DeviceSoftware> {
+  const response = await apiClient.post<DeviceSoftware>(`/api/devices/${deviceId}/software`, {
+    softwareId,
+  })
   return response.data
 }
 
@@ -119,7 +132,9 @@ export async function detachSoftware(deviceId: number, softwareId: number): Prom
  * Karbantartás kérése.
  */
 export async function requestMaintenance(deviceId: number, reason?: string): Promise<Device> {
-  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/maintenance/request`, { reason })
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/maintenance/request`, {
+    reason,
+  })
   return response.data
 }
 
@@ -151,7 +166,9 @@ export async function returnFromMaintenance(deviceId: number): Promise<Device> {
  * Selejtezés kérése.
  */
 export async function requestDisposal(deviceId: number, reason?: string): Promise<Device> {
-  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/dispose/request`, { reason })
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/dispose/request`, {
+    reason,
+  })
   return response.data
 }
 
@@ -190,10 +207,7 @@ export async function findPendingDisposal(): Promise<Device[]> {
 /**
  * Státusz váltás (operatív/admin beavatkozás).
  */
-export async function changeStatus(
-  deviceId: number,
-  status: Device['status']
-): Promise<Device> {
+export async function changeStatus(deviceId: number, status: Device['status']): Promise<Device> {
   const response = await apiClient.patch<Device>(`/api/devices/${deviceId}/status`, {
     status,
   })

@@ -26,7 +26,13 @@ interface AuthState {
   initialRefreshDone: boolean
 
   // Actions
-  setAuth: (token: string, email: string, role: string, permissions: string[], mustChangePassword: boolean) => void
+  setAuth: (
+    token: string,
+    email: string,
+    role: string,
+    permissions: string[],
+    mustChangePassword: boolean
+  ) => void
   setAccessToken: (token: string | null) => void
   clearAuth: () => void
   setMustChangePassword: (value: boolean) => void
@@ -77,8 +83,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 /**
  * Helper: access token lekérése a Zustand store-ból (axios interceptor-hoz).
  */
-export const getAccessToken = (): string | null =>
-  useAuthStore.getState().accessToken
+export const getAccessToken = (): string | null => useAuthStore.getState().accessToken
 
 /**
  * Helper: access token beállítása a Zustand store-ban.

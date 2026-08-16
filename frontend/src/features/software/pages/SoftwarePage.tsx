@@ -53,8 +53,13 @@ export function SoftwarePage() {
     },
   })
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: { name?: string; licenseKey?: string } }) =>
-      softwareApi.update(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number
+      payload: { name?: string; licenseKey?: string }
+    }) => softwareApi.update(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['software'] })
       setEditingSoftware(null)
@@ -170,11 +175,15 @@ export function SoftwarePage() {
         )}
       </div>
       {isCreateOpen && (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-lg space-y-4 max-w-lg">
-          <h2 className="text-lg font-semibold">{t('softwares.create', 'Új szoftver és licenc')}</h2>
+        <div className="max-w-lg space-y-4 rounded-lg border border-border bg-card p-6 shadow-lg">
+          <h2 className="text-lg font-semibold">
+            {t('softwares.create', 'Új szoftver és licenc')}
+          </h2>
           <form onSubmit={handleCreateSubmit} className="space-y-3">
             <div>
-              <Label className="text-xs text-muted-foreground">{t('devices.name', 'Szoftver neve')}</Label>
+              <Label className="text-xs text-muted-foreground">
+                {t('devices.name', 'Szoftver neve')}
+              </Label>
               <Input
                 placeholder="pl. AutoCAD 2025"
                 value={name}
@@ -183,7 +192,9 @@ export function SoftwarePage() {
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">{t('devices.licenseKey', 'Licenc kulcs')}</Label>
+              <Label className="text-xs text-muted-foreground">
+                {t('devices.licenseKey', 'Licenc kulcs')}
+              </Label>
               <Input
                 placeholder="XXXX-XXXX-XXXX-XXXX"
                 value={licenseKey}
@@ -236,9 +247,7 @@ export function SoftwarePage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('common.edit', 'Szoftver szerkesztése')}</DialogTitle>
-            <DialogDescription>
-              {editingSoftware?.name}
-            </DialogDescription>
+            <DialogDescription>{editingSoftware?.name}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-3 py-4">
             <div>
@@ -258,16 +267,17 @@ export function SoftwarePage() {
               </Label>
               <Input
                 id="edit-license"
-                placeholder={
-                  editingSoftware?.licenseKeyMasked ?? 'XXXX-XXXX-XXXX-XXXX'
-                }
+                placeholder={editingSoftware?.licenseKeyMasked ?? 'XXXX-XXXX-XXXX-XXXX'}
                 value={licenseKey}
                 onChange={(e) => setLicenseKey(e.target.value)}
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 {canViewKey
                   ? t('softwares.editLicenseHelp', 'Hagyd üresen, ha nem akarod módosítani.')
-                  : t('softwares.noViewPermission', 'Nincs jogosultságod a licence kulcs megtekintéséhez — csak a nevet módosíthatod.')}
+                  : t(
+                      'softwares.noViewPermission',
+                      'Nincs jogosultságod a licence kulcs megtekintéséhez — csak a nevet módosíthatod.'
+                    )}
               </p>
             </div>
             <DialogFooter>
@@ -301,7 +311,13 @@ function LicenseKeyCell({ software, canView }: { software: Software; canView: bo
     return (
       <div className="flex items-center gap-1">
         <span className="font-mono text-xs">{software.licenseKey}</span>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopy} title={t('devices.copy', 'Másolás')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={handleCopy}
+          title={t('devices.copy', 'Másolás')}
+        >
           {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
         </Button>
       </div>

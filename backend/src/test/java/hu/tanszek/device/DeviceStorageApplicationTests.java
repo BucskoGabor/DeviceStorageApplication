@@ -2,6 +2,7 @@ package hu.tanszek.device;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * migrációk a H2-n is lefutnak (ha kompatibilis), vagy kihagyjuk a @SpringBootTest konfigurációval.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class DeviceStorageApplicationTests {
 
   @Test

@@ -18,22 +18,20 @@ import { i18nKeys, defaultMessages } from './i18n-keys'
 void i18nKeys
 void defaultMessages
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources: {
-      hu: { translation: hu },
-      en: { translation: en },
-    },
-    lng: localStorage.getItem('device-storage-locale') ?? navigator.language.split('-')[0] ?? 'hu',
-    fallbackLng: 'hu',
-    debug: import.meta.env.DEV,
-    interpolation: {
-      escapeValue: false, // React már escape-el
-    },
-    react: {
-      useSuspense: false,
-    },
-  })
+i18n.use(initReactI18next).init({
+  resources: {
+    hu: { translation: hu },
+    en: { translation: en },
+  },
+  lng: localStorage.getItem('device-storage-locale') ?? navigator.language.split('-')[0] ?? 'hu',
+  fallbackLng: 'hu',
+  debug: import.meta.env.DEV,
+  interpolation: {
+    escapeValue: false, // React már escape-el
+  },
+  react: {
+    useSuspense: false,
+  },
+})
 
 export { i18n }

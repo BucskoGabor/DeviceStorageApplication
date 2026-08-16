@@ -111,14 +111,12 @@ function TreeRow({ node, depth, expandedIds, onToggle }: TreeRowProps) {
           {typeLabel(node.type)}
         </Badge>
         {node.depth > 0 && (
-          <span className="ml-2 text-xs text-muted-foreground">
-            L{node.depth}
-          </span>
+          <span className="ml-2 text-xs text-muted-foreground">L{node.depth}</span>
         )}
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 ml-1"
+          className="ml-1 h-6 w-6"
           onClick={() => navigate(`/locations/${node.id}`)}
           title={t('common.details', 'Részletek')}
         >

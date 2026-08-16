@@ -22,7 +22,9 @@ export function resolveToastMessage(
   response: { data?: { messageKey?: string; message?: string } } | undefined | null
 ): string {
   if (!response?.data) {
-    return i18n.exists('messages.internalError') ? i18n.t('messages.internalError') : i18n.t('internalError')
+    return i18n.exists('messages.internalError')
+      ? i18n.t('messages.internalError')
+      : i18n.t('internalError')
   }
 
   const { messageKey, message } = response.data
@@ -41,10 +43,14 @@ export function resolveToastMessage(
   }
 
   if (messageKey) {
-    return i18n.exists('messages.internalError') ? i18n.t('messages.internalError') : i18n.t('internalError')
+    return i18n.exists('messages.internalError')
+      ? i18n.t('messages.internalError')
+      : i18n.t('internalError')
   }
 
-  return i18n.exists('messages.internalError') ? i18n.t('messages.internalError') : i18n.t('internalError')
+  return i18n.exists('messages.internalError')
+    ? i18n.t('messages.internalError')
+    : i18n.t('internalError')
 }
 
 /**

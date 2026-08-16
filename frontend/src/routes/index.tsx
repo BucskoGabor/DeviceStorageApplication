@@ -81,10 +81,7 @@ export function AppRoutes() {
           element={
             <AppLayout>
               <MyDashboardPage>
-                <PasswordChangeForm
-                  open={true}
-                  onSuccess={() => setPasswordChanged(true)}
-                />
+                <PasswordChangeForm open={true} onSuccess={() => setPasswordChanged(true)} />
               </MyDashboardPage>
             </AppLayout>
           }

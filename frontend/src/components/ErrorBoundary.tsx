@@ -45,7 +45,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <div className="max-w-md rounded-lg border border-border bg-card p-6 text-card-foreground shadow-sm">
               <h2 className="mb-2 text-xl font-semibold">Hiba történt</h2>
               <p className="mb-4 text-sm text-muted-foreground">
-                  Az alkalmazás váratlan hibát észlelt. Kérjük, frissítse az oldalt vagy lépjen vissza a főoldalra.
+                Az alkalmazás váratlan hibát észlelt. Kérjük, frissítse az oldalt vagy lépjen vissza
+                a főoldalra.
               </p>
               {this.state.error && (
                 <pre className="mb-4 overflow-auto rounded bg-muted p-3 text-xs text-muted-foreground">
