@@ -30,9 +30,7 @@ import hu.tanszek.device.user.repository.AppUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * DeviceService — Device CRUD + assign/unassign business logic.
- */
+/** DeviceService — Device CRUD + assign/unassign business logic. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -657,12 +655,13 @@ public class DeviceService {
    * Device végleges törlése.
    *
    * <p>Audit és integritási szabály:
+   *
    * <ul>
-   *   <li>Ha az eszközhöz már tartoztak hozzárendelési előzmények (DeviceAssignment rekordok),
-   *       az eszköz NEM törölhető véglegesen az auditálhatóság és elszámoltathatóság megőrzése érdekében.
-   *       Ilyenkor a lezárás hivatalos módja a selejtezés (DISPOSED státusz).
-   *   <li>Ha az eszközhöz nem tartozik semmilyen hozzárendelés (pl. téves felvitel), akkor a fizikai
-   *       törlés engedélyezett (csatolmányok és join tábla törlésével).
+   *   <li>Ha az eszközhöz már tartoztak hozzárendelési előzmények (DeviceAssignment rekordok), az
+   *       eszköz NEM törölhető véglegesen az auditálhatóság és elszámoltathatóság megőrzése
+   *       érdekében. Ilyenkor a lezárás hivatalos módja a selejtezés (DISPOSED státusz).
+   *   <li>Ha az eszközhöz nem tartozik semmilyen hozzárendelés (pl. téves felvitel), akkor a
+   *       fizikai törlés engedélyezett (csatolmányok és join tábla törlésével).
    * </ul>
    *
    * @param id az eszköz azonosítója
@@ -696,6 +695,7 @@ public class DeviceService {
 
     // 4. Eszköz törlése
     deviceRepository.delete(device);
-    log.info("Device permanently deleted: id={}, inventoryNumber={}", id, device.getInventoryNumber());
+    log.info(
+        "Device permanently deleted: id={}, inventoryNumber={}", id, device.getInventoryNumber());
   }
 }

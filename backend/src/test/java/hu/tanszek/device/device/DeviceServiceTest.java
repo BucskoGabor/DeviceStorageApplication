@@ -33,9 +33,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Unit tesztek a {@link DeviceService}-hez.
- */
+/** Unit tesztek a {@link DeviceService}-hez. */
 @ExtendWith(MockitoExtension.class)
 class DeviceServiceTest {
 

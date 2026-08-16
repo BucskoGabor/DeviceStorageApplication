@@ -15,7 +15,8 @@ import hu.tanszek.device.device.entity.DeviceStatus;
 /**
  * Device repository.
  *
- * <p>A {@link JpaSpecificationExecutor} a row-level szűréshez és egyedi feltételrendszerekhez biztosít támogatást.
+ * <p>A {@link JpaSpecificationExecutor} a row-level szűréshez és egyedi feltételrendszerekhez
+ * biztosít támogatást.
  *
  * @see Device
  */

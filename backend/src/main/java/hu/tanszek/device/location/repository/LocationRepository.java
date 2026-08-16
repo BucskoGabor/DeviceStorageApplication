@@ -14,7 +14,8 @@ import hu.tanszek.device.location.entity.LocationType;
 /**
  * Location-ok repository.
  *
- * <p>A {@link JpaSpecificationExecutor} a dinamikus szűrésekhez és lekérdezésekhez biztosít támogatást.
+ * <p>A {@link JpaSpecificationExecutor} a dinamikus szűrésekhez és lekérdezésekhez biztosít
+ * támogatást.
  *
  * @see Location
  */

@@ -7,7 +7,8 @@ package hu.tanszek.device.common;
  *
  * <ol>
  *   <li><b>Nginx</b> — frontend konténer nginx.conf {@code client_max_body_size 10M}
- *   <li><b>Spring multipart</b> — application.yml {@code spring.servlet.multipart.max-file-size=10MB}
+ *   <li><b>Spring multipart</b> — application.yml {@code
+ *       spring.servlet.multipart.max-file-size=10MB}
  *   <li><b>Bean Validation</b> — DTO String mezők {@code @Size(max = ...)} (ez az interface)
  * </ol>
  *

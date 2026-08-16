@@ -16,8 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Központi email küldő service — rendszer notification-ök (alert-ek, audit log export, stb.).
  *
- * <p>A {@code ScheduledJobMonitoring} használja hiba alert-ekre (mail config + Spring
- * Retry 3 attempt exponential backoff).
+ * <p>A {@code ScheduledJobMonitoring} használja hiba alert-ekre (mail config + Spring Retry 3
+ * attempt exponential backoff).
  *
  * <p>A {@code @Async} használatával a küldés nem blockolja a job végrehajtását — ha a SMTP szerver
  * lassú, a cleanup job akkor is tovább fut.

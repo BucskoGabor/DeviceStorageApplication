@@ -14,9 +14,9 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 /**
  * OpenApiConfig — Springdoc OpenAPI integráció testreszabása.
  *
- * <p>A {@code springdoc-openapi-starter-webmvc-ui} dependency a Spring Boot
- * auto-configgal aktiválja az alapértelmezett {@code /v3/api-docs} (JSON) és {@code
- * /swagger-ui.html} (UI) endpoint-okat.
+ * <p>A {@code springdoc-openapi-starter-webmvc-ui} dependency a Spring Boot auto-configgal
+ * aktiválja az alapértelmezett {@code /v3/api-docs} (JSON) és {@code /swagger-ui.html} (UI)
+ * endpoint-okat.
  *
  * <p>Ez az osztály testreszabja:
  *

@@ -20,7 +20,8 @@ import hu.tanszek.device.user.entity.AppUser;
  * <p>Az {@code email_hash} (SHA-256) alapján történő keresés az {@code email_encrypted} (AES-GCM
  * titkosított) visszafejtése nélkül — gyors, minden request-en használható.
  *
- * <p>A {@link JpaSpecificationExecutor} a row-level szűréshez és jogosultsági lekérdezésekhez biztosít támogatást.
+ * <p>A {@link JpaSpecificationExecutor} a row-level szűréshez és jogosultsági lekérdezésekhez
+ * biztosít támogatást.
  *
  * @see AppUser
  */
