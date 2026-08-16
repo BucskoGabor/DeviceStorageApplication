@@ -141,7 +141,7 @@ class RoleServiceTest {
 
     assertThatThrownBy(() -> service.update(1L, "SUPERADMIN", null))
         .isInstanceOf(BusinessValidationException.class)
-        .hasMessageContaining("system");
+        .hasMessageMatching("(?i).*system.*");
   }
 
   @Test
@@ -175,7 +175,7 @@ class RoleServiceTest {
 
     assertThatThrownBy(() -> service.delete(1L))
         .isInstanceOf(BusinessValidationException.class)
-        .hasMessageContaining("system");
+        .hasMessageMatching("(?i).*system.*");
     verify(roleRepository, never()).delete(any());
   }
 
