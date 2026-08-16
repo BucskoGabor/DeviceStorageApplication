@@ -269,6 +269,121 @@ public class EntityTypeRegistry {
     }
   }
 
+  /**
+   * Törölt entitás újralétrehozása a beforeState alapján (DELETE rollback).
+   *
+   * @param entityType az entity típusa
+   * @param entityId az eredeti entity ID-ja
+   * @param fields a beforeState mezői
+   * @return az újonnan létrehozott és perzisztált entitás
+   */
+  public Object recreateEntity(String entityType, Long entityId, Map<String, Object> fields) {
+    if (fields == null) {
+      throw new IllegalArgumentException("Cannot recreate entity with null fields");
+    }
+
+    switch (entityType) {
+      case "Device" -> {
+        String invNumber = (String) fields.get("inventoryNumber");
+        if (invNumber != null && deviceRepository.findByInventoryNumber(invNumber).isPresent()) {
+          throw new hu.tanszek.device.common.BusinessValidationException(
+              "duplicateInventoryNumber",
+              "Ezzel a leltári számmal már létezik eszköz: " + invNumber);
+        }
+        String type = (String) fields.get("type");
+        if (type == null || "***".equals(type)) {
+          type = "Unknown";
+        }
+        hu.tanszek.device.device.entity.DeviceStatus status =
+            hu.tanszek.device.device.entity.DeviceStatus.IN_STORAGE;
+        if (fields.get("status") != null && !"***".equals(fields.get("status"))) {
+          try {
+            status =
+                hu.tanszek.device.device.entity.DeviceStatus.valueOf(
+                    fields.get("status").toString());
+          } catch (Exception ignored) {
+          }
+        }
+        Device device =
+            Device.builder()
+                .type(type)
+                .inventoryNumber(
+                    invNumber != null && !"***".equals(invNumber)
+                        ? invNumber
+                        : "INV-RESTORED-" + System.currentTimeMillis())
+                .status(status)
+                .softwares(new java.util.HashSet<>())
+                .build();
+
+        if (fields.containsKey("locationId") && fields.get("locationId") instanceof Number locId) {
+          locationRepository.findById(locId.longValue()).ifPresent(device::setCurrentLocation);
+        }
+        return deviceRepository.save(device);
+      }
+      case "Location" -> {
+        String name = (String) fields.get("name");
+        hu.tanszek.device.location.entity.LocationType type =
+            hu.tanszek.device.location.entity.LocationType.CLASSROOM;
+        if (fields.get("type") != null && !"***".equals(fields.get("type"))) {
+          try {
+            type =
+                hu.tanszek.device.location.entity.LocationType.valueOf(
+                    fields.get("type").toString());
+          } catch (Exception ignored) {
+          }
+        }
+        Location location =
+            Location.builder()
+                .name(name != null && !"***".equals(name) ? name : "Restored Location")
+                .type(type)
+                .build();
+        if (fields.containsKey("parentId") && fields.get("parentId") instanceof Number parentId) {
+          locationRepository.findById(parentId.longValue()).ifPresent(location::setParent);
+        }
+        return locationRepository.save(location);
+      }
+      case "Software" -> {
+        String name = (String) fields.get("name");
+        Software software =
+            Software.builder()
+                .name(name != null && !"***".equals(name) ? name : "Restored Software")
+                .build();
+        return softwareRepository.save(software);
+      }
+      case "Role" -> {
+        String name = (String) fields.get("name");
+        Role role =
+            Role.builder()
+                .name(name != null && !"***".equals(name) ? name : "ROLE_RESTORED")
+                .permissions(new java.util.HashSet<>())
+                .build();
+        return roleRepository.save(role);
+      }
+      case "User", "AppUser" -> {
+        String emailHash = (String) fields.get("emailHash");
+        if (emailHash != null && userRepository.findByEmailHash(emailHash).isPresent()) {
+          throw new hu.tanszek.device.common.BusinessValidationException(
+              "duplicateEmail", "Ezzel az email címmel már létezik felhasználó.");
+        }
+        AppUser user =
+            AppUser.builder()
+                .emailHash(emailHash != null ? emailHash : "restored_" + System.currentTimeMillis())
+                .emailEncrypted(
+                    fields.get("email") != null
+                        ? fields.get("email").toString()
+                        : "restored@tanszek.local")
+                .active(true)
+                .mustChangePassword(true)
+                .failedLoginCount(0)
+                .permissions(new java.util.HashSet<>())
+                .build();
+        return userRepository.save(user);
+      }
+      default ->
+          throw new IllegalArgumentException("Cannot recreate entity of type: " + entityType);
+    }
+  }
+
   /** Entity lookup finder-ek map-je: entity_type string → repository.findById(). */
   private final Map<String, Function<Long, ?>> finders = new HashMap<>();
 
