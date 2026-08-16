@@ -13,9 +13,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>A SpringBootTest az alkalmazás teljes kontextusát indítja, ami segít észrevenni a dependency
  * injection és konfigurációs hibákat.
  *
- * <p>H2 in-memory database-t használ, mert a PostgreSQL konténer a CI-ban nem elérhető a unit
- * teszt fázisban (csak az mvn verify -Pintegration lépésben, Testcontainers-szel). A Flyway
- * migrációk kimaradnak, a Hibernate {code ddl-auto: create-drop} generálja a sémát.
+ * <p>H2 in-memory database-t használ, mert a PostgreSQL konténer a CI-ban nem elérhető a unit teszt
+ * fázisban (csak az mvn verify -Pintegration lépésben, Testcontainers-szel). A Flyway migrációk
+ * kimaradnak, a Hibernate {code ddl-auto: create-drop} generálja a sémát.
  */
 @SpringBootTest
 @ActiveProfiles("smoketest")
