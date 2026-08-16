@@ -70,14 +70,14 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
                 .status(DeviceStatus.IN_STORAGE)
                 .build());
 
-    // 2. Request assignment (PENDING_ASSIGNMENT)
+    // 2. Request assignment (PENDING_ASSIGNMENT) — location-re assign, nem user-re
     var pendingAssignment =
         deviceService.requestAssignment(
-            device.getId(), classroom.getId(), byUser.getId(), byUser.getId());
+            device.getId(), classroom.getId(), null, byUser.getId());
     assertThat(pendingAssignment.getStatus()).isEqualTo(AssignmentStatus.PENDING_ASSIGNMENT);
     assertThat(pendingAssignment.getStatus()).isNotEqualTo(AssignmentStatus.ASSIGNED);
     assertThat(pendingAssignment.getToLocation()).isEqualTo(classroom);
-    assertThat(pendingAssignment.getToUser()).isEqualTo(byUser);
+    assertThat(pendingAssignment.getToUser()).isNull();
 
     // 3. Approve assignment → ASSIGNED
     var approvedAssignment =
