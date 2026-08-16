@@ -1,6 +1,9 @@
 spring:
   application:
     name: device-storage-test
+  mail:
+    host: localhost
+    port: 1025
   jpa:
     hibernate:
       ddl-auto: validate
