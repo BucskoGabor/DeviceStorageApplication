@@ -95,8 +95,8 @@ public class GlobalExceptionHandler {
   /**
    * UnauthorizedActionException — 401 (authRequired, invalidCredentials) vagy 403 (többi). Az
    * authRequired és invalidCredentials azt jelenti, hogy a user nincs hitelesítve; minden más
-   * UnauthorizedActionException kontextusfüggő jogosultsági hiba (pl. permission denied egy
-   * védett endpoint-hoz).
+   * UnauthorizedActionException kontextusfüggő jogosultsági hiba (pl. permission denied egy védett
+   * endpoint-hoz).
    */
   @ExceptionHandler(UnauthorizedActionException.class)
   public ResponseEntity<Map<String, Object>> handleUnauthorized(
