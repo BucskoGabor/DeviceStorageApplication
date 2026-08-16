@@ -34,7 +34,8 @@ class RoleServiceTest {
   private final RoleRepository roleRepository = mock(RoleRepository.class);
   private final PermissionRepository permissionRepository = mock(PermissionRepository.class);
   private final AppUserRepository userRepository = mock(AppUserRepository.class);
-  private final RoleService service = new RoleService(roleRepository, permissionRepository, userRepository);
+  private final RoleService service =
+      new RoleService(roleRepository, permissionRepository, userRepository);
 
   @Test
   void findAll_delegatesToRepository() {
