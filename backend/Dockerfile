@@ -10,7 +10,7 @@ WORKDIR /app
 COPY pom.xml checkstyle.xml suppressions.xml ./
 RUN mvn dependency:go-offline -B -q
 
-# Copy source and build (skip tesztek, mert a Task 5.3-ban vannak integrációs tesztek)
+# Copy source and build
 COPY src ./src
 RUN mvn package -DskipTests -B -q
 

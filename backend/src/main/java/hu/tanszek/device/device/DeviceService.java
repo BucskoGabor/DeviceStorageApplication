@@ -3,6 +3,7 @@ package hu.tanszek.device.device;
 import java.time.Instant;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
