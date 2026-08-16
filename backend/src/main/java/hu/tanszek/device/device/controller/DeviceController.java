@@ -38,6 +38,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
+
+import hu.tanszek.device.device.DeviceQueryService;
 
 /**
  * DeviceController — REST endpointok a Device entity CRUD-hoz.
@@ -45,9 +48,6 @@ import lombok.RequiredArgsConstructor;
  * <p>Permission-ök: - DEVICE_READ: GET endpoints - DEVICE_CREATE: POST - DEVICE_UPDATE: PUT -
  * DEVICE_DELETE: DELETE
  */
-import org.springframework.data.jpa.domain.Specification;
-import hu.tanszek.device.device.DeviceQueryService;
-
 @RestController
 @RequestMapping("/api/devices")
 @RequiredArgsConstructor
