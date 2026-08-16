@@ -47,6 +47,8 @@ class UserServiceUpdateTest {
   @Mock private RefreshTokenRepository refreshTokenRepository;
   @Mock private RoleRepository roleRepository;
   @Mock private LocationRepository locationRepository;
+  @Mock private hu.tanszek.device.auth.repository.PermissionRepository permissionRepository;
+  @Mock private hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
   @Mock private Argon2PasswordEncoder passwordEncoder;
 
   @InjectMocks private UserService userService;
@@ -67,7 +69,7 @@ class UserServiceUpdateTest {
     when(roleRepository.findByName("ROLE_ADMIN")).thenReturn(Optional.of(adminRole));
     when(appUserRepository.save(user)).thenReturn(user);
 
-    AppUser result = userService.update(1L, "ROLE_ADMIN", null, false, null);
+    AppUser result = userService.update(1L, "ROLE_ADMIN", null, false, null, null);
 
     assertThat(result.getRole().getName()).isEqualTo("ROLE_ADMIN");
   }
@@ -77,7 +79,7 @@ class UserServiceUpdateTest {
     when(appUserRepository.findById(1L)).thenReturn(Optional.of(user));
     when(roleRepository.findByName("ROLE_INVALID")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> userService.update(1L, "ROLE_INVALID", null, false, null))
+    assertThatThrownBy(() -> userService.update(1L, "ROLE_INVALID", null, false, null, null))
         .isInstanceOf(BusinessValidationException.class)
         .hasMessageContaining("invalidRole");
 
@@ -91,7 +93,7 @@ class UserServiceUpdateTest {
     when(locationRepository.findById(5L)).thenReturn(Optional.of(office));
     when(appUserRepository.save(user)).thenReturn(user);
 
-    AppUser result = userService.update(1L, null, 5L, false, null);
+    AppUser result = userService.update(1L, null, 5L, false, null, null);
 
     assertThat(result.getOfficeLocation()).isSameAs(office);
   }
@@ -103,7 +105,7 @@ class UserServiceUpdateTest {
     when(appUserRepository.findById(1L)).thenReturn(Optional.of(user));
     when(appUserRepository.save(user)).thenReturn(user);
 
-    AppUser result = userService.update(1L, null, null, true, null);
+    AppUser result = userService.update(1L, null, null, true, null, null);
 
     assertThat(result.getOfficeLocation()).isNull();
   }
@@ -113,7 +115,7 @@ class UserServiceUpdateTest {
     when(appUserRepository.findById(1L)).thenReturn(Optional.of(user));
     when(appUserRepository.save(user)).thenReturn(user);
 
-    AppUser result = userService.update(1L, null, null, false, false);
+    AppUser result = userService.update(1L, null, null, false, false, null);
 
     assertThat(result.isActive()).isFalse();
     verify(refreshTokenRepository, times(1)).revokeAllRefreshTokensByUserId(1L);
@@ -125,7 +127,7 @@ class UserServiceUpdateTest {
     when(appUserRepository.findById(1L)).thenReturn(Optional.of(user));
     when(appUserRepository.save(user)).thenReturn(user);
 
-    AppUser result = userService.update(1L, null, null, false, true);
+    AppUser result = userService.update(1L, null, null, false, true, null);
 
     assertThat(result.isActive()).isTrue();
     verify(refreshTokenRepository, never()).revokeAllRefreshTokensByUserId(any());
@@ -136,7 +138,7 @@ class UserServiceUpdateTest {
     when(appUserRepository.findById(1L)).thenReturn(Optional.of(user));
     when(appUserRepository.save(user)).thenReturn(user);
 
-    AppUser result = userService.update(1L, null, null, false, true);
+    AppUser result = userService.update(1L, null, null, false, true, null);
 
     assertThat(result.isActive()).isTrue();
     verify(refreshTokenRepository, never()).revokeAllRefreshTokensByUserId(any());
@@ -146,7 +148,7 @@ class UserServiceUpdateTest {
   void update_throwsWhenUserNotFound() {
     when(appUserRepository.findById(99L)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> userService.update(99L, null, null, false, null))
+    assertThatThrownBy(() -> userService.update(99L, null, null, false, null, null))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 
@@ -155,7 +157,7 @@ class UserServiceUpdateTest {
     when(appUserRepository.findById(1L)).thenReturn(Optional.of(user));
     when(appUserRepository.save(user)).thenReturn(user);
 
-    AppUser result = userService.update(1L, null, null, false, null);
+    AppUser result = userService.update(1L, null, null, false, null, null);
 
     assertThat(result.isActive()).isTrue();
     assertThat(result.getRole()).isSameAs(teacherRole);
@@ -167,7 +169,7 @@ class UserServiceUpdateTest {
     when(appUserRepository.findById(1L)).thenReturn(Optional.of(user));
     when(locationRepository.findById(99L)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> userService.update(1L, null, 99L, false, null))
+    assertThatThrownBy(() -> userService.update(1L, null, 99L, false, null, null))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 }

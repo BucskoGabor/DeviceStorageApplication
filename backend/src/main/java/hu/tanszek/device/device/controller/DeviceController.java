@@ -45,6 +45,9 @@ import lombok.RequiredArgsConstructor;
  * <p>Permission-ök: - DEVICE_READ: GET endpoints - DEVICE_CREATE: POST - DEVICE_UPDATE: PUT -
  * DEVICE_DELETE: DELETE
  */
+import org.springframework.data.jpa.domain.Specification;
+import hu.tanszek.device.device.DeviceQueryService;
+
 @RestController
 @RequestMapping("/api/devices")
 @RequiredArgsConstructor
@@ -56,6 +59,7 @@ public class DeviceController {
 
   private final DeviceRepository deviceRepository;
   private final DeviceService deviceService;
+  private final DeviceQueryService deviceQueryService;
   private final LocationRepository locationRepository;
   private final SoftwareRepository softwareRepository;
   private final hu.tanszek.device.crypto.CryptoService cryptoService;
@@ -76,7 +80,7 @@ public class DeviceController {
     @ApiResponse(responseCode = "403", description = "DEVICE_READ permission hiányzik")
   })
   @GetMapping
-  @RequirePermission("DEVICE_READ")
+  @RequirePermission({"DEVICE_READ", "DEVICE_MANAGE"})
   public ResponseEntity<Map<String, Object>> findAll(
       @Parameter(description = "Oldalszám (0-tól)") @RequestParam(defaultValue = "0") int page,
       @Parameter(description = "Elemek száma (max 50)") @RequestParam(defaultValue = "20") int size,
@@ -84,7 +88,8 @@ public class DeviceController {
       @Parameter(description = "Státusz szűrő") @RequestParam(required = false) String status,
       @Parameter(description = "Típus szűrő") @RequestParam(required = false) String type,
       @Parameter(description = "Leltári szám pontos egyezés") @RequestParam(required = false)
-          String inventoryNumber) {
+          String inventoryNumber,
+      Authentication authentication) {
     if (size > MAX_PAGE_SIZE) {
       size = MAX_PAGE_SIZE;
     }
@@ -95,22 +100,34 @@ public class DeviceController {
       page = 0;
     }
 
-    // Egyszerűsített szűrés — production-ben a JpaSpecificationExecutor-t használnánk
-    Page<Device> result;
-    var pageable = PageRequest.of(page, size, Sort.by(sort).ascending());
-
-    if (inventoryNumber != null && !inventoryNumber.isBlank()) {
-      result =
-          deviceRepository.findAll(
-              (root, query, cb) -> cb.equal(root.get("inventoryNumber"), inventoryNumber),
-              pageable);
-    } else if (status != null && !status.isBlank()) {
-      result =
-          deviceRepository.findByStatus(
-              hu.tanszek.device.device.entity.DeviceStatus.valueOf(status), pageable);
-    } else {
-      result = deviceRepository.findAll(pageable);
+    AppUser currentUser = null;
+    if (authentication != null && authentication.getName() != null) {
+      currentUser = userRepository.findByEmailHash(authentication.getName()).orElse(null);
     }
+
+    Specification<Device> filterSpec = Specification.where(null);
+    if (inventoryNumber != null && !inventoryNumber.isBlank()) {
+      filterSpec =
+          filterSpec.and(
+              (root, query, cb) -> cb.equal(root.get("inventoryNumber"), inventoryNumber));
+    }
+    if (status != null && !status.isBlank()) {
+      try {
+        DeviceStatus st = DeviceStatus.valueOf(status);
+        filterSpec = filterSpec.and((root, query, cb) -> cb.equal(root.get("status"), st));
+      } catch (IllegalArgumentException ignored) {
+      }
+    }
+    if (type != null && !type.isBlank()) {
+      filterSpec =
+          filterSpec.and(
+              (root, query, cb) ->
+                  cb.like(cb.lower(root.get("type")), "%" + type.toLowerCase() + "%"));
+    }
+
+    var pageable = PageRequest.of(page, size, Sort.by(sort).ascending());
+    Page<Device> result =
+        deviceQueryService.findAllForCurrentUser(currentUser, filterSpec, pageable);
 
     return ResponseEntity.ok(
         Map.of(
@@ -131,7 +148,7 @@ public class DeviceController {
     @ApiResponse(responseCode = "403", description = "DEVICE_READ permission hiányzik")
   })
   @GetMapping("/{id}")
-  @RequirePermission("DEVICE_READ")
+  @RequirePermission({"DEVICE_READ", "DEVICE_MANAGE"})
   public ResponseEntity<Device> findById(
       @Parameter(description = "Eszköz azonosító") @PathVariable Long id) {
     Device device =
@@ -145,11 +162,14 @@ public class DeviceController {
   @Operation(
       summary = "Új eszköz létrehozása",
       description =
-          "Létrehoz egy új eszközt a megadott leltári számmal. "
-              + "A leltári szám egyedi (unique constraint). Audit log bejegyzés generálódik.")
+          "Létrehoz egy új eszközt a megadott leltári számmal és raktárral. "
+              + "A leltári szám egyedi (unique constraint). "
+              + "A device a megadott raktárba kerül (current_location_id beállítva). "
+              + "Audit log bejegyzés generálódik.")
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "Eszköz létrehozva"),
     @ApiResponse(responseCode = "400", description = "Validációs hiba vagy duplikált leltári szám"),
+    @ApiResponse(responseCode = "404", description = "Raktár nem található"),
     @ApiResponse(responseCode = "403", description = "DEVICE_CREATE permission hiányzik")
   })
   @PostMapping
@@ -165,11 +185,27 @@ public class DeviceController {
                   "Inventory number already exists: " + request.inventoryNumber());
             });
 
+    // Raktár validáció: STORAGE típusú kell legyen
+    hu.tanszek.device.location.entity.Location storageLocation =
+        locationRepository
+            .findById(request.storageLocationId())
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Location not found: " + request.storageLocationId()));
+    if (storageLocation.getType()
+        != hu.tanszek.device.location.entity.LocationType.STORAGE) {
+      throw new BusinessValidationException(
+          "storageLocationRequired",
+          "Initial location must be STORAGE type, got: " + storageLocation.getType());
+    }
+
     Device device =
         Device.builder()
             .type(request.type())
             .inventoryNumber(request.inventoryNumber())
-            .status(hu.tanszek.device.device.entity.DeviceStatus.valueOf(request.status()))
+            .status(hu.tanszek.device.device.entity.DeviceStatus.IN_STORAGE)
+            .currentLocation(storageLocation)
             .build();
 
     Device saved = deviceRepository.save(device);
@@ -219,10 +255,7 @@ public class DeviceController {
   @RequirePermission("DEVICE_DELETE")
   public ResponseEntity<Void> delete(
       @Parameter(description = "Eszköz azonosító") @PathVariable Long id) {
-    if (!deviceRepository.existsById(id)) {
-      throw new ResourceNotFoundException("Device not found: " + id);
-    }
-    deviceRepository.deleteById(id);
+    deviceService.delete(id);
     return ResponseEntity.noContent().build();
   }
 
@@ -256,24 +289,56 @@ public class DeviceController {
     return ResponseEntity.ok(saved);
   }
 
-  /** POST /api/devices/{id}/maintenance — Eszköz karbantartásba küldése */
-  @Operation(summary = "Karbantartásba küldés", description = "Eszköz karbantartásba küldése ok megadásával.")
-  @PostMapping("/{id}/maintenance")
-  @RequirePermission("DEVICE_UPDATE")
-  public ResponseEntity<Device> sendToMaintenance(
+  /** POST /api/devices/{id}/maintenance/request — Karbantartásba küldés kérése */
+  @Operation(summary = "Karbantartásba küldés kérése", description = "Kérelem benyújtása karbantartásra PENDING_MAINTENANCE státusszal.")
+  @PostMapping("/{id}/maintenance/request")
+  @RequirePermission("DEVICE_MAINTENANCE_REQUEST")
+  public ResponseEntity<Device> requestMaintenance(
       @PathVariable Long id,
       @RequestBody(required = false) MaintenanceRequest request,
       Authentication authentication) {
     Long userId = resolveUserId(authentication);
-    String reason = request != null ? request.reason() : "Nincs megadva";
-    Device saved = deviceService.sendToMaintenance(id, reason, userId);
+    String reason = request != null && request.reason() != null ? request.reason() : "Nincs megadva";
+    Device saved = deviceService.requestMaintenance(id, reason, userId);
     return ResponseEntity.ok(saved);
+  }
+
+  /** POST /api/devices/{id}/maintenance/approve — Karbantartás jóváhagyása */
+  @Operation(summary = "Karbantartás jóváhagyása", description = "Karbantartási kérelem jóváhagyása MAINTENANCE státuszba.")
+  @PostMapping("/{id}/maintenance/approve")
+  @RequirePermission("DEVICE_MAINTENANCE_APPROVE")
+  public ResponseEntity<Device> approveMaintenance(
+      @PathVariable Long id,
+      Authentication authentication) {
+    Long userId = resolveUserId(authentication);
+    Device saved = deviceService.approveMaintenance(id, userId);
+    return ResponseEntity.ok(saved);
+  }
+
+  /** POST /api/devices/{id}/maintenance/reject — Karbantartás elutasítása */
+  @Operation(summary = "Karbantartás elutasítása", description = "Karbantartási kérelem elutasítása és visszaállítása az eredeti állapotba.")
+  @PostMapping("/{id}/maintenance/reject")
+  @RequirePermission("DEVICE_MAINTENANCE_APPROVE")
+  public ResponseEntity<Device> rejectMaintenance(
+      @PathVariable Long id,
+      Authentication authentication) {
+    Long userId = resolveUserId(authentication);
+    Device saved = deviceService.rejectMaintenance(id, userId);
+    return ResponseEntity.ok(saved);
+  }
+
+  /** GET /api/devices/pending-maintenance — Függőben lévő karbantartási kérelmek */
+  @Operation(summary = "Függő karbantartási kérelmek", description = "Listázza a jóváhagyásra váró karbantartási kérelmeket.")
+  @GetMapping("/pending-maintenance")
+  @RequirePermission("DEVICE_MAINTENANCE_APPROVE")
+  public ResponseEntity<List<Device>> findPendingMaintenance() {
+    return ResponseEntity.ok(deviceService.findPendingMaintenanceDevices());
   }
 
   /** POST /api/devices/{id}/return-from-maintenance — Visszavétel karbantartásból */
   @Operation(summary = "Visszavétel karbantartásból", description = "Karbantartás alatt lévő eszköz visszahozatala IN_STORAGE státuszba.")
   @PostMapping("/{id}/return-from-maintenance")
-  @RequirePermission("DEVICE_UPDATE")
+  @RequirePermission({"DEVICE_MAINTENANCE_APPROVE", "DEVICE_UPDATE"})
   public ResponseEntity<Device> returnFromMaintenance(
       @PathVariable Long id,
       Authentication authentication) {
@@ -282,18 +347,50 @@ public class DeviceController {
     return ResponseEntity.ok(saved);
   }
 
-  /** POST /api/devices/{id}/dispose — Eszköz selejtezése */
-  @Operation(summary = "Eszköz selejtezése", description = "Eszköz végleges selejtezése DISPOSED végállapotba.")
-  @PostMapping("/{id}/dispose")
-  @RequirePermission("DEVICE_UPDATE")
-  public ResponseEntity<Device> disposeDevice(
+  /** POST /api/devices/{id}/dispose/request — Selejtezés kérése */
+  @Operation(summary = "Selejtezés kérése", description = "Kérelem benyújtása selejtezésre PENDING_DISPOSAL státusszal.")
+  @PostMapping("/{id}/dispose/request")
+  @RequirePermission("DEVICE_DISPOSE_REQUEST")
+  public ResponseEntity<Device> requestDisposal(
       @PathVariable Long id,
       @RequestBody(required = false) DisposeRequest request,
       Authentication authentication) {
     Long userId = resolveUserId(authentication);
-    String reason = request != null ? request.reason() : "Nincs megadva";
-    Device saved = deviceService.disposeDevice(id, reason, userId);
+    String reason = request != null && request.reason() != null ? request.reason() : "Nincs megadva";
+    Device saved = deviceService.requestDisposal(id, reason, userId);
     return ResponseEntity.ok(saved);
+  }
+
+  /** POST /api/devices/{id}/dispose/approve — Selejtezés jóváhagyása */
+  @Operation(summary = "Selejtezés jóváhagyása", description = "Selejtezési kérelem végleges jóváhagyása DISPOSED státuszba.")
+  @PostMapping("/{id}/dispose/approve")
+  @RequirePermission("DEVICE_DISPOSE_APPROVE")
+  public ResponseEntity<Device> approveDisposal(
+      @PathVariable Long id,
+      Authentication authentication) {
+    Long userId = resolveUserId(authentication);
+    Device saved = deviceService.approveDisposal(id, userId);
+    return ResponseEntity.ok(saved);
+  }
+
+  /** POST /api/devices/{id}/dispose/reject — Selejtezés elutasítása */
+  @Operation(summary = "Selejtezés elutasítása", description = "Selejtezési kérelem elutasítása és visszaállítása az eredeti állapotba.")
+  @PostMapping("/{id}/dispose/reject")
+  @RequirePermission("DEVICE_DISPOSE_APPROVE")
+  public ResponseEntity<Device> rejectDisposal(
+      @PathVariable Long id,
+      Authentication authentication) {
+    Long userId = resolveUserId(authentication);
+    Device saved = deviceService.rejectDisposal(id, userId);
+    return ResponseEntity.ok(saved);
+  }
+
+  /** GET /api/devices/pending-disposal — Függőben lévő selejtezési kérelmek */
+  @Operation(summary = "Függő selejtezési kérelmek", description = "Listázza a jóváhagyásra váró selejtezési kérelmeket.")
+  @GetMapping("/pending-disposal")
+  @RequirePermission("DEVICE_DISPOSE_APPROVE")
+  public ResponseEntity<List<Device>> findPendingDisposal() {
+    return ResponseEntity.ok(deviceService.findPendingDisposalDevices());
   }
 
   // ===== Szoftver kapcsolat endpointok (F3) =====
@@ -313,7 +410,7 @@ public class DeviceController {
     @ApiResponse(responseCode = "403", description = "DEVICE_READ permission hiányzik")
   })
   @GetMapping("/{deviceId}/software")
-  @RequirePermission("DEVICE_READ")
+  @RequirePermission({"DEVICE_READ", "DEVICE_MANAGE"})
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
   public ResponseEntity<List<SoftwareDto>> findSoftwareByDevice(
       @Parameter(description = "Eszköz azonosító") @PathVariable Long deviceId,
@@ -452,7 +549,7 @@ public class DeviceController {
   public record CreateDeviceRequest(
       @NotBlank @Size(max = 50) @Pattern(regexp = "[a-zA-Z0-9-_]+") String inventoryNumber,
       @NotBlank @Size(max = 50) String type,
-      @NotBlank String status) {}
+      @NotNull Long storageLocationId) {}
 
   public record UpdateDeviceRequest(@Size(max = 50) String type) {}
 

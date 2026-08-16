@@ -33,9 +33,17 @@ import java.lang.annotation.Target;
 public @interface RequirePermission {
 
   /**
-   * A szükséges permission neve (pl. "DEVICE_READ", "USER_MANAGE").
+   * A szükséges permission neve vagy nevei (pl. "DEVICE_READ", {"USER_READ", "USER_MANAGE"}).
+   * Bármelyik megléte engedélyezi a hozzáférést (OR logika).
    *
-   * @return a permission neve
+   * @return a permission neve(i)
    */
-  String value();
+  String[] value() default {};
+
+  /**
+   * Alias / alternatív kulcsszó permission-ökhöz.
+   *
+   * @return alternatív permission lista
+   */
+  String[] anyOf() default {};
 }

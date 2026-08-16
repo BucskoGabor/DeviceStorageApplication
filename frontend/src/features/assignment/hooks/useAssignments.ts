@@ -75,7 +75,7 @@ export function useRequestUnassignment(deviceId: number) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (assignmentId: number) => assignmentApi.requestUnassignment(assignmentId),
+    mutationFn: ({ assignmentId, targetLocationId }: { assignmentId: number; targetLocationId?: number }) => assignmentApi.requestUnassignment(assignmentId, targetLocationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
       queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })

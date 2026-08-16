@@ -21,7 +21,6 @@ export function DashboardPage({ children }: DashboardPageProps) {
   const { t } = useTranslation()
   const clearAuth = useAuthStore((state) => state.clearAuth)
   const userEmail = useAuthStore((state) => state.userEmail)
-  const role = useAuthStore((state) => state.role)
   const permissions = useAuthStore((state) => state.permissions)
   const location = useLocation()
 
@@ -36,7 +35,40 @@ export function DashboardPage({ children }: DashboardPageProps) {
     }
   }
 
-  const canAccessAdmin = role === 'ROLE_ADMIN' || role === 'ROLE_TEACHER' || permissions.includes('DEVICE_READ')
+  const canAccessAdmin = permissions.some((p) =>
+    [
+      'USER_READ',
+      'USER_CREATE',
+      'USER_UPDATE',
+      'USER_DELETE',
+      'ROLE_READ',
+      'ROLE_MANAGE',
+      'DEVICE_READ',
+      'DEVICE_CREATE',
+      'DEVICE_UPDATE',
+      'DEVICE_DELETE',
+      'DEVICE_MANAGE',
+      'DEVICE_ASSIGN',
+      'DEVICE_UNASSIGN',
+      'ASSIGNMENT_APPROVE',
+      'DEVICE_MAINTENANCE_REQUEST',
+      'DEVICE_MAINTENANCE_APPROVE',
+      'DEVICE_DISPOSE_REQUEST',
+      'DEVICE_DISPOSE_APPROVE',
+      'ATTACHMENT_MANAGE',
+      'LOCATION_READ',
+      'LOCATION_CREATE',
+      'LOCATION_UPDATE',
+      'LOCATION_DELETE',
+      'SOFTWARE_LICENSE_VIEW',
+      'SOFTWARE_CREATE',
+      'SOFTWARE_UPDATE',
+      'SOFTWARE_DELETE',
+      'AUDIT_READ',
+      'AUDIT_ROLLBACK',
+      'IMPORT_EXECUTE',
+    ].includes(p)
+  )
 
   const navLinks = [
     { to: '/my-dashboard', label: t('nav.dashboard', 'Saját Dashboard') },

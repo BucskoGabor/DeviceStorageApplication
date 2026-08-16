@@ -54,7 +54,7 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
                 .emailEncrypted("encrypted")
                 .emailHash("int-test-hash")
                 .passwordHash("$argon2id$test")
-                .active(true)
+
                 .mustChangePassword(false)
                 .failedLoginCount(0)
                 .passwordChangedAt(java.time.Instant.now())
@@ -73,7 +73,7 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
         deviceService.requestAssignment(
             device.getId(), classroom.getId(), byUser.getId(), byUser.getId());
     assertThat(pendingAssignment.getStatus()).isEqualTo(AssignmentStatus.PENDING_ASSIGNMENT);
-    assertThat(pendingAssignment.isActive()).isFalse();
+    assertThat(pendingAssignment.getStatus()).isNotEqualTo(AssignmentStatus.ASSIGNED);
     assertThat(pendingAssignment.getToLocation()).isEqualTo(classroom);
     assertThat(pendingAssignment.getToUser()).isEqualTo(byUser);
 
@@ -81,7 +81,7 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
     var approvedAssignment =
         deviceService.approveAssignment(pendingAssignment.getId(), byUser.getId());
     assertThat(approvedAssignment.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
-    assertThat(approvedAssignment.isActive()).isTrue();
+    assertThat(approvedAssignment.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
     assertThat(approvedAssignment.getDateOfAssignment()).isNotNull();
 
     // 4. Device status frissült-e
@@ -124,7 +124,7 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
                 .emailEncrypted("enc")
                 .emailHash("h2")
                 .passwordHash("$argon2id$x")
-                .active(true)
+
                 .mustChangePassword(false)
                 .failedLoginCount(0)
                 .passwordChangedAt(java.time.Instant.now())

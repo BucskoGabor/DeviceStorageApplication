@@ -20,7 +20,7 @@ const SIDEBAR_WIDTH = 'w-56' // 224px
 const sidebarItems = [
   { to: '/admin', icon: LayoutDashboard, labelKey: 'admin.title', end: true },
   { to: '/admin/users', icon: Users, labelKey: 'admin.users' },
-  { to: '/admin/roles', icon: ShieldCheck, labelKey: 'roles.title' },
+  { to: '/admin/roles', icon: ShieldCheck, labelKey: 'admin.roles' },
   { to: '/admin/devices', icon: Laptop, labelKey: 'admin.devices' },
   { to: '/admin/locations', icon: MapPin, labelKey: 'admin.locations' },
   { to: '/admin/software', icon: Shield, labelKey: 'admin.softwares' },
@@ -43,14 +43,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const hasAnyPermission = (perms: string[]) => perms.some((p) => permissions.includes(p))
 
   const filteredItems = sidebarItems.filter((item) => {
-    if (item.to === '/admin/users') return hasAnyPermission(['USER_READ', 'USER_MANAGE'])
-    if (item.to === '/admin/roles') return hasAnyPermission(['USER_READ', 'USER_MANAGE'])
-    if (item.to === '/admin/devices') return hasPermission('DEVICE_READ')
-    if (item.to === '/admin/locations') return hasPermission('LOCATION_READ')
-    if (item.to === '/admin/software') return hasAnyPermission(['SOFTWARE_LICENSE_VIEW', 'SOFTWARE_MANAGE'])
+    if (item.to === '/admin/users') return hasAnyPermission(['USER_READ', 'USER_CREATE', 'USER_UPDATE', 'USER_DELETE'])
+    if (item.to === '/admin/roles') return hasAnyPermission(['ROLE_READ', 'ROLE_MANAGE'])
+    if (item.to === '/admin/devices') return hasAnyPermission(['DEVICE_READ', 'DEVICE_CREATE', 'DEVICE_UPDATE', 'DEVICE_DELETE', 'DEVICE_MANAGE'])
+    if (item.to === '/admin/locations') return hasAnyPermission(['LOCATION_READ', 'LOCATION_CREATE', 'LOCATION_UPDATE', 'LOCATION_DELETE'])
+    if (item.to === '/admin/software') return hasAnyPermission(['SOFTWARE_LICENSE_VIEW', 'SOFTWARE_CREATE', 'SOFTWARE_UPDATE', 'SOFTWARE_DELETE'])
     if (item.to === '/admin/audit') return hasPermission('AUDIT_READ')
-    if (item.to === '/admin/approvals') return hasPermission('DEVICE_ASSIGN')
-    if (item.to === '/admin/import') return hasAnyPermission(['USER_MANAGE', 'DEVICE_CREATE'])
+    if (item.to === '/admin/approvals') return hasAnyPermission(['ASSIGNMENT_APPROVE', 'DEVICE_MAINTENANCE_APPROVE', 'DEVICE_DISPOSE_APPROVE'])
+    if (item.to === '/admin/import') return hasPermission('IMPORT_EXECUTE')
     return true
   })
 

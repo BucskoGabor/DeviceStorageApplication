@@ -63,9 +63,25 @@ async function performRefresh(): Promise<string | null> {
       { withCredentials: true }
     )
 
-    const { accessToken } = response.data as { accessToken: string }
-    useAuthStore.getState().setAccessToken(accessToken)
-    return accessToken
+    const data = response.data as {
+      accessToken: string
+      role?: string
+      permissions?: string[]
+      mustChangePassword?: boolean
+    }
+    const current = useAuthStore.getState()
+    if (data.role && data.permissions) {
+      current.setAuth(
+        data.accessToken,
+        current.userEmail || '',
+        data.role,
+        data.permissions,
+        data.mustChangePassword ?? false
+      )
+    } else {
+      current.setAccessToken(data.accessToken)
+    }
+    return data.accessToken
   } catch {
     // Refresh failure: clear auth state
     useAuthStore.getState().clearAuth()

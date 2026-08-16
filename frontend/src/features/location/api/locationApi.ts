@@ -1,4 +1,6 @@
 import { apiClient } from '@/lib/api/axios'
+import type { Device } from '@/features/device/api/deviceApi'
+import type { DeviceAssignment } from '@/features/assignment/api/assignmentApi'
 
 export interface Location {
   id: number
@@ -37,6 +39,21 @@ export interface PageResponse<T> {
 export const locationApi = {
   findAll: async (params?: { page?: number; size?: number }): Promise<PageResponse<Location>> => {
     const response = await apiClient.get<PageResponse<Location>>('/api/locations', { params })
+    return response.data
+  },
+
+  findById: async (id: number): Promise<Location> => {
+    const response = await apiClient.get<Location>(`/api/locations/${id}`)
+    return response.data
+  },
+
+  findCurrentDevices: async (id: number): Promise<Device[]> => {
+    const response = await apiClient.get<Device[]>(`/api/locations/${id}/devices`)
+    return response.data
+  },
+
+  findAssignmentHistory: async (id: number): Promise<DeviceAssignment[]> => {
+    const response = await apiClient.get<DeviceAssignment[]>(`/api/locations/${id}/assignments`)
     return response.data
   },
 

@@ -39,12 +39,12 @@ export function useSilentRefresh() {
             resp.permissions,
             resp.mustChangePassword
           )
-          // Az emailHash-t külön /me hívással töltjük (opcionális, csak display-hez kell)
+          // Az email-t külön /me hívással töltjük a display-hez
           authApi.me()
             .then((me) => {
               setAuth(
                 resp.accessToken,
-                me.emailHash,
+                me.email || me.emailHash,
                 me.role,
                 me.permissions,
                 me.mustChangePassword

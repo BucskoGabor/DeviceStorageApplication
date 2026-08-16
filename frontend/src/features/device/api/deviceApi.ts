@@ -8,7 +8,14 @@ export interface Device {
   id: number
   type: string
   inventoryNumber: string
-  status: 'PENDING' | 'ASSIGNED' | 'IN_STORAGE' | 'MAINTENANCE' | 'DISPOSED'
+  status: 'PENDING' | 'ASSIGNED' | 'IN_STORAGE' | 'PENDING_MAINTENANCE' | 'MAINTENANCE' | 'PENDING_DISPOSAL' | 'DISPOSED'
+  statusReason?: string | null
+  previousStatus?: string | null
+  currentLocation?: {
+    id: number
+    name: string
+    type: 'STORAGE' | 'OFFICE' | 'GROUP'
+  } | null
   createdAt: string
   updatedAt: string
 }
@@ -109,10 +116,26 @@ export async function detachSoftware(deviceId: number, softwareId: number): Prom
 }
 
 /**
- * Eszköz karbantartásba küldése.
+ * Karbantartás kérése.
  */
-export async function sendToMaintenance(deviceId: number, reason?: string): Promise<Device> {
-  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/maintenance`, { reason })
+export async function requestMaintenance(deviceId: number, reason?: string): Promise<Device> {
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/maintenance/request`, { reason })
+  return response.data
+}
+
+/**
+ * Karbantartás jóváhagyása.
+ */
+export async function approveMaintenance(deviceId: number): Promise<Device> {
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/maintenance/approve`)
+  return response.data
+}
+
+/**
+ * Karbantartás elutasítása.
+ */
+export async function rejectMaintenance(deviceId: number): Promise<Device> {
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/maintenance/reject`)
   return response.data
 }
 
@@ -125,10 +148,55 @@ export async function returnFromMaintenance(deviceId: number): Promise<Device> {
 }
 
 /**
- * Eszköz selejtezése.
+ * Selejtezés kérése.
  */
-export async function disposeDevice(deviceId: number, reason?: string): Promise<Device> {
-  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/dispose`, { reason })
+export async function requestDisposal(deviceId: number, reason?: string): Promise<Device> {
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/dispose/request`, { reason })
+  return response.data
+}
+
+/**
+ * Selejtezés jóváhagyása.
+ */
+export async function approveDisposal(deviceId: number): Promise<Device> {
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/dispose/approve`)
+  return response.data
+}
+
+/**
+ * Selejtezés elutasítása.
+ */
+export async function rejectDisposal(deviceId: number): Promise<Device> {
+  const response = await apiClient.post<Device>(`/api/devices/${deviceId}/dispose/reject`)
+  return response.data
+}
+
+/**
+ * Függő karbantartási kérelmek listázása.
+ */
+export async function findPendingMaintenance(): Promise<Device[]> {
+  const response = await apiClient.get<Device[]>('/api/devices/pending-maintenance')
+  return response.data
+}
+
+/**
+ * Függő selejtezési kérelmek listázása.
+ */
+export async function findPendingDisposal(): Promise<Device[]> {
+  const response = await apiClient.get<Device[]>('/api/devices/pending-disposal')
+  return response.data
+}
+
+/**
+ * Státusz váltás (operatív/admin beavatkozás).
+ */
+export async function changeStatus(
+  deviceId: number,
+  status: Device['status']
+): Promise<Device> {
+  const response = await apiClient.patch<Device>(`/api/devices/${deviceId}/status`, {
+    status,
+  })
   return response.data
 }
 
@@ -145,25 +213,18 @@ export const deviceApi = {
   attachSoftware,
   detachSoftware,
   changeStatus,
-  sendToMaintenance,
+  requestMaintenance,
+  approveMaintenance,
+  rejectMaintenance,
   returnFromMaintenance,
-  disposeDevice,
-}
-
-/**
- * Státusz váltás (operatív/admin beavatkozás).
- *
- * <p>A backend state machine validációt futtat — nem minden átmenet megengedett.
- * DISPOSED végállapot. Részletek: {@code DeviceService.changeStatus()}.
- */
-export async function changeStatus(
-  deviceId: number,
-  status: Device['status']
-): Promise<Device> {
-  const response = await apiClient.patch<Device>(`/api/devices/${deviceId}/status`, {
-    status,
-  })
-  return response.data
+  requestDisposal,
+  approveDisposal,
+  rejectDisposal,
+  findPendingMaintenance,
+  findPendingDisposal,
+  // Aliasok a meglévő hivatkozásokhoz
+  sendToMaintenance: requestMaintenance,
+  disposeDevice: requestDisposal,
 }
 
 export default deviceApi

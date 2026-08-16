@@ -51,9 +51,12 @@ public record UserResponseDto(
           emailMasked = "***";
         }
       } catch (Exception e) {
-        email = user.getEmailHash();
+        email = user.getEmail();
         emailMasked = "***";
       }
+    } else {
+      email = user.getEmail();
+      emailMasked = "***";
     }
 
     OfficeLocationSummary officeSummary = null;

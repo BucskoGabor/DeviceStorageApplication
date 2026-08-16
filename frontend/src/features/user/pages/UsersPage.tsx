@@ -1,8 +1,9 @@
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Plus, Trash2, Unlock, Pencil, FileText, MapPin } from 'lucide-react'
+import { Plus, Trash2, Unlock, Pencil, Eye, MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { DataTable } from '@/components/DataTable/DataTable'
 import {
@@ -16,28 +17,37 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { userApi, type AppUserDto, type RoleName } from '@/features/user/api/userApi'
+import { userApi, type AppUserDto } from '@/features/user/api/userApi'
+import { roleApi, type PermissionDto } from '@/features/role/api/roleApi'
 import { useAuthStore } from '@/lib/store/authStore'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { LocationTreeSelector } from '@/features/location/components/LocationTreeSelector'
 
-const ROLE_OPTIONS: RoleName[] = ['ROLE_ADMIN', 'ROLE_TEACHER', 'ROLE_STUDENT']
-
 export function UsersPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const permissions = useAuthStore((state) => state.permissions)
-  const canManage = permissions.includes('USER_MANAGE')
+  const canCreate = permissions.includes('USER_CREATE')
+  const canUpdate = permissions.includes('USER_UPDATE')
+  const canDelete = permissions.includes('USER_DELETE')
 
   const [page, setPage] = useState(0)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AppUserDto | null>(null)
+  const [deleteUserId, setDeleteUserId] = useState<number | null>(null)
   const [editOfficeLocationId, setEditOfficeLocationId] = useState<number | null>(null)
+  const [editOfficeLocationName, setEditOfficeLocationName] = useState<string>('')
   const [officeSelectorOpen, setOfficeSelectorOpen] = useState(false)
 
+  // Create form state
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<RoleName>('ROLE_TEACHER')
+  const [selectedRole, setSelectedRole] = useState<string>('ROLE_TEACHER')
+  const [initialPassword, setInitialPassword] = useState('')
+  const [selectedDirectPerms, setSelectedDirectPerms] = useState<number[]>([])
+
+  // Edit form direct perms
+  const [editDirectPerms, setEditDirectPerms] = useState<number[]>([])
 
   const pageSize = 20
 
@@ -46,17 +56,38 @@ export function UsersPage() {
     queryFn: () => userApi.findAll({ page, size: pageSize }),
   })
 
+  const { data: roles = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn: roleApi.findAll,
+    enabled: canCreate || canUpdate,
+  })
+
+  const { data: allPermissions = [] } = useQuery<PermissionDto[]>({
+    queryKey: ['permissions'],
+    queryFn: roleApi.getPermissions,
+    enabled: canCreate || canUpdate,
+  })
+
   const createMutation = useMutation({
     mutationFn: userApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setIsCreateOpen(false)
       setEmail('')
+      setSelectedRole('ROLE_TEACHER')
+      setInitialPassword('')
+      setSelectedDirectPerms([])
       toast.success(t('common.created', 'Sikeresen létrehozva'))
     },
     onError: (error: any) => {
       const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(
+        t(`messages.${messageKey}`, {
+          defaultValue: t(messageKey, {
+            defaultValue: error.response?.data?.message || t('common.error'),
+          }),
+        })
+      )
     },
   })
 
@@ -70,7 +101,13 @@ export function UsersPage() {
     },
     onError: (error: any) => {
       const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(
+        t(`messages.${messageKey}`, {
+          defaultValue: t(messageKey, {
+            defaultValue: error.response?.data?.message || t('common.error'),
+          }),
+        })
+      )
     },
   })
 
@@ -82,7 +119,13 @@ export function UsersPage() {
     },
     onError: (error: any) => {
       const messageKey = error.response?.data?.messageKey ?? 'internalError'
-      toast.error(t(messageKey, { defaultValue: t('common.error') }))
+      toast.error(
+        t(`messages.${messageKey}`, {
+          defaultValue: t(messageKey, {
+            defaultValue: error.response?.data?.message || t('common.error'),
+          }),
+        })
+      )
     },
   })
 
@@ -90,13 +133,27 @@ export function UsersPage() {
     mutationFn: userApi.unlock,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
-      toast.success(t('users.unlockAccount'))
+      toast.success(t('users.unlockAccount', 'Fiók feloldva'))
     },
   })
 
   const openEdit = (user: AppUserDto) => {
     setEditingUser(user)
     setEditOfficeLocationId(user.officeLocation?.id ?? null)
+    setEditOfficeLocationName(user.officeLocation?.name ?? '')
+    setEditDirectPerms(user.directPermissions?.map((p) => p.id) ?? [])
+  }
+
+  const toggleCreatePerm = (permId: number) => {
+    setSelectedDirectPerms((prev) =>
+      prev.includes(permId) ? prev.filter((id) => id !== permId) : [...prev, permId]
+    )
+  }
+
+  const toggleEditPerm = (permId: number) => {
+    setEditDirectPerms((prev) =>
+      prev.includes(permId) ? prev.filter((id) => id !== permId) : [...prev, permId]
+    )
   }
 
   const columns = useMemo<ColumnDef<AppUserDto, unknown>[]>(
@@ -112,18 +169,27 @@ export function UsersPage() {
         header: t('users.email'),
         cell: (info) => {
           const user = info.row.original
-          return <span className="font-mono text-xs">{user.email || user.emailMasked}</span>
+          return <span className="font-mono text-xs">{user.email || user.emailMasked || user.emailHash}</span>
         },
       },
       {
         id: 'role',
         header: t('users.role'),
         cell: (info) => {
-          const roleName = info.row.original.role?.name ?? 'ROLE_USER'
+          const user = info.row.original
+          const roleName = user.role?.name ?? 'ROLE_USER'
+          const directCount = user.directPermissions?.length ?? 0
           return (
-            <Badge variant="outline" className="font-medium">
-              {t(`roles.${roleName}`, roleName)}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge variant="outline" className="font-medium text-xs">
+                {t(`roles.${roleName}`, roleName)}
+              </Badge>
+              {directCount > 0 && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0" title={t('users.directPermissions', 'Közvetlen jogok')}>
+                  +{directCount} jog
+                </Badge>
+              )}
+            </div>
           )
         },
       },
@@ -131,7 +197,7 @@ export function UsersPage() {
         id: 'officeLocation',
         header: t('users.office', 'Iroda'),
         cell: (info) => {
-          const office = info.row.original.officeLocation
+          const office = info.row.original.officeLocation ?? info.row.original.officeLocationSummary
           return office ? (
             <span className="text-xs">{office.name}</span>
           ) : (
@@ -160,11 +226,11 @@ export function UsersPage() {
           return (
             <div className="flex gap-1">
               <Button variant="ghost" size="icon" asChild title={t('users.viewDetails')}>
-                <Link to={`/admin/users/${user.id}`}>
-                  <FileText className="h-4 w-4" />
+                <Link to={`/users/${user.id}`}>
+                  <Eye className="h-4 w-4" />
                 </Link>
               </Button>
-              {canManage && (
+              {canUpdate && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -174,7 +240,7 @@ export function UsersPage() {
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
-              {canManage && (
+              {canUpdate && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -184,16 +250,12 @@ export function UsersPage() {
                   <Unlock className="h-4 w-4 text-blue-400" />
                 </Button>
               )}
-              {canManage && (
+              {canDelete && (
                 <Button
                   variant="ghost"
                   size="icon"
                   title={t('common.delete')}
-                  onClick={() => {
-                    if (confirm(t('users.confirmDelete'))) {
-                      deleteMutation.mutate(user.id)
-                    }
-                  }}
+                  onClick={() => setDeleteUserId(user.id)}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -203,13 +265,18 @@ export function UsersPage() {
         },
       },
     ],
-    [t, deleteMutation, unlockMutation, canManage]
+    [t, deleteMutation, unlockMutation, canUpdate, canDelete]
   )
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!email) return
-    createMutation.mutate({ email, role })
+    createMutation.mutate({
+      email,
+      role: selectedRole,
+      initialPassword: initialPassword.trim() || undefined,
+      directPermissionIds: selectedDirectPerms.length > 0 ? selectedDirectPerms : undefined,
+    })
   }
 
   const handleEditSubmit = (e: React.FormEvent) => {
@@ -218,14 +285,12 @@ export function UsersPage() {
     const payload: Parameters<typeof userApi.update>[1] = {}
     const newActive = (document.getElementById('edit-active') as HTMLInputElement)?.checked
     const roleSelect = document.getElementById('edit-role') as HTMLSelectElement
-
     if (roleSelect && roleSelect.value !== editingUser.role?.name) {
-      payload.role = roleSelect.value as RoleName
+      payload.role = roleSelect.value
     }
     if (newActive !== editingUser.active) {
       payload.active = newActive
     }
-
     const currentOfficeId = editingUser.officeLocation?.id ?? null
     if (editOfficeLocationId !== currentOfficeId) {
       if (editOfficeLocationId === null) {
@@ -234,11 +299,8 @@ export function UsersPage() {
         payload.officeLocationId = editOfficeLocationId
       }
     }
+    payload.directPermissionIds = editDirectPerms
 
-    if (Object.keys(payload).length === 0) {
-      setEditingUser(null)
-      return
-    }
     updateMutation.mutate({ id: editingUser.id, payload })
   }
 
@@ -246,7 +308,7 @@ export function UsersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t('admin.users')}</h1>
-        {canManage && (
+        {canCreate && (
           <Button onClick={() => setIsCreateOpen(!isCreateOpen)}>
             <Plus className="mr-2 h-4 w-4" />
             {t('users.create')}
@@ -255,9 +317,9 @@ export function UsersPage() {
       </div>
 
       {isCreateOpen && (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-lg space-y-4 max-w-lg">
+        <div className="rounded-lg border border-border bg-card p-6 shadow-lg space-y-4 max-w-2xl">
           <h2 className="text-lg font-semibold">{t('users.create')}</h2>
-          <form onSubmit={handleCreateSubmit} className="space-y-3">
+          <form onSubmit={handleCreateSubmit} className="space-y-4">
             <div>
               <Label htmlFor="user-email" className="text-xs text-muted-foreground">
                 {t('users.email')}
@@ -272,22 +334,59 @@ export function UsersPage() {
               />
             </div>
             <div>
+              <Label htmlFor="user-initial-password" className="text-xs text-muted-foreground">
+                {t('users.initialPassword', 'Kezdeti jelszó (opcionális, alapértelmezett: ChangeMe123!)')}
+              </Label>
+              <Input
+                id="user-initial-password"
+                type="text"
+                placeholder="ChangeMe123!"
+                value={initialPassword}
+                onChange={(e) => setInitialPassword(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {t('users.mustChangePasswordHelp', 'Az első bejelentkezéskor a felhasználónak kötelezően meg kell változtatnia ezt a jelszót.')}
+              </p>
+            </div>
+            <div>
               <Label htmlFor="user-role" className="text-xs text-muted-foreground">
                 {t('users.role')}
               </Label>
               <select
                 id="user-role"
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                value={role}
-                onChange={(e: any) => setRole(e.target.value)}
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
               >
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {t(`roles.${r}`, r)}
+                {roles.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {t(`roles.${r.name}`, r.name)}
                   </option>
                 ))}
               </select>
             </div>
+
+            {allPermissions.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  {t('users.directPermissions', 'Közvetlen jogosultságok (opcionális extra jogok)')}
+                </Label>
+                <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto border border-border rounded-md p-3 bg-muted/20">
+                  {allPermissions.map((perm) => (
+                    <label key={perm.id} className="flex items-center gap-2 text-xs cursor-pointer hover:text-foreground">
+                      <input
+                        type="checkbox"
+                        checked={selectedDirectPerms.includes(perm.id)}
+                        onChange={() => toggleCreatePerm(perm.id)}
+                        className="rounded border-border"
+                      />
+                      <span className="font-mono text-[11px]">{perm.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
                 {t('common.cancel')}
@@ -310,20 +409,32 @@ export function UsersPage() {
         onPageChange={setPage}
       />
 
+      <ConfirmDialog
+        open={deleteUserId !== null}
+        onOpenChange={(open) => !open && setDeleteUserId(null)}
+        description={t('users.confirmDelete')}
+        onConfirm={() => {
+          if (deleteUserId) {
+            deleteMutation.mutate(deleteUserId)
+            setDeleteUserId(null)
+          }
+        }}
+      />
+
       <Dialog
         open={editingUser !== null}
         onOpenChange={(open) => {
           if (!open) setEditingUser(null)
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t('users.edit')}</DialogTitle>
             <DialogDescription>
               {editingUser?.email || editingUser?.emailMasked || `#${editingUser?.id}`}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleEditSubmit} className="space-y-3 py-4">
+          <form onSubmit={handleEditSubmit} className="space-y-4 py-2">
             <div>
               <Label htmlFor="edit-role" className="text-xs text-muted-foreground">
                 {t('users.role')}
@@ -333,14 +444,13 @@ export function UsersPage() {
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 defaultValue={editingUser?.role?.name ?? 'ROLE_TEACHER'}
               >
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {t(`roles.${r}`, r)}
+                {roles.map((r) => (
+                  <option key={r.id} value={r.name}>
+                    {t(`roles.${r.name}`, r.name)}
                   </option>
                 ))}
               </select>
             </div>
-
             <div>
               <Label className="text-xs text-muted-foreground">{t('users.office', 'Irodai helyszín')}</Label>
               <div className="flex gap-2">
@@ -351,27 +461,61 @@ export function UsersPage() {
                   onClick={() => setOfficeSelectorOpen(true)}
                 >
                   <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                  {editOfficeLocationId != null ? `#${editOfficeLocationId}` : t('locations.noParent', 'Nincs iroda beállítva')}
+                  {editOfficeLocationName ? (
+                    <span className="font-medium text-xs text-foreground">{editOfficeLocationName}</span>
+                  ) : editOfficeLocationId != null ? (
+                    <span className="font-medium text-xs text-foreground">Helyszín #{editOfficeLocationId}</span>
+                  ) : (
+                    <span className="text-muted-foreground">{t('locations.noParent', 'Nincs iroda beállítva')}</span>
+                  )}
                 </Button>
                 {editOfficeLocationId != null && (
-                  <Button type="button" variant="ghost" onClick={() => setEditOfficeLocationId(null)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditOfficeLocationId(null)
+                      setEditOfficeLocationName('')
+                    }}
+                  >
                     ×
                   </Button>
                 )}
               </div>
             </div>
 
+            {allPermissions.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  {t('users.directPermissions', 'Közvetlen jogosultságok')}
+                </Label>
+                <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto border border-border rounded-md p-3 bg-muted/20">
+                  {allPermissions.map((perm) => (
+                    <label key={perm.id} className="flex items-center gap-2 text-xs cursor-pointer hover:text-foreground">
+                      <input
+                        type="checkbox"
+                        checked={editDirectPerms.includes(perm.id)}
+                        onChange={() => toggleEditPerm(perm.id)}
+                        className="rounded border-border"
+                      />
+                      <span className="font-mono text-[11px]">{perm.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
-              <Label htmlFor="edit-active" className="flex items-center gap-2 text-xs">
+              <Label htmlFor="edit-active" className="flex items-center gap-2 text-xs cursor-pointer">
                 <input
                   id="edit-active"
                   type="checkbox"
-                  className="h-4 w-4"
+                  className="h-4 w-4 rounded border-border"
                   defaultChecked={editingUser?.active ?? true}
                 />
                 {t('users.active')}
               </Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground mt-1">
                 {t('users.activeChangeWarning')}
               </p>
             </div>
@@ -391,11 +535,13 @@ export function UsersPage() {
           </form>
         </DialogContent>
       </Dialog>
-
       <LocationTreeSelector
         open={officeSelectorOpen}
         onOpenChange={setOfficeSelectorOpen}
-        onSelect={(id) => setEditOfficeLocationId(id)}
+        onSelect={(id, node) => {
+          setEditOfficeLocationId(id)
+          setEditOfficeLocationName(node?.name ?? '')
+        }}
         selectedId={editOfficeLocationId}
         excludeGroupType
       />

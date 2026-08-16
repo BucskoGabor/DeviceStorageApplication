@@ -131,4 +131,51 @@ public class AppUser extends BaseEntity<Long> {
   @Builder.Default
   @com.fasterxml.jackson.annotation.JsonIgnore
   private Set<Permission> permissions = new HashSet<>();
+
+  public boolean hasPermission(String permissionName) {
+    if (permissionName == null) {
+      return false;
+    }
+    if (role != null && role.getPermissions() != null) {
+      boolean inRole =
+          role.getPermissions().stream()
+              .anyMatch(p -> permissionName.equals(p.getName()));
+      if (inRole) {
+        return true;
+      }
+    }
+    if (permissions != null) {
+      return permissions.stream()
+          .anyMatch(p -> permissionName.equals(p.getName()));
+    }
+    return false;
+  }
+
+  /**
+   * Visszaadja a felhasználó összes effektív jogosultságának nevét (role + user direkt jogok).
+   */
+  public Set<String> getEffectivePermissionNames() {
+    Set<String> result = new HashSet<>();
+    if (role != null && role.getPermissions() != null) {
+      role.getPermissions().forEach(p -> result.add(p.getName()));
+    }
+    if (permissions != null) {
+      permissions.forEach(p -> result.add(p.getName()));
+    }
+    return result;
+  }
+
+  @com.fasterxml.jackson.annotation.JsonProperty("email")
+  public String getEmail() {
+    if (emailEncrypted != null) {
+      hu.tanszek.device.crypto.CryptoService cs = hu.tanszek.device.crypto.CryptoHolder.getInstance();
+      if (cs != null) {
+        try {
+          return cs.decrypt(emailEncrypted);
+        } catch (Exception ignored) {
+        }
+      }
+    }
+    return emailHash;
+  }
 }

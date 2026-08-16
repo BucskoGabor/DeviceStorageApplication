@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import hu.tanszek.device.auth.RequirePermission;
 import hu.tanszek.device.auth.entity.Role;
+import hu.tanszek.device.auth.repository.PermissionRepository;
 import hu.tanszek.device.auth.repository.RoleRepository;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
@@ -45,24 +46,31 @@ public class UserController {
   private final UserService userService;
   private final CryptoService cryptoService;
   private final RoleRepository roleRepository;
-
   private final PermissionRepository permissionRepository;
+  private final org.springframework.security.crypto.argon2.Argon2PasswordEncoder passwordEncoder;
+  private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
 
   @Operation(summary = "Felhasználó lista (lapozott)")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Sikeres lista"),
-    @ApiResponse(responseCode = "403", description = "USER_READ permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "USER_READ vagy USER_MANAGE permission hiányzik")
   })
   @GetMapping
-  @RequirePermission("USER_READ")
+  @RequirePermission({"USER_READ", "USER_CREATE", "USER_UPDATE", "USER_DELETE"})
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
   public ResponseEntity<Map<String, Object>> findAll(
       @Parameter(description = "Oldalszám (0-tól)") @RequestParam(defaultValue = "0") int page,
       @Parameter(description = "Elemek száma (max 50)") @RequestParam(defaultValue = "20")
           int size) {
-    if (size > MAX_PAGE_SIZE) size = MAX_PAGE_SIZE;
-    if (size < 1) size = 1;
-    if (page < 0) page = 0;
+    if (size > MAX_PAGE_SIZE) {
+      size = MAX_PAGE_SIZE;
+    }
+    if (size < 1) {
+      size = 1;
+    }
+    if (page < 0) {
+      page = 0;
+    }
 
     var pageable = PageRequest.of(page, size, Sort.by("id").ascending());
     Page<AppUser> result = userRepository.findAll(pageable);
@@ -88,7 +96,7 @@ public class UserController {
     @ApiResponse(responseCode = "403", description = "USER_READ permission hiányzik")
   })
   @GetMapping("/{id}")
-  @RequirePermission("USER_READ")
+  @RequirePermission({"USER_READ", "USER_CREATE", "USER_UPDATE", "USER_DELETE"})
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
   public ResponseEntity<UserResponseDto> findById(
       @Parameter(description = "User azonosító") @PathVariable Long id) {
@@ -99,6 +107,30 @@ public class UserController {
     return ResponseEntity.ok(UserResponseDto.fromEntity(user, cryptoService));
   }
 
+  @Operation(summary = "Felhasználóhoz jelenleg hozzárendelt eszközök")
+  @GetMapping("/{id}/devices")
+  @RequirePermission({"USER_READ", "USER_CREATE", "USER_UPDATE", "USER_DELETE"})
+  @org.springframework.transaction.annotation.Transactional(readOnly = true)
+  public ResponseEntity<List<hu.tanszek.device.device.entity.Device>> findCurrentDevices(
+      @PathVariable Long id) {
+    userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+    List<hu.tanszek.device.device.entity.Device> devices =
+        assignmentRepository.findCurrentDevicesByUserId(id);
+    return ResponseEntity.ok(devices);
+  }
+
+  @Operation(summary = "Felhasználó hozzárendelési előzményei")
+  @GetMapping("/{id}/assignments")
+  @RequirePermission({"USER_READ", "USER_CREATE", "USER_UPDATE", "USER_DELETE"})
+  @org.springframework.transaction.annotation.Transactional(readOnly = true)
+  public ResponseEntity<List<hu.tanszek.device.assignment.entity.DeviceAssignment>> findAssignmentHistory(
+      @PathVariable Long id) {
+    userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+    List<hu.tanszek.device.assignment.entity.DeviceAssignment> history =
+        assignmentRepository.findByToUserIdOrFromUserIdOrderByCreatedDateDesc(id, id);
+    return ResponseEntity.ok(history);
+  }
+
   @Operation(
       summary = "Új felhasználó létrehozása",
       description =
@@ -107,10 +139,10 @@ public class UserController {
   @ApiResponses({
     @ApiResponse(responseCode = "201", description = "User létrehozva"),
     @ApiResponse(responseCode = "400", description = "Validációs hiba vagy duplikált email"),
-    @ApiResponse(responseCode = "403", description = "USER_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "USER_CREATE permission hiányzik")
   })
   @PostMapping
-  @RequirePermission("USER_MANAGE")
+  @RequirePermission("USER_CREATE")
   public ResponseEntity<AppUser> create(@Valid @RequestBody CreateUserRequest request) {
     String emailHash = cryptoService.sha256(request.email());
 
@@ -135,13 +167,18 @@ public class UserController {
       directPerms.addAll(permissionRepository.findAllById(request.directPermissionIds()));
     }
 
+    String initialPassword =
+        (request.initialPassword() != null && !request.initialPassword().isBlank())
+            ? request.initialPassword()
+            : "ChangeMe123!";
+
     AppUser user =
         AppUser.builder()
             .emailEncrypted(cryptoService.encrypt(request.email()))
             .emailHash(emailHash)
             .role(role)
             .permissions(directPerms)
-            .passwordHash("$argon2id$PLACEHOLDER_FORCE_RESET")
+            .passwordHash(passwordEncoder.encode(initialPassword))
             .active(request.active() == null || request.active())
             .mustChangePassword(true)
             .failedLoginCount(0)
@@ -160,10 +197,10 @@ public class UserController {
     @ApiResponse(responseCode = "200", description = "User módosítva"),
     @ApiResponse(responseCode = "400", description = "Validációs hiba vagy ismeretlen role"),
     @ApiResponse(responseCode = "404", description = "User vagy location nem található"),
-    @ApiResponse(responseCode = "403", description = "USER_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "USER_UPDATE permission hiányzik")
   })
   @PutMapping("/{id}")
-  @RequirePermission("USER_MANAGE")
+  @RequirePermission("USER_UPDATE")
   public ResponseEntity<AppUser> update(
       @Parameter(description = "User azonosító") @PathVariable Long id,
       @Valid @RequestBody UpdateUserRequest request) {
@@ -182,31 +219,27 @@ public class UserController {
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "User törölve"),
     @ApiResponse(responseCode = "404", description = "User nem található"),
-    @ApiResponse(responseCode = "403", description = "USER_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "USER_DELETE permission hiányzik")
   })
   @DeleteMapping("/{id}")
-  @RequirePermission("USER_MANAGE")
+  @RequirePermission("USER_DELETE")
   public ResponseEntity<Void> delete(
       @Parameter(description = "User azonosító") @PathVariable Long id) {
-    if (!userRepository.existsById(id)) {
-      throw new ResourceNotFoundException("User not found: " + id);
-    }
-    userRepository.deleteById(id);
+    userService.delete(id);
     return ResponseEntity.noContent().build();
   }
 
   @Operation(
       summary = "Fiók zárolás feloldása",
       description =
-          "failedLoginCount = 0, lockedUntil = NULL. "
-              + "USER_MANAGE permissionnel rendelkező admin hívhatja.")
+          "failedLoginCount = 0, lockedUntil = NULL.")
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Fiók feloldva"),
     @ApiResponse(responseCode = "404", description = "User nem található"),
-    @ApiResponse(responseCode = "403", description = "USER_MANAGE permission hiányzik")
+    @ApiResponse(responseCode = "403", description = "USER_UPDATE permission hiányzik")
   })
   @PostMapping("/{id}/unlock")
-  @RequirePermission("USER_MANAGE")
+  @RequirePermission("USER_UPDATE")
   public ResponseEntity<Void> unlockAccount(
       @Parameter(description = "User azonosító") @PathVariable Long id) {
     AppUser user =
@@ -223,6 +256,7 @@ public class UserController {
   public record CreateUserRequest(
       @NotBlank @Email @Size(max = 255) String email,
       @NotBlank String role,
+      String initialPassword,
       Boolean active,
       java.util.Set<Long> directPermissionIds) {}
 

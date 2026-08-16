@@ -40,6 +40,7 @@ public class UserService {
   private final hu.tanszek.device.auth.repository.PermissionRepository permissionRepository;
   private final LocationRepository locationRepository;
   private final Argon2PasswordEncoder passwordEncoder;
+  private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
 
   /**
    * User jelszavának cseréje.
@@ -226,5 +227,36 @@ public class UserService {
     AppUser saved = appUserRepository.save(user);
     log.info("User {} updated", userId);
     return saved;
+  }
+
+  /**
+   * User törlése.
+   *
+   * <p>Csak akkor engedélyezett, ha a felhasználónak nincsen aktív vagy függőben lévő
+   * eszköz-hozzárendelése (ASSIGNED, PENDING_ASSIGNMENT, PENDING_UNASSIGNMENT).
+   *
+   * @param userId a törlendő user azonosítója
+   * @throws ResourceNotFoundException ha a user nem létezik
+   * @throws BusinessValidationException ha a usernek van aktív hozzárendelése
+   */
+  @AuditTarget(entityType = "AppUser", action = "delete")
+  @Transactional
+  public void delete(Long userId) {
+    if (!appUserRepository.existsById(userId)) {
+      throw new ResourceNotFoundException("User not found: " + userId);
+    }
+
+    boolean hasActiveAssignments = assignmentRepository.hasActiveOrPendingAssignments(userId);
+
+    if (hasActiveAssignments) {
+      throw new BusinessValidationException(
+          "userHasActiveAssignments",
+          "A felhasználó nem törölhető, mert még aktív eszköz-hozzárendeléssel rendelkezik.");
+    }
+
+    // Refresh tokenek explicit revoke-olása
+    refreshTokenRepository.revokeAllRefreshTokensByUserId(userId);
+    appUserRepository.deleteById(userId);
+    log.info("User {} successfully deleted", userId);
   }
 }

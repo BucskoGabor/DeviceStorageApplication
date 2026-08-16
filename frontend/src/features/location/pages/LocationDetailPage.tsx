@@ -1,70 +1,67 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { User, Mail, Shield, Key, MapPin, ArrowLeft, Laptop, History, Eye } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { MapPin, ArrowLeft, Laptop, History, Eye } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { userApi } from '@/features/user/api/userApi'
+import { locationApi } from '@/features/location/api/locationApi'
 import { StatusBadge } from '@/features/assignment/components/StatusBadge'
 
 /**
- * UserDetailPage — /admin/users/:id route.
+ * LocationDetailPage — /admin/locations/:id route.
  *
- * Egy adott user részletes adatai:
- * - Személyes adatok (név, email hash, role)
- * - Jogosultságok (örökölt és közvetlen)
- * - Fiók státusz (aktív, zárolt, stb.)
- * - Két külön fülön (Tabs):
- *   1. Jelenleg a felhasználóhoz rendelt eszközök listája
- *   2. Korábbi hozzárendelések és eszközmozgások története
+ * Megjeleníti a helyszín adatait, valamint két külön fülön (Tabs):
+ * 1. Jelenleg hozzárendelt / a helyszínen lévő aktív eszközök listája
+ * 2. Korábbi hozzárendelések és eszközmozgások története
  */
-export function UserDetailPage() {
+export function LocationDetailPage() {
   const { t } = useTranslation()
   const params = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const userId = Number(params.id)
+  const locationId = Number(params.id)
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current')
 
-  const { data: user, isLoading: isUserLoading } = useQuery({
-    queryKey: ['user', userId],
-    queryFn: () => userApi.findById(userId),
-    enabled: Number.isFinite(userId),
+  const { data: location, isLoading: locationLoading } = useQuery({
+    queryKey: ['location', locationId],
+    queryFn: () => locationApi.findById(locationId),
+    enabled: Number.isFinite(locationId),
   })
 
-  const { data: currentDevices, isLoading: isCurrentLoading } = useQuery({
-    queryKey: ['user-current-devices', userId],
-    queryFn: () => userApi.findCurrentDevices(userId),
-    enabled: Number.isFinite(userId),
+  const { data: parentLocation } = useQuery({
+    queryKey: ['location', location?.parentId],
+    queryFn: () => locationApi.findById(location!.parentId!),
+    enabled: Boolean(location?.parentId),
   })
 
-  const { data: assignmentHistory, isLoading: isHistoryLoading } = useQuery({
-    queryKey: ['user-assignment-history', userId],
-    queryFn: () => userApi.findAssignmentHistory(userId),
-    enabled: Number.isFinite(userId),
+  const { data: currentDevices, isLoading: currentLoading } = useQuery({
+    queryKey: ['location-current-devices', locationId],
+    queryFn: () => locationApi.findCurrentDevices(locationId),
+    enabled: Number.isFinite(locationId),
   })
 
-  if (isUserLoading) {
-    return <p className="text-muted-foreground">{t('common.loading')}...</p>
+  const { data: assignmentHistory, isLoading: historyLoading } = useQuery({
+    queryKey: ['location-assignment-history', locationId],
+    queryFn: () => locationApi.findAssignmentHistory(locationId),
+    enabled: Number.isFinite(locationId),
+  })
+
+  if (locationLoading) {
+    return <p className="text-muted-foreground">{t('common.loading', 'Betöltés...')}...</p>
   }
 
-  if (!user) {
+  if (!location) {
     return (
       <div className="space-y-4">
-        <Button variant="ghost" onClick={() => navigate('/users')}>
+        <Button variant="ghost" onClick={() => navigate('/locations')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t('common.back', 'Vissza')}
         </Button>
-        <p className="text-destructive">{t('common.error')}</p>
+        <p className="text-destructive">{t('common.error', 'Helyszín nem található')}</p>
       </div>
     )
   }
-
-  const roleName = user.role?.name ?? 'ROLE_USER'
-  const officeName = user.officeLocation?.name ?? user.officeLocationSummary?.name ?? '—'
-  const rolePermissions = user.role?.permissions ?? []
-  const directPermissions = user.directPermissions ?? []
 
   return (
     <div className="space-y-6">
@@ -73,30 +70,26 @@ export function UserDetailPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/users')}
+          onClick={() => navigate('/locations')}
           className="mb-2 -ml-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          {t('users.title', 'Felhasználók')}
+          {t('locations.title', 'Helyszínek')}
         </Button>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <User className="h-5 w-5" />
+              <MapPin className="h-5 w-5" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-foreground">
-                {user.email || user.emailMasked || `#${user.id}`}
+                {location.name}
               </h1>
               <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                <span>#{user.id}</span>
+                <span>#{location.id}</span>
                 <span>•</span>
-                <Badge variant="outline" className="text-[11px]">
-                  {t(`roles.${roleName}`, roleName)}
-                </Badge>
-                <span>•</span>
-                <Badge variant={user.active ? 'default' : 'destructive'} className="text-[11px]">
-                  {user.active ? t('users.active') : t('users.inactive')}
+                <Badge variant="secondary" className="text-[11px]">
+                  {t(`locations.type${location.type.charAt(0) + location.type.slice(1).toLowerCase()}`, location.type)}
                 </Badge>
               </div>
             </div>
@@ -104,119 +97,44 @@ export function UserDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Alapadatok kártya */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <User className="h-5 w-5 text-primary" />
-              {t('myProfile.basicInfo')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ProfileField
-              icon={<Mail className="h-4 w-4 text-muted-foreground" />}
-              label={t('users.email')}
-              value={<span className="font-mono text-sm">{user.email || user.emailMasked || user.emailHash}</span>}
-            />
-            <ProfileField
-              icon={<Shield className="h-4 w-4 text-muted-foreground" />}
-              label={t('users.role')}
-              value={<Badge variant="outline">{t(`roles.${roleName}`, roleName)}</Badge>}
-            />
-            <ProfileField
-              icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
-              label={t('users.office')}
-              value={officeName}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Fiók státusz kártya */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('users.status')}</CardTitle>
-            <CardDescription>{t('users.accountStatus')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant={user.active ? 'default' : 'destructive'}>
-                {user.active ? t('users.active') : t('users.inactive')}
+      {/* Alapadatok kártya */}
+      <Card>
+        <CardHeader className="py-4">
+          <CardTitle className="text-sm font-semibold">{t('locations.title', 'Helyszín adatai')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+            <div>
+              <span className="block text-xs text-muted-foreground">{t('locations.name', 'Név')}</span>
+              <span className="font-medium text-foreground">{location.name}</span>
+            </div>
+            <div>
+              <span className="block text-xs text-muted-foreground">{t('locations.type', 'Típus')}</span>
+              <Badge variant="outline" className="mt-0.5">
+                {t(`locations.type${location.type.charAt(0) + location.type.slice(1).toLowerCase()}`, location.type)}
               </Badge>
-              {user.mustChangePassword && (
-                <Badge variant="outline">{t('users.mustChangePassword')}</Badge>
-              )}
-              {user.lockedUntil && (
-                <Badge variant="destructive">
-                  {t('users.lockedUntil', { date: new Date(user.lockedUntil).toLocaleString() })}
-                </Badge>
-              )}
-              {(user.failedLoginCount ?? 0) > 0 && (
-                <Badge variant="outline">
-                  {t('users.failedLoginCount', { count: user.failedLoginCount })}
-                </Badge>
+            </div>
+            <div>
+              <span className="block text-xs text-muted-foreground">{t('locations.parent', 'Szülő helyszín')}</span>
+              {parentLocation ? (
+                <Link
+                  to={`/locations/${parentLocation.id}`}
+                  className="font-medium text-primary hover:underline inline-flex items-center gap-1 mt-0.5"
+                >
+                  <MapPin className="h-3 w-3" />
+                  {parentLocation.name}
+                </Link>
+              ) : (
+                <span className="text-muted-foreground text-xs italic">
+                  {t('locations.noParent', 'Nincs szülő (gyökér)')}
+                </span>
               )}
             </div>
-            {user.createdAt && (
-              <div className="text-xs text-muted-foreground">
-                <Key className="mr-1 inline h-3 w-3" />
-                {t('audit.timestamp', 'Létrehozva')}: {new Date(user.createdAt).toLocaleString()}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Jogosultságok kártya */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Shield className="h-5 w-5 text-primary" />
-            {t('myProfile.permissions', 'Jogosultságok')}
-          </CardTitle>
-          <CardDescription>
-            {user.effectivePermissions?.length ?? (rolePermissions.length + directPermissions.length)}{' '}
-            {t('myProfile.permissionsCount', 'érvényes jogosultság')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              {t('roles.inheritedPermissions', 'Szerepkörből örökölt jogok')} ({rolePermissions.length})
-            </h4>
-            {rolePermissions.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {rolePermissions.map((p) => (
-                  <Badge key={p.id} variant="secondary" className="font-mono text-[11px]">
-                    {p.name}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">{t('common.noData', 'Nincs jog a szerepkörben')}</p>
-            )}
-          </div>
-
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              {t('users.directPermissions', 'Közvetlenül hozzárendelt jogok')} ({directPermissions.length})
-            </h4>
-            {directPermissions.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {directPermissions.map((p) => (
-                  <Badge key={p.id} variant="default" className="font-mono text-[11px] bg-primary/80">
-                    {p.name}
-                  </Badge>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">{t('common.noData', 'Nincsenek egyedi közvetlen jogok')}</p>
-            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Két fül választó (Tabs) az eszközökhöz */}
+      {/* Két fül választó (Tabs) */}
       <div className="flex border-b border-border">
         <button
           type="button"
@@ -228,7 +146,7 @@ export function UserDetailPage() {
           }`}
         >
           <Laptop className="h-4 w-4" />
-          <span>{t('users.currentDevices', 'Jelenleg hozzárendelt eszközök')}</span>
+          <span>{t('locations.currentDevices', 'Jelenleg hozzárendelt eszközök')}</span>
           <Badge variant="secondary" className="ml-1 text-xs">
             {currentDevices?.length ?? 0}
           </Badge>
@@ -244,28 +162,28 @@ export function UserDetailPage() {
           }`}
         >
           <History className="h-4 w-4" />
-          <span>{t('users.assignmentHistory', 'Korábbi hozzárendelések előzményei')}</span>
+          <span>{t('locations.assignmentHistory', 'Korábbi hozzárendelések előzményei')}</span>
           <Badge variant="secondary" className="ml-1 text-xs">
             {assignmentHistory?.length ?? 0}
           </Badge>
         </button>
       </div>
 
-      {/* 1. FELÜLET: Jelenleg hozzárendelt eszközök */}
+      {/* 1. FELÜLET: Jelenleg itt lévő eszközök */}
       {activeTab === 'current' && (
         <Card>
           <CardHeader className="py-4">
             <CardTitle className="text-base">
-              {t('users.currentDevicesTitle', 'A felhasználóhoz jelenleg hozzárendelt eszközök')}
+              {t('locations.currentDevicesTitle', 'A helyszínen jelenleg elérhető / hozzárendelt eszközök')}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {isCurrentLoading ? (
-              <p className="p-6 text-sm text-muted-foreground">{t('common.loading')}...</p>
+            {currentLoading ? (
+              <p className="p-6 text-sm text-muted-foreground">{t('common.loading', 'Betöltés...')}...</p>
             ) : !currentDevices || currentDevices.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 <Laptop className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-                <p>{t('users.noCurrentDevices', 'A felhasználóhoz jelenleg nincs eszköz hozzárendelve.')}</p>
+                <p>{t('locations.noCurrentDevices', 'Jelenleg nincs eszköz ehhez a helyszínhez rendelve.')}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -274,7 +192,6 @@ export function UserDetailPage() {
                     <tr>
                       <th className="p-3 font-medium">{t('devices.inventoryNumber', 'Leltári szám')}</th>
                       <th className="p-3 font-medium">{t('devices.type', 'Típus')}</th>
-                      <th className="p-3 font-medium">{t('locations.title', 'Helyszín')}</th>
                       <th className="p-3 font-medium">{t('devices.status', 'Státusz')}</th>
                       <th className="p-3 font-medium text-right">{t('common.actions', 'Műveletek')}</th>
                     </tr>
@@ -286,9 +203,6 @@ export function UserDetailPage() {
                           {dev.inventoryNumber}
                         </td>
                         <td className="p-3">{dev.type}</td>
-                        <td className="p-3 text-muted-foreground">
-                          {dev.currentLocation?.name ?? '—'}
-                        </td>
                         <td className="p-3">
                           <StatusBadge status={dev.status as any} />
                         </td>
@@ -318,16 +232,16 @@ export function UserDetailPage() {
         <Card>
           <CardHeader className="py-4">
             <CardTitle className="text-base">
-              {t('users.assignmentHistoryTitle', 'A felhasználó korábbi eszközhozzárendelési előzményei')}
+              {t('locations.assignmentHistoryTitle', 'Hozzárendelési és eszközmozgási előzmények ezen a helyszínen')}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {isHistoryLoading ? (
-              <p className="p-6 text-sm text-muted-foreground">{t('common.loading')}...</p>
+            {historyLoading ? (
+              <p className="p-6 text-sm text-muted-foreground">{t('common.loading', 'Betöltés...')}...</p>
             ) : !assignmentHistory || assignmentHistory.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 <History className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-                <p>{t('users.noAssignmentHistory', 'Nem található korábbi hozzárendelési előzmény a felhasználóhoz.')}</p>
+                <p>{t('locations.noAssignmentHistory', 'Nem található korábbi hozzárendelési előzmény ehhez a helyszínhez.')}</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -337,6 +251,7 @@ export function UserDetailPage() {
                       <th className="p-3 font-medium">{t('assignments.device', 'Eszköz')}</th>
                       <th className="p-3 font-medium">{t('assignments.fromLocation', 'Honnan')}</th>
                       <th className="p-3 font-medium">{t('assignments.toLocation', 'Hová')}</th>
+                      <th className="p-3 font-medium">{t('assignments.toUser', 'Felhasználó')}</th>
                       <th className="p-3 font-medium">{t('assignments.date', 'Időpont')}</th>
                       <th className="p-3 font-medium">{t('assignments.status', 'Státusz')}</th>
                       <th className="p-3 font-medium text-right">{t('common.actions', 'Műveletek')}</th>
@@ -360,6 +275,9 @@ export function UserDetailPage() {
                         </td>
                         <td className="p-3 font-medium text-foreground">
                           {item.toLocation?.name ?? '—'}
+                        </td>
+                        <td className="p-3 font-mono text-xs">
+                          {item.toUser?.email ?? item.fromUser?.email ?? '—'}
                         </td>
                         <td className="p-3 text-xs text-muted-foreground">
                           {item.createdDate ? new Date(item.createdDate).toLocaleDateString() : '—'}
@@ -394,24 +312,6 @@ export function UserDetailPage() {
           </CardContent>
         </Card>
       )}
-    </div>
-  )
-}
-
-interface ProfileFieldProps {
-  icon: React.ReactNode
-  label: string
-  value: React.ReactNode
-}
-
-function ProfileField({ icon, label, value }: ProfileFieldProps) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="mt-0.5">{icon}</div>
-      <div className="flex-1">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <div className="mt-1 text-sm">{value}</div>
-      </div>
     </div>
   )
 }

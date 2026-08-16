@@ -69,21 +69,21 @@ class DeviceServiceAssertionTest {
             .id(50L)
             .device(device)
             .status(AssignmentStatus.ASSIGNED)
-            .active(true)
+
             .build();
 
     when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
     when(locationRepository.findById(10L))
         .thenReturn(Optional.of(Location.builder().id(10L).type(LocationType.CLASSROOM).build()));
     when(userRepository.findById(100L)).thenReturn(Optional.of(byUser));
-    when(assignmentRepository.findByDeviceIdAndActiveTrue(1L)).thenReturn(Optional.of(oldActive));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED)).thenReturn(Optional.of(oldActive));
     when(assignmentRepository.save(any(DeviceAssignment.class)))
         .thenAnswer(inv -> inv.getArgument(0));
 
     deviceService.requestAssignment(1L, 10L, null, 100L);
 
     // A régi aktív inaktívvá vált
-    assertThat(oldActive.isActive()).isFalse();
+    assertThat(oldActive.getStatus()).isNotEqualTo(AssignmentStatus.ASSIGNED);
     verify(assignmentRepository, times(1)).save(oldActive);
   }
 
@@ -94,7 +94,7 @@ class DeviceServiceAssertionTest {
             .id(50L)
             .device(device)
             .status(AssignmentStatus.PENDING_ASSIGNMENT)
-            .active(false)
+
             .build();
 
     when(assignmentRepository.findById(50L)).thenReturn(Optional.of(pending));
@@ -115,7 +115,7 @@ class DeviceServiceAssertionTest {
             .id(60L)
             .device(device)
             .status(AssignmentStatus.PENDING_UNASSIGNMENT)
-            .active(false)
+
             .build();
 
     when(assignmentRepository.findById(60L)).thenReturn(Optional.of(pendingUnassign));
@@ -127,7 +127,7 @@ class DeviceServiceAssertionTest {
 
     assertThat(device.getStatus()).isEqualTo(DeviceStatus.IN_STORAGE);
     assertThat(pendingUnassign.getStatus()).isEqualTo(AssignmentStatus.IN_STORAGE);
-    assertThat(pendingUnassign.isActive()).isTrue();
+    assertThat(pendingUnassign.getStatus()).isEqualTo(AssignmentStatus.ASSIGNED);
   }
 
   @Test
@@ -137,7 +137,7 @@ class DeviceServiceAssertionTest {
             .id(60L)
             .device(device)
             .status(AssignmentStatus.PENDING_UNASSIGNMENT)
-            .active(false)
+
             .build();
 
     when(assignmentRepository.findById(60L)).thenReturn(Optional.of(pendingUnassign));
@@ -158,7 +158,7 @@ class DeviceServiceAssertionTest {
             .id(50L)
             .device(device)
             .status(AssignmentStatus.ASSIGNED)
-            .active(false)
+
             .build();
 
     when(assignmentRepository.findById(50L)).thenReturn(Optional.of(inactive));

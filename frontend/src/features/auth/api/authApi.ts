@@ -15,6 +15,7 @@ export interface LoginResponse {
 
 export interface MeResponse {
   id: number
+  email: string
   emailHash: string
   emailEncrypted: string
   emailMasked: string

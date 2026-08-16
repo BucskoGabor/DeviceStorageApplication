@@ -4,7 +4,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 import hu.tanszek.device.common.BaseEntity;
+import hu.tanszek.device.location.entity.Location;
 import hu.tanszek.device.software.entity.Software;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,6 +17,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -66,4 +70,19 @@ public class Device extends BaseEntity<Long> {
       inverseJoinColumns = @JoinColumn(name = "software_id"))
   @Builder.Default
   private Set<Software> softwares = new HashSet<>();
+
+  /** Az eszköz jelenlegi raktára (STORAGE típusú Location). NULL = nincs raktárban. */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "current_location_id")
+  @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+  private Location currentLocation;
+
+  /** Státuszváltás (karbantartás, selejtezés stb.) indoklása / megjegyzés. */
+  @Column(name = "status_reason", columnDefinition = "TEXT")
+  private String statusReason;
+
+  /** Kérelem előtti státusz (elutasítás esetén ebbe az állapotba áll vissza). */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "previous_status", length = 32)
+  private DeviceStatus previousStatus;
 }

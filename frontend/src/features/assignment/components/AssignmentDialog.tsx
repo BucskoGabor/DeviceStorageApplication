@@ -38,6 +38,7 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
   const { t } = useTranslation()
   const [targetType, setTargetType] = useState<'location' | 'user'>('location')
   const [targetLocationId, setTargetLocationId] = useState<number | null>(null)
+  const [targetLocationName, setTargetLocationName] = useState<string>('')
   const [targetUserId, setTargetUserId] = useState<string>('__none__')
   const [locationSelectorOpen, setLocationSelectorOpen] = useState(false)
 
@@ -49,6 +50,7 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
 
   const requestMutation = useRequestAssignment(deviceId, () => {
     setTargetLocationId(null)
+    setTargetLocationName('')
     setTargetUserId('__none__')
     onOpenChange(false)
   })
@@ -107,6 +109,7 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
                 onClick={() => {
                   setTargetType('user')
                   setTargetLocationId(null)
+                  setTargetLocationName('')
                 }}
               >
                 {t('devices.user', 'Felhasználó')}
@@ -123,15 +126,20 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
                     className="flex-1 justify-start"
                     onClick={() => setLocationSelectorOpen(true)}
                   >
-                    {targetLocationId != null
-                      ? `#${targetLocationId}`
-                      : t('devices.selectLocation')}
+                    {targetLocationName ? (
+                      <span className="font-medium text-xs">{targetLocationName}</span>
+                    ) : (
+                      <span className="text-muted-foreground">{t('devices.selectLocation')}</span>
+                    )}
                   </Button>
                   {targetLocationId != null && (
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => setTargetLocationId(null)}
+                      onClick={() => {
+                        setTargetLocationId(null)
+                        setTargetLocationName('')
+                      }}
                     >
                       ×
                     </Button>
@@ -149,7 +157,7 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
                     <SelectItem value="__none__">—</SelectItem>
                     {activeUsers.map((u) => (
                       <SelectItem key={u.id} value={String(u.id)}>
-                        {u.emailHash?.substring(0, 8) ?? `#${u.id}`} ({u.role?.name ?? '—'})
+                        {u.email || u.emailMasked || `#${u.id}`} ({u.role?.name ?? '—'})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -179,7 +187,10 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
       <LocationTreeSelector
         open={locationSelectorOpen}
         onOpenChange={setLocationSelectorOpen}
-        onSelect={(id) => setTargetLocationId(id)}
+        onSelect={(id, node) => {
+          setTargetLocationId(id)
+          setTargetLocationName(node?.name ?? '')
+        }}
         selectedId={targetLocationId}
         excludeGroupType
       />

@@ -43,7 +43,9 @@ class UserServiceTest {
   @Mock private AppUserRepository appUserRepository;
   @Mock private RefreshTokenRepository refreshTokenRepository;
   @Mock private hu.tanszek.device.auth.repository.RoleRepository roleRepository;
+  @Mock private hu.tanszek.device.auth.repository.PermissionRepository permissionRepository;
   @Mock private hu.tanszek.device.location.repository.LocationRepository locationRepository;
+  @Mock private hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
 
   private Argon2PasswordEncoder passwordEncoder;
 
@@ -59,8 +61,10 @@ class UserServiceTest {
             appUserRepository,
             refreshTokenRepository,
             roleRepository,
+            permissionRepository,
             locationRepository,
-            passwordEncoder);
+            passwordEncoder,
+            assignmentRepository);
 
     user =
         AppUser.builder()
@@ -179,5 +183,41 @@ class UserServiceTest {
     userService.reactivate(1L);
 
     verify(appUserRepository, never()).save(any());
+  }
+
+  // ===== delete =====
+
+  @Test
+  void deleteSuccessWhenNoActiveAssignments() {
+    when(appUserRepository.existsById(1L)).thenReturn(true);
+    when(assignmentRepository.hasActiveOrPendingAssignments(1L)).thenReturn(false);
+    when(refreshTokenRepository.revokeAllRefreshTokensByUserId(1L)).thenReturn(1);
+
+    userService.delete(1L);
+
+    verify(refreshTokenRepository, times(1)).revokeAllRefreshTokensByUserId(1L);
+    verify(appUserRepository, times(1)).deleteById(1L);
+  }
+
+  @Test
+  void deleteThrowsWhenUserHasActiveAssignments() {
+    when(appUserRepository.existsById(1L)).thenReturn(true);
+    when(assignmentRepository.hasActiveOrPendingAssignments(1L)).thenReturn(true);
+
+    assertThatThrownBy(() -> userService.delete(1L))
+        .isInstanceOf(BusinessValidationException.class)
+        .hasFieldOrPropertyWithValue("messageKey", "userHasActiveAssignments");
+
+    verify(appUserRepository, never()).deleteById(anyLong());
+  }
+
+  @Test
+  void deleteThrowsWhenUserNotFound() {
+    when(appUserRepository.existsById(999L)).thenReturn(false);
+
+    assertThatThrownBy(() -> userService.delete(999L))
+        .isInstanceOf(ResourceNotFoundException.class);
+
+    verify(appUserRepository, never()).deleteById(anyLong());
   }
 }

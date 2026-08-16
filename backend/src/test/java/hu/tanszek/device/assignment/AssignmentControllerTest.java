@@ -88,7 +88,7 @@ class AssignmentControllerTest {
   void approveAssignment_resolvesUserIdFromAuthenticationAndDelegatesToService() {
     AppUser approver = AppUser.builder().id(42L).emailHash("hash-xyz").build();
     DeviceAssignment approved =
-        DeviceAssignment.builder().id(100L).status(AssignmentStatus.ASSIGNED).active(true).build();
+        DeviceAssignment.builder().id(100L).status(AssignmentStatus.ASSIGNED).build();
     Authentication auth = new UsernamePasswordAuthenticationToken("hash-xyz", null, List.of());
 
     when(userRepository.findByEmailHash("hash-xyz")).thenReturn(Optional.of(approver));
@@ -107,13 +107,13 @@ class AssignmentControllerTest {
         DeviceAssignment.builder().id(101L).status(AssignmentStatus.PENDING_UNASSIGNMENT).build();
     Authentication auth = new UsernamePasswordAuthenticationToken("hash-xyz", null, List.of());
 
-    when(userRepository.findByEmailHash("hash-xyz")).thenReturn(Optional.of(requester));
-    when(deviceService.requestUnassignment(100L, 42L)).thenReturn(unassignRequest);
+        when(userRepository.findByEmailHash("hash-xyz")).thenReturn(Optional.of(requester));
+        when(deviceService.requestUnassignment(100L, null, 42L)).thenReturn(unassignRequest);
 
-    var response = controller.requestUnassignment(100L, auth);
+        var response = controller.requestUnassignment(100L, null, auth);
 
-    assertThat(response.getStatusCode().value()).isEqualTo(201);
-    assertThat(response.getBody().getStatus()).isEqualTo(AssignmentStatus.PENDING_UNASSIGNMENT);
+        assertThat(response.getStatusCode().value()).isEqualTo(201);
+        assertThat(response.getBody().getStatus()).isEqualTo(AssignmentStatus.PENDING_UNASSIGNMENT);
   }
 
   @Test
@@ -123,7 +123,6 @@ class AssignmentControllerTest {
         DeviceAssignment.builder()
             .id(101L)
             .status(AssignmentStatus.IN_STORAGE)
-            .active(true)
             .build();
     Authentication auth = new UsernamePasswordAuthenticationToken("hash-xyz", null, List.of());
 

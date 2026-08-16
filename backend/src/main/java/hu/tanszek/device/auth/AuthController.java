@@ -116,17 +116,17 @@ public class AuthController {
     setRefreshTokenCookie(response, issued.plainToken());
 
     // Access token generálás (role + permissions a GrantedAuthority-kból)
-    List<String> permissions =
-        authentication.getAuthorities().stream()
-            .map(GrantedAuthority::getAuthority)
-            .filter(a -> !a.startsWith("ROLE_"))
-            .collect(Collectors.toList());
     String role =
         authentication.getAuthorities().stream()
             .map(GrantedAuthority::getAuthority)
             .filter(a -> a.startsWith("ROLE_"))
             .findFirst()
             .orElse("ROLE_USER");
+    List<String> permissions =
+        authentication.getAuthorities().stream()
+            .map(GrantedAuthority::getAuthority)
+            .filter(a -> !a.equals(role))
+            .collect(Collectors.toList());
 
     String accessToken = jwtTokenProvider.generateAccessToken(emailHash, role, permissions);
 
@@ -152,6 +152,7 @@ public class AuthController {
    * (reuse detection), az egész chain revokeolódik.
    */
   @PostMapping("/refresh")
+  @org.springframework.transaction.annotation.Transactional
   public ResponseEntity<LoginResponse> refresh(
       HttpServletRequest request, HttpServletResponse response) {
     String refreshToken = readRefreshTokenCookie(request);
@@ -164,12 +165,11 @@ public class AuthController {
       RefreshTokenService.RotationResult rotated = refreshTokenService.rotate(refreshToken);
       setRefreshTokenCookie(response, rotated.newPlainToken());
 
-      // Access token a rotated refresh token user-jéhez
+      // Access token a rotated refresh token user-jéhez (összes effektív jogosultsággal)
       AppUser user = rotated.newRefreshToken().getUser();
       String emailHash = user.getEmailHash();
-      String role = "ROLE_" + user.getRole().getName().replace("ROLE_", "");
-      List<String> permissions =
-          user.getPermissions().stream().map(p -> p.getName()).collect(Collectors.toList());
+      String role = user.getRole() != null ? "ROLE_" + user.getRole().getName().replace("ROLE_", "") : "ROLE_USER";
+      List<String> permissions = new java.util.ArrayList<>(user.getEffectivePermissionNames());
 
       String newAccessToken = jwtTokenProvider.generateAccessToken(emailHash, role, permissions);
 
@@ -218,21 +218,23 @@ public class AuthController {
     List<String> permissions =
         authentication.getAuthorities().stream()
             .map(org.springframework.security.core.GrantedAuthority::getAuthority)
-            .filter(a -> !a.startsWith("ROLE_"))
+            .filter(a -> !a.equals(role))
             .collect(Collectors.toList());
 
-    // Email maszkolás a visszafejtett értékből: "a***@tanszek.local"
+    // Visszafejtett email a bejelentkezett felhasználónak
+    String plainEmail = null;
     String emailMasked = null;
     try {
-      String decryptedEmail = cryptoService.decrypt(user.getEmailEncrypted());
-      int atIndex = decryptedEmail.indexOf('@');
+      plainEmail = cryptoService.decrypt(user.getEmailEncrypted());
+      int atIndex = plainEmail.indexOf('@');
       if (atIndex > 1) {
-        emailMasked = decryptedEmail.charAt(0) + "***" + decryptedEmail.substring(atIndex);
+        emailMasked = plainEmail.charAt(0) + "***" + plainEmail.substring(atIndex);
       } else {
         emailMasked = "***";
       }
     } catch (Exception e) {
       log.warn("Failed to decrypt email for user {}: {}", user.getId(), e.getMessage());
+      plainEmail = user.getEmailHash();
       emailMasked = "***";
     }
 
@@ -240,6 +242,8 @@ public class AuthController {
         java.util.Map.of(
             "id",
             user.getId(),
+            "email",
+            plainEmail != null ? plainEmail : emailHash,
             "emailHash",
             emailHash,
             "emailEncrypted",

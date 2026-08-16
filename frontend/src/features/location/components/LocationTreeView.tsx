@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronRight, MapPin } from 'lucide-react'
+import { ChevronDown, ChevronRight, MapPin, Eye } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import type { LocationTreeNode } from '../api/locationApi'
 
 interface LocationTreeViewProps {
@@ -77,6 +79,8 @@ interface TreeRowProps {
 }
 
 function TreeRow({ node, depth, expandedIds, onToggle }: TreeRowProps) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
   const hasChildren = node.children.length > 0
   const isExpanded = expandedIds.has(node.id) || depth === 0
 
@@ -111,6 +115,15 @@ function TreeRow({ node, depth, expandedIds, onToggle }: TreeRowProps) {
             L{node.depth}
           </span>
         )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 ml-1"
+          onClick={() => navigate(`/locations/${node.id}`)}
+          title={t('common.details', 'Részletek')}
+        >
+          <Eye className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+        </Button>
       </div>
       {isExpanded &&
         node.children.map((child) => (

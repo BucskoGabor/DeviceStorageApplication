@@ -31,21 +31,21 @@ public class RoleController {
 
   @Operation(summary = "Szerepkörök listája")
   @GetMapping
-  @RequirePermission("USER_READ")
+  @RequirePermission({"ROLE_READ", "ROLE_MANAGE"})
   public ResponseEntity<List<Role>> findAll() {
     return ResponseEntity.ok(roleService.findAll());
   }
 
   @Operation(summary = "Szerepkör részletei")
   @GetMapping("/{id}")
-  @RequirePermission("USER_READ")
+  @RequirePermission({"ROLE_READ", "ROLE_MANAGE"})
   public ResponseEntity<Role> findById(@PathVariable Long id) {
     return ResponseEntity.ok(roleService.findById(id));
   }
 
   @Operation(summary = "Új szerepkör létrehozása")
   @PostMapping
-  @RequirePermission("USER_MANAGE")
+  @RequirePermission("ROLE_MANAGE")
   public ResponseEntity<Role> create(@Valid @RequestBody CreateRoleRequest request) {
     Role created = roleService.create(request.name(), request.permissionIds());
     return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -53,7 +53,7 @@ public class RoleController {
 
   @Operation(summary = "Szerepkör módosítása")
   @PutMapping("/{id}")
-  @RequirePermission("USER_MANAGE")
+  @RequirePermission("ROLE_MANAGE")
   public ResponseEntity<Role> update(
       @PathVariable Long id, @Valid @RequestBody UpdateRoleRequest request) {
     Role updated = roleService.update(id, request.name(), request.permissionIds());
@@ -62,7 +62,7 @@ public class RoleController {
 
   @Operation(summary = "Szerepkör törlése")
   @DeleteMapping("/{id}")
-  @RequirePermission("USER_MANAGE")
+  @RequirePermission("ROLE_MANAGE")
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     roleService.delete(id);
     return ResponseEntity.noContent().build();

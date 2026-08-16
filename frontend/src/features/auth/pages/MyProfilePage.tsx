@@ -38,7 +38,7 @@ export function MyProfilePage() {
     return <p className="text-destructive">{t('common.error')}</p>
   }
 
-  const maskedEmail = me.emailMasked || maskEmail(me.emailEncrypted)
+  const email = me.email || me.emailMasked || me.emailHash
   const roleLabel = me.role.replace('ROLE_', '')
   const roleI18nKey = `roles.${me.role}`
 
@@ -57,7 +57,7 @@ export function MyProfilePage() {
           <ProfileField
             icon={<Mail className="h-4 w-4 text-muted-foreground" />}
             label={t('users.email')}
-            value={maskedEmail}
+            value={<span className="font-mono text-sm">{email}</span>}
           />
           <ProfileField
             icon={<Shield className="h-4 w-4 text-muted-foreground" />}
@@ -138,16 +138,4 @@ function ProfileField({ icon, label, value }: ProfileFieldProps) {
       </div>
     </div>
   )
-}
-
-/**
- * Fallback email maszkolás — ha a backend nem adja vissza az emailMasked mezőt
- * (pl. decrypt hiba), a frontend hash-ből csinál egy best-effort maszkot.
- * Nem a valódi emailt mutatja, csak privacy-barát placeholder-t.
- */
-function maskEmail(emailHash: string): string {
-  if (!emailHash || emailHash.length < 12) {
-    return '***'
-  }
-  return `${emailHash.substring(0, 4)}***${emailHash.substring(emailHash.length - 4)}`
 }

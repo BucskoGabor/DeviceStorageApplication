@@ -26,7 +26,7 @@ public class ImportController {
   private final ImportService importService;
 
   @PostMapping("/preview")
-  @RequirePermission("USER_MANAGE")
+  @RequirePermission("IMPORT_EXECUTE")
   public ResponseEntity<ImportPreviewResponse> preview(@RequestParam("file") MultipartFile file) {
     try {
       ImportPreviewResponse response = importService.preview(file);
@@ -37,7 +37,7 @@ public class ImportController {
   }
 
   @PostMapping("/execute")
-  @RequirePermission("USER_MANAGE")
+  @RequirePermission("IMPORT_EXECUTE")
   public ResponseEntity<ImportResult> execute(@RequestBody ImportPreviewResponse preview) {
     ImportResult result = importService.execute(preview);
     return ResponseEntity.ok(result);

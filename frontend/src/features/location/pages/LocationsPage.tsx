@@ -1,8 +1,10 @@
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Plus, Trash2, Pencil, List, TreePine } from 'lucide-react'
+import { Plus, Trash2, Pencil, List, TreePine, Eye } from 'lucide-react'
 import { DataTable } from '@/components/DataTable/DataTable'
 import { locationApi, type Location } from '@/features/location/api/locationApi'
 import { Badge } from '@/components/ui/badge'
@@ -20,46 +22,43 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/store/authStore'
 import { LocationTreeView } from '@/features/location/components/LocationTreeView'
-import { LocationTreeSelector } from '@/features/location/components/LocationTreeSelector'
-
+import { LocationTreeSelector, findLocationNode } from '@/features/location/components/LocationTreeSelector'
 type ViewMode = 'list' | 'tree'
-
 export function LocationsPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const permissions = useAuthStore((state) => state.permissions)
-  const canManage = permissions.includes('LOCATION_MANAGE')
-
+  const canCreate = permissions.includes('LOCATION_CREATE')
+  const canUpdate = permissions.includes('LOCATION_UPDATE')
+  const canDelete = permissions.includes('LOCATION_DELETE')
   const [page, setPage] = useState(0)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingLocation, setEditingLocation] = useState<Location | null>(null)
-
+  const [deleteLocationId, setDeleteLocationId] = useState<number | null>(null)
   // Form states for create
   const [name, setName] = useState('')
   const [type, setType] = useState<'CLASSROOM' | 'OFFICE' | 'STORAGE' | 'GROUP'>('OFFICE')
   const [parentId, setParentId] = useState<number | null>(null)
+  const [parentName, setParentName] = useState<string>('')
   const [parentSelectorOpen, setParentSelectorOpen] = useState(false)
-
   // Form states for edit
   const [editName, setEditName] = useState('')
   const [editType, setEditType] = useState<'CLASSROOM' | 'OFFICE' | 'STORAGE' | 'GROUP'>('OFFICE')
   const [editParentId, setEditParentId] = useState<number | null>(null)
+  const [editParentName, setEditParentName] = useState<string>('')
   const [editParentSelectorOpen, setEditParentSelectorOpen] = useState(false)
-
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const pageSize = 20
-
   const { data, isLoading } = useQuery({
     queryKey: ['locations', page, pageSize],
     queryFn: () => locationApi.findAll({ page, size: pageSize }),
   })
-
   const { data: tree, isLoading: treeLoading } = useQuery({
     queryKey: ['locations', 'tree'],
     queryFn: () => locationApi.findTree(),
-    enabled: viewMode === 'tree',
+    enabled: true,
   })
-
   const createMutation = useMutation({
     mutationFn: locationApi.create,
     onSuccess: () => {
@@ -67,6 +66,7 @@ export function LocationsPage() {
       setIsCreateOpen(false)
       setName('')
       setParentId(null)
+      setParentName('')
       toast.success(t('common.created', 'Sikeresen létrehozva'))
     },
     onError: (error: any) => {
@@ -74,7 +74,6 @@ export function LocationsPage() {
       toast.error(t(messageKey, { defaultValue: t('common.error') }))
     },
   })
-
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof locationApi.update>[1] }) =>
       locationApi.update(id, payload),
@@ -88,7 +87,6 @@ export function LocationsPage() {
       toast.error(t(messageKey, { defaultValue: t('common.error') }))
     },
   })
-
   const deleteMutation = useMutation({
     mutationFn: locationApi.delete,
     onSuccess: () => {
@@ -100,14 +98,14 @@ export function LocationsPage() {
       toast.error(t(messageKey, { defaultValue: t('common.error') }))
     },
   })
-
   const openEdit = (loc: Location) => {
     setEditingLocation(loc)
     setEditName(loc.name)
     setEditType(loc.type)
     setEditParentId(loc.parentId ?? null)
+    const pNode = findLocationNode(tree, loc.parentId)
+    setEditParentName(pNode ? pNode.name : (loc.parentId != null ? `Helyszín #${loc.parentId}` : ''))
   }
-
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingLocation || !editName) return
@@ -115,15 +113,12 @@ export function LocationsPage() {
     if (editName !== editingLocation.name) payload.name = editName
     if (editType !== editingLocation.type) payload.type = editType
     if (editParentId !== (editingLocation.parentId ?? null)) payload.parentId = editParentId
-
     if (Object.keys(payload).length === 0) {
       setEditingLocation(null)
       return
     }
-
     updateMutation.mutate({ id: editingLocation.id, payload })
   }
-
   const columns = useMemo<ColumnDef<Location, unknown>[]>(
     () => [
       {
@@ -155,11 +150,13 @@ export function LocationsPage() {
         accessorKey: 'parentId',
         header: t('locations.parent'),
         cell: (info) => {
-          const parentId = info.getValue()
-          return parentId ? (
-            <span className="font-mono text-xs">#{String(parentId)}</span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
+          const pId = info.getValue() as number | null
+          if (!pId) return <span className="text-muted-foreground">—</span>
+          const pNode = findLocationNode(tree, pId)
+          return (
+            <span className="text-xs">
+              {pNode ? pNode.name : `#${pId}`}
+            </span>
           )
         },
       },
@@ -170,7 +167,15 @@ export function LocationsPage() {
           const location = info.row.original
           return (
             <div className="flex gap-1">
-              {canManage && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title={t('common.details', 'Részletek')}
+                onClick={() => navigate(`/locations/${location.id}`)}
+              >
+                <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              </Button>
+              {canUpdate && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -180,16 +185,12 @@ export function LocationsPage() {
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
-              {canManage && (
+              {canDelete && (
                 <Button
                   variant="ghost"
                   size="icon"
                   title={t('common.delete', 'Törlés')}
-                  onClick={() => {
-                    if (confirm(t('locations.confirmDelete'))) {
-                      deleteMutation.mutate(location.id)
-                    }
-                  }}
+                  onClick={() => setDeleteLocationId(location.id)}
                 >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
@@ -199,9 +200,8 @@ export function LocationsPage() {
         },
       },
     ],
-    [t, canManage, deleteMutation]
+    [t, canUpdate, canDelete, deleteMutation, navigate]
   )
-
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name) return
@@ -212,7 +212,6 @@ export function LocationsPage() {
     if (parentId != null) payload.parentId = parentId
     createMutation.mutate(payload)
   }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -238,7 +237,7 @@ export function LocationsPage() {
               {t('locations.viewTree')}
             </Button>
           </div>
-          {canManage && (
+          {canCreate && (
             <Button onClick={() => setIsCreateOpen(!isCreateOpen)}>
               <Plus className="mr-2 h-4 w-4" />
               {t('locations.create')}
@@ -246,7 +245,6 @@ export function LocationsPage() {
           )}
         </div>
       </div>
-
       {isCreateOpen && (
         <div className="rounded-lg border border-border bg-card p-6 shadow-lg space-y-4 max-w-lg">
           <h2 className="text-lg font-semibold">{t('locations.create')}</h2>
@@ -288,10 +286,21 @@ export function LocationsPage() {
                   className="flex-1 justify-start"
                   onClick={() => setParentSelectorOpen(true)}
                 >
-                  {parentId != null ? `#${parentId}` : t('locations.noParent')}
+                  {parentName ? (
+                    <span className="font-medium text-xs text-foreground">{parentName}</span>
+                  ) : (
+                    <span className="text-muted-foreground">{t('locations.noParent', 'Nincs szülő (root)')}</span>
+                  )}
                 </Button>
                 {parentId != null && (
-                  <Button type="button" variant="ghost" onClick={() => setParentId(null)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setParentId(null)
+                      setParentName('')
+                    }}
+                  >
                     ×
                   </Button>
                 )}
@@ -308,7 +317,6 @@ export function LocationsPage() {
           </form>
         </div>
       )}
-
       {viewMode === 'list' ? (
         <DataTable
           data={data?.content ?? []}
@@ -322,14 +330,15 @@ export function LocationsPage() {
       ) : (
         <LocationTreeView tree={tree ?? []} isLoading={treeLoading} />
       )}
-
       <LocationTreeSelector
         open={parentSelectorOpen}
         onOpenChange={setParentSelectorOpen}
-        onSelect={(id) => setParentId(id)}
+        onSelect={(id, node) => {
+          setParentId(id)
+          setParentName(node?.name ?? '')
+        }}
         selectedId={parentId}
       />
-
       {/* Edit Location Dialog */}
       <Dialog
         open={editingLocation !== null}
@@ -379,10 +388,23 @@ export function LocationsPage() {
                   className="flex-1 justify-start"
                   onClick={() => setEditParentSelectorOpen(true)}
                 >
-                  {editParentId != null ? `#${editParentId}` : t('locations.noParent')}
+                  {editParentName ? (
+                    <span className="font-medium text-xs text-foreground">{editParentName}</span>
+                  ) : editParentId != null ? (
+                    <span className="font-medium text-xs text-foreground">Helyszín #{editParentId}</span>
+                  ) : (
+                    <span className="text-muted-foreground">{t('locations.noParent', 'Nincs szülő (root)')}</span>
+                  )}
                 </Button>
                 {editParentId != null && (
-                  <Button type="button" variant="ghost" onClick={() => setEditParentId(null)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditParentId(null)
+                      setEditParentName('')
+                    }}
+                  >
                     ×
                   </Button>
                 )}
@@ -404,11 +426,24 @@ export function LocationsPage() {
           </form>
         </DialogContent>
       </Dialog>
-
+      <ConfirmDialog
+        open={deleteLocationId !== null}
+        onOpenChange={(open) => !open && setDeleteLocationId(null)}
+        description={t('locations.confirmDelete')}
+        onConfirm={() => {
+          if (deleteLocationId) {
+            deleteMutation.mutate(deleteLocationId)
+            setDeleteLocationId(null)
+          }
+        }}
+      />
       <LocationTreeSelector
         open={editParentSelectorOpen}
         onOpenChange={setEditParentSelectorOpen}
-        onSelect={(id) => setEditParentId(id)}
+        onSelect={(id, node) => {
+          setEditParentId(id)
+          setEditParentName(node?.name ?? '')
+        }}
         selectedId={editParentId}
       />
     </div>
