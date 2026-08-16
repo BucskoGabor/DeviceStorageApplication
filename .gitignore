@@ -108,6 +108,8 @@ test-results/
 reports/
 *.html
 !docs/**/*.html
+!frontend/index.html
+!frontend/public/**/*.html
 
 # ===== Generált / Build artifacts =====
 # Frontend bundle
