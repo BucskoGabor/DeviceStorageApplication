@@ -17,6 +17,10 @@ spring:
     baseline-on-migrate: false
     repair-on-migrate: false
 
+# Override the broken dev default: 32-byte base64-encoded key (TEST ONLY).
+crypto:
+  aes-key: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+
 server:
   port: 0  # Random port a teszt idejére
 
