@@ -108,7 +108,11 @@ class CustomUserDetailsServiceTest {
   }
 
   private static AppUser buildUser(
-      String emailHash, String roleName, boolean active, Instant lockedUntil, Set<Permission> userPerms) {
+      String emailHash,
+      String roleName,
+      boolean active,
+      Instant lockedUntil,
+      Set<Permission> userPerms) {
     Role role = new Role();
     role.setName(roleName);
     role.setPermissions(new HashSet<>());

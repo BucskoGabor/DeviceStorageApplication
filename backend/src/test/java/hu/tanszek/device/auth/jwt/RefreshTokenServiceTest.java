@@ -38,8 +38,7 @@ class RefreshTokenServiceTest {
 
   @BeforeEach
   void setUp() {
-    service =
-        new RefreshTokenService(refreshTokenRepository, appUserRepository, jwtProperties);
+    service = new RefreshTokenService(refreshTokenRepository, appUserRepository, jwtProperties);
   }
 
   @Test
@@ -137,7 +136,8 @@ class RefreshTokenServiceTest {
     return user;
   }
 
-  private static RefreshToken buildToken(AppUser user, String hash, boolean revoked, boolean expired) {
+  private static RefreshToken buildToken(
+      AppUser user, String hash, boolean revoked, boolean expired) {
     RefreshToken token = new RefreshToken();
     token.setUser(user);
     token.setTokenHash(hash);

@@ -79,8 +79,7 @@ class LoginServiceTest {
   @Test
   void authenticate_propagatesLockedException() {
     when(providerFactory.getActiveProvider()).thenReturn(provider);
-    when(provider.authenticate(anyString(), anyString()))
-        .thenThrow(new LockedException("locked"));
+    when(provider.authenticate(anyString(), anyString())).thenThrow(new LockedException("locked"));
 
     assertThatThrownBy(() -> service.authenticate("user@example.com", "pw"))
         .isInstanceOf(LockedException.class);
@@ -150,7 +149,9 @@ class LoginServiceTest {
     return user;
   }
 
-  /** SimpleGrantedAuthority-t helyettesítő stub, hogy ne importáljuk a Spring Security-t mégegyszer. */
+  /**
+   * SimpleGrantedAuthority-t helyettesítő stub, hogy ne importáljuk a Spring Security-t mégegyszer.
+   */
   private record SimpleGrantedAuthorityStub(String authority)
       implements org.springframework.security.core.GrantedAuthority {
     @Override
