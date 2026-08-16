@@ -28,6 +28,7 @@ log_err()  { echo -e "${RED}[ERROR]${NC} $*"; }
 BACKUP_DATE="${1:-latest}"
 POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-device-storage-postgres}"
 BACKEND_CONTAINER="${BACKEND_CONTAINER:-device-storage-backend}"
+BACKUP_CONTAINER="${BACKUP_CONTAINER:-device-storage-backup}"
 POSTGRES_DB="${POSTGRES_DB:-tanszek_db}"
 POSTGRES_USER="${POSTGRES_USER:-admin}"
 
