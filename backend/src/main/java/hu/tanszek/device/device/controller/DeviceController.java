@@ -103,6 +103,11 @@ public class DeviceController {
       currentUser = userRepository.findByEmailHash(authentication.getName()).orElse(null);
     }
 
+    boolean hasExplicitFilter =
+        (inventoryNumber != null && !inventoryNumber.isBlank())
+            || (status != null && !status.isBlank())
+            || (type != null && !type.isBlank());
+
     Specification<Device> filterSpec = Specification.where(null);
     if (inventoryNumber != null && !inventoryNumber.isBlank()) {
       filterSpec =
@@ -121,6 +126,21 @@ public class DeviceController {
           filterSpec.and(
               (root, query, cb) ->
                   cb.like(cb.lower(root.get("type")), "%" + type.toLowerCase() + "%"));
+    }
+
+    // Alapértelmezett nézet: ha nincs semmilyen kifejezett szűrés/keresés megadva,
+    // a selejtezett és a karbantartás alatt lévő eszközök nem jelennek meg a listában.
+    if (!hasExplicitFilter) {
+      filterSpec =
+          filterSpec.and(
+              (root, query, cb) ->
+                  root.get("status")
+                      .in(
+                          DeviceStatus.DISPOSED,
+                          DeviceStatus.MAINTENANCE,
+                          DeviceStatus.PENDING_DISPOSAL,
+                          DeviceStatus.PENDING_MAINTENANCE)
+                      .not());
     }
 
     var pageable = PageRequest.of(page, size, Sort.by(sort).ascending());
