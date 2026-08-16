@@ -3,6 +3,7 @@ package hu.tanszek.device.audit;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -89,7 +90,14 @@ public class AuditAspect {
       result = joinPoint.proceed();
     } catch (Throwable t) {
       // Hiba esetén is logolunk (action='failed')
-      saveAuditLog(entityType, entityId, beforeState, null, action + "_failed", requestPayload, t.getMessage());
+      saveAuditLog(
+          entityType,
+          entityId,
+          beforeState,
+          null,
+          action + "_failed",
+          requestPayload,
+          t.getMessage());
       throw t;
     }
 
@@ -263,18 +271,21 @@ public class AuditAspect {
   @SuppressWarnings("unchecked")
   private String buildChangesJson(Object beforeState, Object afterState) {
     try {
-      Map<String, Object> changes = new HashMap<>();
-
       Map<String, Object> beforeMap =
           beforeState instanceof Map
               ? (Map<String, Object>) beforeState
               : entityTypeRegistry.toJsonMap(beforeState);
-      changes.put("before", beforeMap != null ? maskSensitiveFields(beforeMap) : null);
-
       Map<String, Object> afterMap =
           afterState instanceof Map
               ? (Map<String, Object>) afterState
               : entityTypeRegistry.toJsonMap(afterState);
+
+      if (Objects.equals(beforeMap, afterMap)) {
+        return null;
+      }
+
+      Map<String, Object> changes = new HashMap<>();
+      changes.put("before", beforeMap != null ? maskSensitiveFields(beforeMap) : null);
       changes.put("after", afterMap != null ? maskSensitiveFields(afterMap) : null);
 
       return objectMapper.writeValueAsString(changes);
@@ -319,7 +330,9 @@ public class AuditAspect {
     org.springframework.security.core.Authentication authentication =
         org.springframework.security.core.context.SecurityContextHolder.getContext()
             .getAuthentication();
-    if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() != null) {
+    if (authentication != null
+        && authentication.isAuthenticated()
+        && authentication.getPrincipal() != null) {
       String name = authentication.getName();
       if ("anonymousUser".equals(name)) return "anonymous";
       return userRepository

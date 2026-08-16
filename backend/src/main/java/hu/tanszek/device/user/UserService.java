@@ -40,7 +40,8 @@ public class UserService {
   private final hu.tanszek.device.auth.repository.PermissionRepository permissionRepository;
   private final LocationRepository locationRepository;
   private final Argon2PasswordEncoder passwordEncoder;
-  private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
+  private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository
+      assignmentRepository;
 
   /**
    * User jelszavának cseréje.

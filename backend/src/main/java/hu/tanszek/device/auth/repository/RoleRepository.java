@@ -23,9 +23,11 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
    */
   Optional<Role> findByName(String name);
 
-  @org.springframework.data.jpa.repository.Query("SELECT DISTINCT r FROM Role r LEFT JOIN FETCH r.permissions ORDER BY r.name")
+  @org.springframework.data.jpa.repository.Query(
+      "SELECT DISTINCT r FROM Role r LEFT JOIN FETCH r.permissions ORDER BY r.name")
   java.util.List<Role> findAllWithPermissions();
 
-  @org.springframework.data.jpa.repository.Query("SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.id = :id")
+  @org.springframework.data.jpa.repository.Query(
+      "SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.id = :id")
   Optional<Role> findByIdWithPermissions(Long id);
 }

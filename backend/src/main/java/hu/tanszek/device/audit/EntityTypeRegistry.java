@@ -203,12 +203,14 @@ public class EntityTypeRegistry {
       if (fields.containsKey("active") && fields.get("active") != null) {
         Object val = fields.get("active");
         if (val instanceof Boolean b) user.setActive(b);
-        else if (val instanceof String s && !"***".equals(s)) user.setActive(Boolean.parseBoolean(s));
+        else if (val instanceof String s && !"***".equals(s))
+          user.setActive(Boolean.parseBoolean(s));
       }
       if (fields.containsKey("mustChangePassword") && fields.get("mustChangePassword") != null) {
         Object val = fields.get("mustChangePassword");
         if (val instanceof Boolean b) user.setMustChangePassword(b);
-        else if (val instanceof String s && !"***".equals(s)) user.setMustChangePassword(Boolean.parseBoolean(s));
+        else if (val instanceof String s && !"***".equals(s))
+          user.setMustChangePassword(Boolean.parseBoolean(s));
       }
     } else if (entity instanceof Location location) {
       if (fields.get("name") instanceof String s && !"***".equals(s)) {
@@ -218,7 +220,9 @@ public class EntityTypeRegistry {
         location.setType(
             hu.tanszek.device.location.entity.LocationType.valueOf(fields.get("type").toString()));
       }
-      if (fields.containsKey("parentId") && fields.get("parentId") != null && !"***".equals(fields.get("parentId"))) {
+      if (fields.containsKey("parentId")
+          && fields.get("parentId") != null
+          && !"***".equals(fields.get("parentId"))) {
         Long parentId = ((Number) fields.get("parentId")).longValue();
         locationRepository.findById(parentId).ifPresent(location::setParent);
       } else if (fields.containsKey("parentId") && fields.get("parentId") == null) {

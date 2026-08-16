@@ -40,18 +40,21 @@ public class SeedPasswordInitializer implements ApplicationRunner {
   @Override
   @Transactional
   public void run(ApplicationArguments args) {
-    userRepository.findAll().forEach(user -> {
-      String currentHash = user.getPasswordHash();
-      if (currentHash != null && currentHash.contains(PLACEHOLDER_MARKER)) {
-        String newHash = passwordEncoder.encode(DEFAULT_PASSWORD);
-        user.setPasswordHash(newHash);
-        user.setPasswordChangedAt(Instant.now());
-        userRepository.save(user);
-        log.info(
-            "SeedPasswordInitializer: placeholder password hash replaced for user ID {}",
-            user.getId());
-      }
-    });
+    userRepository
+        .findAll()
+        .forEach(
+            user -> {
+              String currentHash = user.getPasswordHash();
+              if (currentHash != null && currentHash.contains(PLACEHOLDER_MARKER)) {
+                String newHash = passwordEncoder.encode(DEFAULT_PASSWORD);
+                user.setPasswordHash(newHash);
+                user.setPasswordChangedAt(Instant.now());
+                userRepository.save(user);
+                log.info(
+                    "SeedPasswordInitializer: placeholder password hash replaced for user ID {}",
+                    user.getId());
+              }
+            });
   }
 
   /** SHA-256 hash az emailből (LocalAuthProvider-rel kompatibilis). */

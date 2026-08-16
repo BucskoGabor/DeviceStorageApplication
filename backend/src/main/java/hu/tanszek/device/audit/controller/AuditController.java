@@ -17,9 +17,7 @@ import hu.tanszek.device.user.repository.AppUserRepository;
 
 import lombok.RequiredArgsConstructor;
 
-/**
- * AuditController — audit log listázás.
- */
+/** AuditController — audit log listázás. */
 @RestController
 @RequestMapping("/api/audit")
 @RequiredArgsConstructor

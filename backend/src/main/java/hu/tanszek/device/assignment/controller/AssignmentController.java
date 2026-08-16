@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -137,17 +136,18 @@ public class AssignmentController {
     @ApiResponse(responseCode = "404", description = "Assignment nem található"),
     @ApiResponse(responseCode = "403", description = "DEVICE_UNASSIGN permission hiányzik")
   })
-    @PostMapping("/api/devices/assignments/{assignmentId}/unassign")
-    @RequirePermission("DEVICE_UNASSIGN")
-    public ResponseEntity<DeviceAssignment> requestUnassignment(
-            @Parameter(description = "Aktív assignment azonosító") @PathVariable Long assignmentId,
-            @Parameter(description = "Cél raktár azonosító") @RequestParam(required = false) Long targetLocationId,
-            Authentication authentication) {
-        Long byUserId = resolveUserId(authentication);
-        DeviceAssignment unassignRequest =
-                deviceService.requestUnassignment(assignmentId, targetLocationId, byUserId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(unassignRequest);
-    }
+  @PostMapping("/api/devices/assignments/{assignmentId}/unassign")
+  @RequirePermission("DEVICE_UNASSIGN")
+  public ResponseEntity<DeviceAssignment> requestUnassignment(
+      @Parameter(description = "Aktív assignment azonosító") @PathVariable Long assignmentId,
+      @Parameter(description = "Cél raktár azonosító") @RequestParam(required = false)
+          Long targetLocationId,
+      Authentication authentication) {
+    Long byUserId = resolveUserId(authentication);
+    DeviceAssignment unassignRequest =
+        deviceService.requestUnassignment(assignmentId, targetLocationId, byUserId);
+    return ResponseEntity.status(HttpStatus.CREATED).body(unassignRequest);
+  }
 
   /**
    * POST /api/devices/assignments/{unassignmentId}/approve-unassign PENDING_UNASSIGNMENT →
@@ -178,7 +178,8 @@ public class AssignmentController {
   }
 
   /**
-   * POST /api/devices/assignments/{assignmentId}/reject Függőben lévő kérelem (assign/unassign) elutasítása.
+   * POST /api/devices/assignments/{assignmentId}/reject Függőben lévő kérelem (assign/unassign)
+   * elutasítása.
    */
   @Operation(
       summary = "Kérelem elutasítása",

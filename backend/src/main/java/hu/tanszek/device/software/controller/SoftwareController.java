@@ -78,7 +78,12 @@ public class SoftwareController {
     @ApiResponse(responseCode = "403", description = "SOFTWARE_LICENSE_VIEW permission hiányzik")
   })
   @GetMapping
-  @RequirePermission({"SOFTWARE_LICENSE_VIEW", "SOFTWARE_CREATE", "SOFTWARE_UPDATE", "SOFTWARE_DELETE"})
+  @RequirePermission({
+    "SOFTWARE_LICENSE_VIEW",
+    "SOFTWARE_CREATE",
+    "SOFTWARE_UPDATE",
+    "SOFTWARE_DELETE"
+  })
   public ResponseEntity<Map<String, Object>> findAll(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
@@ -197,7 +202,12 @@ public class SoftwareController {
     @ApiResponse(responseCode = "403", description = "SOFTWARE_LICENSE_VIEW permission hiányzik")
   })
   @GetMapping("/{id}/devices")
-  @RequirePermission({"SOFTWARE_LICENSE_VIEW", "SOFTWARE_CREATE", "SOFTWARE_UPDATE", "SOFTWARE_DELETE"})
+  @RequirePermission({
+    "SOFTWARE_LICENSE_VIEW",
+    "SOFTWARE_CREATE",
+    "SOFTWARE_UPDATE",
+    "SOFTWARE_DELETE"
+  })
   public ResponseEntity<List<Device>> findDevicesBySoftware(@PathVariable Long id) {
     if (!softwareRepository.existsById(id)) {
       throw new ResourceNotFoundException("Software not found: " + id);

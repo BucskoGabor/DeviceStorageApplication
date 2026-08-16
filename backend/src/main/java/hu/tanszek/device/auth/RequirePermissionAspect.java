@@ -76,7 +76,8 @@ public class RequirePermissionAspect {
           joinPoint.getSignature().toShortString(),
           requiredPermissions);
       throw new UnauthorizedActionException(
-          "permissionDenied", "User does not have any of required permissions: " + requiredPermissions);
+          "permissionDenied",
+          "User does not have any of required permissions: " + requiredPermissions);
     }
 
     log.debug(

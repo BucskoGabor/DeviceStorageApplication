@@ -54,7 +54,6 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
                 .emailEncrypted("encrypted")
                 .emailHash("int-test-hash")
                 .passwordHash("$argon2id$test")
-
                 .mustChangePassword(false)
                 .failedLoginCount(0)
                 .passwordChangedAt(java.time.Instant.now())
@@ -124,7 +123,6 @@ class DeviceServiceIntegrationTest extends AbstractIntegrationTest {
                 .emailEncrypted("enc")
                 .emailHash("h2")
                 .passwordHash("$argon2id$x")
-
                 .mustChangePassword(false)
                 .failedLoginCount(0)
                 .passwordChangedAt(java.time.Instant.now())

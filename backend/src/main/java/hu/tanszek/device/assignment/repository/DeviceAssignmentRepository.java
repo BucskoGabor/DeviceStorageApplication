@@ -30,7 +30,8 @@ public interface DeviceAssignmentRepository
       Long toUserId, Long fromUserId);
 
   /** Usernél lévő jelenlegi aktív eszközök. */
-  @org.springframework.data.jpa.repository.Query("""
+  @org.springframework.data.jpa.repository.Query(
+      """
       SELECT da.device FROM DeviceAssignment da
       WHERE da.toUser.id = :userId
         AND da.status = hu.tanszek.device.assignment.entity.AssignmentStatus.ASSIGNED
@@ -56,11 +57,14 @@ public interface DeviceAssignmentRepository
       Long deviceId, AssignmentStatus status);
 
   /**
-   * Ellenőrzi, hogy a felhasználónak van-e jelenleg nála lévő aktív eszköze vagy folyamatban lévő kérése.
+   * Ellenőrzi, hogy a felhasználónak van-e jelenleg nála lévő aktív eszköze vagy folyamatban lévő
+   * kérése.
    *
-   * <p>A history-ban lévő, már visszavett vagy továbbadott korábbi hozzárendelések nem számítanak aktívnak.
+   * <p>A history-ban lévő, már visszavett vagy továbbadott korábbi hozzárendelések nem számítanak
+   * aktívnak.
    */
-  @org.springframework.data.jpa.repository.Query("""
+  @org.springframework.data.jpa.repository.Query(
+      """
       SELECT COUNT(da) > 0 FROM DeviceAssignment da
       WHERE (
           (da.toUser.id = :userId AND da.status = hu.tanszek.device.assignment.entity.AssignmentStatus.PENDING_ASSIGNMENT)

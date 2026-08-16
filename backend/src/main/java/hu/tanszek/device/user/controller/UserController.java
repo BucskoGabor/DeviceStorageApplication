@@ -48,12 +48,15 @@ public class UserController {
   private final RoleRepository roleRepository;
   private final PermissionRepository permissionRepository;
   private final org.springframework.security.crypto.argon2.Argon2PasswordEncoder passwordEncoder;
-  private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository assignmentRepository;
+  private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository
+      assignmentRepository;
 
   @Operation(summary = "Felhasználó lista (lapozott)")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "Sikeres lista"),
-    @ApiResponse(responseCode = "403", description = "USER_READ vagy USER_MANAGE permission hiányzik")
+    @ApiResponse(
+        responseCode = "403",
+        description = "USER_READ vagy USER_MANAGE permission hiányzik")
   })
   @GetMapping
   @RequirePermission({"USER_READ", "USER_CREATE", "USER_UPDATE", "USER_DELETE"})
@@ -113,7 +116,9 @@ public class UserController {
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
   public ResponseEntity<List<hu.tanszek.device.device.entity.Device>> findCurrentDevices(
       @PathVariable Long id) {
-    userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+    userRepository
+        .findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
     List<hu.tanszek.device.device.entity.Device> devices =
         assignmentRepository.findCurrentDevicesByUserId(id);
     return ResponseEntity.ok(devices);
@@ -123,9 +128,11 @@ public class UserController {
   @GetMapping("/{id}/assignments")
   @RequirePermission({"USER_READ", "USER_CREATE", "USER_UPDATE", "USER_DELETE"})
   @org.springframework.transaction.annotation.Transactional(readOnly = true)
-  public ResponseEntity<List<hu.tanszek.device.assignment.entity.DeviceAssignment>> findAssignmentHistory(
-      @PathVariable Long id) {
-    userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
+  public ResponseEntity<List<hu.tanszek.device.assignment.entity.DeviceAssignment>>
+      findAssignmentHistory(@PathVariable Long id) {
+    userRepository
+        .findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
     List<hu.tanszek.device.assignment.entity.DeviceAssignment> history =
         assignmentRepository.findByToUserIdOrFromUserIdOrderByCreatedDateDesc(id, id);
     return ResponseEntity.ok(history);
@@ -191,8 +198,7 @@ public class UserController {
 
   @Operation(
       summary = "Felhasználó módosítása",
-      description =
-          "Partial update — csak a nem-null mezők frissülnek.")
+      description = "Partial update — csak a nem-null mezők frissülnek.")
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "User módosítva"),
     @ApiResponse(responseCode = "400", description = "Validációs hiba vagy ismeretlen role"),
@@ -231,8 +237,7 @@ public class UserController {
 
   @Operation(
       summary = "Fiók zárolás feloldása",
-      description =
-          "failedLoginCount = 0, lockedUntil = NULL.")
+      description = "failedLoginCount = 0, lockedUntil = NULL.")
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Fiók feloldva"),
     @ApiResponse(responseCode = "404", description = "User nem található"),

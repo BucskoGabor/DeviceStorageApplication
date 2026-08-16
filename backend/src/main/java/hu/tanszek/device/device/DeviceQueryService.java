@@ -74,7 +74,8 @@ public class DeviceQueryService {
       return DeviceSpecifications.hasAccess(null); // No user context → minden eszköz
     }
 
-    // Vezetői / eszközmenedzsment jogosultságokkal rendelkező felhasználók: teljes tanszéki hozzáférés
+    // Vezetői / eszközmenedzsment jogosultságokkal rendelkező felhasználók: teljes tanszéki
+    // hozzáférés
     boolean hasGlobalDeviceAccess =
         currentUser.hasPermission("DEVICE_CREATE")
             || currentUser.hasPermission("DEVICE_DELETE")
@@ -84,7 +85,8 @@ public class DeviceQueryService {
       return DeviceSpecifications.hasAccess(null);
     }
 
-    // Hozzárendelési joggal és/vagy irodai beosztással rendelkező felhasználók: saját és irodai eszközök
+    // Hozzárendelési joggal és/vagy irodai beosztással rendelkező felhasználók: saját és irodai
+    // eszközök
     boolean canAssignOrHasOffice =
         currentUser.hasPermission("DEVICE_ASSIGN")
             || currentUser.hasPermission("DEVICE_UNASSIGN")
@@ -94,7 +96,8 @@ public class DeviceQueryService {
       return DeviceSpecifications.teacherAccess(currentUser.getId(), currentUser);
     }
 
-    // Csak olvasási (hallgatói) joggal rendelkező felhasználók: kizárólag a számukra aktívan kiadott eszközök
+    // Csak olvasási (hallgatói) joggal rendelkező felhasználók: kizárólag a számukra aktívan
+    // kiadott eszközök
     return DeviceSpecifications.hasAccess(currentUser.getId());
   }
 }
