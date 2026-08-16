@@ -1,16 +1,13 @@
 package hu.tanszek.device.integration;
 
-import java.util.List;
-
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import com.github.dockerjava.api.model.PortBinding;
 
 /**
  * Base class az integration tesztekhez — Testcontainers PostgreSQL.
@@ -19,33 +16,19 @@ import com.github.dockerjava.api.model.PortBinding;
  * minden teszthez. A Flyway migrációk automatikusan lefutnak az alkalmazás indításakor
  * (application-test.yml Flyway config alapján).
  *
- * <p>Használat:
- *
- * <pre>
- *   &#64;SpringBootTest
- *   class MyServiceIntegrationTest extends AbstractIntegrationTest {
- *     &#64;Autowired MyService service;
- *
- *     &#64;Test void testSomething() {
- *       service.doSomething();
- *       // ...
- *     }
- *   }
- * </pre>
+ * <p>A {@code @DirtiesContext} biztosítja, hogy minden teszt osztály friss Spring contextet kapjon — a
+ * Testcontainers container a teszt osztály után leáll, és a Spring context cache a régi (leállított)
+ * container connection-jét tárolná, ami miatt a Flyway migrációk nem futnának le az új containeren.
  */
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 public abstract class AbstractIntegrationTest {
 
   /**
-   * PostgreSQL container — minden teszt osztály egy shared container-t kap. A Testcontainers
+   * PostgreSQL container — minden teszt osztály kap egy saját container-t. A Testcontainers
    * automatikusan elindítja a konténert az első teszt metódus előtt, és leállítja az utolsó után.
-   *
-   * <p>A {@code withCreateContainerCmdModifier(cmd -> cmd.withPortBindings(...))} biztosítja, hogy
-   * a Spring context cache kulcsa (amely a JDBC URL-t tartalmazza) konzisztens maradjon a teszt
-   * osztályok között — máskülönben a Testcontainers random portot választ, és a második teszt
-   * osztály Spring context cache miss-t okoz ami Hikari connection timeout-hoz vezethet.
    */
   @Container
   protected static final PostgreSQLContainer<?> postgresContainer =
@@ -53,9 +36,7 @@ public abstract class AbstractIntegrationTest {
           .withDatabaseName("tanszek_db_test")
           .withUsername("admin")
           .withPassword("test_password")
-          .withReuse(true)
-          .withCreateContainerCmdModifier(
-              cmd -> cmd.withPortBindings(List.of(PortBinding.parse("5432:5432"))));
+          .withReuse(true);
 
   /**
    * Spring environment beállítása a container URL-jére. A Flyway ez alapján fog lefutni az
