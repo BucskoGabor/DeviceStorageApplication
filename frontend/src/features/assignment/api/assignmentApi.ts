@@ -8,11 +8,7 @@ import { apiClient } from '@/lib/api/axios'
  */
 
 export type AssignmentStatus =
-  | 'IN_STORAGE'
-  | 'ASSIGNED'
-  | 'PENDING_ASSIGNMENT'
-  | 'PENDING_UNASSIGNMENT'
-  | 'REJECTED'
+  'IN_STORAGE' | 'ASSIGNED' | 'PENDING_ASSIGNMENT' | 'PENDING_UNASSIGNMENT' | 'REJECTED'
 
 export interface DeviceAssignment {
   id: number
@@ -79,9 +75,14 @@ export async function rejectAssignment(assignmentId: number): Promise<DeviceAssi
  * POST /api/devices/assignments/{assignmentId}/unassign
  * Aktív assignment visszavételi kérése (PENDING_UNASSIGNMENT).
  */
-export async function requestUnassignment(assignmentId: number, targetLocationId?: number): Promise<DeviceAssignment> {
+export async function requestUnassignment(
+  assignmentId: number,
+  targetLocationId?: number
+): Promise<DeviceAssignment> {
   const { data } = await apiClient.post<DeviceAssignment>(
-    `/api/devices/assignments/${assignmentId}/unassign`, null, { params: targetLocationId ? { targetLocationId } : undefined }
+    `/api/devices/assignments/${assignmentId}/unassign`,
+    null,
+    { params: targetLocationId ? { targetLocationId } : undefined }
   )
   return data
 }

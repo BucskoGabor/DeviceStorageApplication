@@ -127,7 +127,7 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
                     onClick={() => setLocationSelectorOpen(true)}
                   >
                     {targetLocationName ? (
-                      <span className="font-medium text-xs">{targetLocationName}</span>
+                      <span className="text-xs font-medium">{targetLocationName}</span>
                     ) : (
                       <span className="text-muted-foreground">{t('devices.selectLocation')}</span>
                     )}
@@ -174,10 +174,7 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
             >
               {t('common.cancel')}
             </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!isValid || requestMutation.isPending}
-            >
+            <Button onClick={handleSubmit} disabled={!isValid || requestMutation.isPending}>
               {t('assignments.requestAssignment')}
             </Button>
           </DialogFooter>

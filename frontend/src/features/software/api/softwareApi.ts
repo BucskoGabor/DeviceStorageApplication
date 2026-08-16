@@ -34,7 +34,9 @@ export interface UpdateSoftwarePayload {
   licenseKey?: string
 }
 
-export async function findAllSoftware(params: { page?: number; size?: number } = {}): Promise<PageResponse<Software>> {
+export async function findAllSoftware(
+  params: { page?: number; size?: number } = {}
+): Promise<PageResponse<Software>> {
   const response = await apiClient.get<PageResponse<Software>>('/api/software', { params })
   return response.data
 }
@@ -44,7 +46,10 @@ export async function createSoftware(payload: CreateSoftwarePayload): Promise<So
   return response.data
 }
 
-export async function updateSoftware(id: number, payload: UpdateSoftwarePayload): Promise<Software> {
+export async function updateSoftware(
+  id: number,
+  payload: UpdateSoftwarePayload
+): Promise<Software> {
   const response = await apiClient.put<Software>(`/api/software/${id}`, payload)
   return response.data
 }

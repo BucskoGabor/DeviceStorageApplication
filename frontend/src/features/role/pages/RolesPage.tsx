@@ -41,8 +41,7 @@ export function RolesPage() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (payload: { name: string; permissionIds: number[] }) =>
-      roleApi.create(payload),
+    mutationFn: (payload: { name: string; permissionIds: number[] }) => roleApi.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
       setIsCreateOpen(false)
@@ -55,8 +54,13 @@ export function RolesPage() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: { name?: string; permissionIds?: number[] } }) =>
-      roleApi.update(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number
+      payload: { name?: string; permissionIds?: number[] }
+    }) => roleApi.update(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] })
       setEditingRole(null)
@@ -97,12 +101,15 @@ export function RolesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Shield className="h-6 w-6 text-primary" />
             {t('roles.title', 'Szerepkörök és Jogosultságok')}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {t('roles.subtitle', 'Rendszerbeli munkakörök és granularis hozzáférési jogosultságok kezelése.')}
+            {t(
+              'roles.subtitle',
+              'Rendszerbeli munkakörök és granularis hozzáférési jogosultságok kezelése.'
+            )}
           </p>
         </div>
 
@@ -114,7 +121,7 @@ export function RolesPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {roles.map((role) => {
           const isSystem = SYSTEM_ROLES.includes(role.name)
 
@@ -122,10 +129,13 @@ export function RolesPage() {
             <Card key={role.id} className="flex flex-col justify-between">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
                     {role.name}
                     {isSystem && (
-                      <Badge variant="secondary" className="text-[10px] font-normal flex items-center gap-1">
+                      <Badge
+                        variant="secondary"
+                        className="flex items-center gap-1 text-[10px] font-normal"
+                      >
                         <Lock className="h-3 w-3" />
                         {t('roles.systemRole', 'Rendszer')}
                       </Badge>
@@ -157,21 +167,22 @@ export function RolesPage() {
                   )}
                 </div>
                 <CardDescription>
-                  {t('roles.assignedPermissions', 'Hozzárendelt jogosultságok')}: {role.permissions.length} / {allPermissions.length}
+                  {t('roles.assignedPermissions', 'Hozzárendelt jogosultságok')}:{' '}
+                  {role.permissions.length} / {allPermissions.length}
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-3 pt-0 flex-1">
-                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1">
+              <CardContent className="flex-1 space-y-3 pt-0">
+                <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto p-1">
                   {role.permissions.length > 0 ? (
                     role.permissions.map((perm) => (
-                      <Badge key={perm.id} variant="outline" className="text-[11px] font-mono">
+                      <Badge key={perm.id} variant="outline" className="font-mono text-[11px]">
                         <CheckCircle2 className="mr-1 h-3 w-3 text-emerald-500" />
                         {perm.name}
                       </Badge>
                     ))
                   ) : (
-                    <span className="text-xs text-muted-foreground italic">
+                    <span className="text-xs italic text-muted-foreground">
                       {t('roles.noPermissions', 'Nincsenek hozzárendelt jogosultságok')}
                     </span>
                   )}
@@ -216,7 +227,9 @@ export function RolesPage() {
               disabled={deleteMutation.isPending}
               onClick={() => deletingRoleId && deleteMutation.mutate(deletingRoleId)}
             >
-              {deleteMutation.isPending ? t('common.deleting', 'Törlés...') : t('common.delete', 'Törlés')}
+              {deleteMutation.isPending
+                ? t('common.deleting', 'Törlés...')
+                : t('common.delete', 'Törlés')}
             </Button>
           </DialogFooter>
         </DialogContent>

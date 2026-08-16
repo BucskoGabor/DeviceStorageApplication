@@ -71,7 +71,7 @@ export function LocationDetailPage() {
           variant="ghost"
           size="sm"
           onClick={() => navigate('/locations')}
-          className="mb-2 -ml-2 text-muted-foreground hover:text-foreground"
+          className="-ml-2 mb-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t('locations.title', 'Helyszínek')}
@@ -82,14 +82,15 @@ export function LocationDetailPage() {
               <MapPin className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">
-                {location.name}
-              </h1>
+              <h1 className="text-2xl font-semibold text-foreground">{location.name}</h1>
               <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                 <span>#{location.id}</span>
                 <span>•</span>
                 <Badge variant="secondary" className="text-[11px]">
-                  {t(`locations.type${location.type.charAt(0) + location.type.slice(1).toLowerCase()}`, location.type)}
+                  {t(
+                    `locations.type${location.type.charAt(0) + location.type.slice(1).toLowerCase()}`,
+                    location.type
+                  )}
                 </Badge>
               </div>
             </div>
@@ -100,32 +101,43 @@ export function LocationDetailPage() {
       {/* Alapadatok kártya */}
       <Card>
         <CardHeader className="py-4">
-          <CardTitle className="text-sm font-semibold">{t('locations.title', 'Helyszín adatai')}</CardTitle>
+          <CardTitle className="text-sm font-semibold">
+            {t('locations.title', 'Helyszín adatai')}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
             <div>
-              <span className="block text-xs text-muted-foreground">{t('locations.name', 'Név')}</span>
+              <span className="block text-xs text-muted-foreground">
+                {t('locations.name', 'Név')}
+              </span>
               <span className="font-medium text-foreground">{location.name}</span>
             </div>
             <div>
-              <span className="block text-xs text-muted-foreground">{t('locations.type', 'Típus')}</span>
+              <span className="block text-xs text-muted-foreground">
+                {t('locations.type', 'Típus')}
+              </span>
               <Badge variant="outline" className="mt-0.5">
-                {t(`locations.type${location.type.charAt(0) + location.type.slice(1).toLowerCase()}`, location.type)}
+                {t(
+                  `locations.type${location.type.charAt(0) + location.type.slice(1).toLowerCase()}`,
+                  location.type
+                )}
               </Badge>
             </div>
             <div>
-              <span className="block text-xs text-muted-foreground">{t('locations.parent', 'Szülő helyszín')}</span>
+              <span className="block text-xs text-muted-foreground">
+                {t('locations.parent', 'Szülő helyszín')}
+              </span>
               {parentLocation ? (
                 <Link
                   to={`/locations/${parentLocation.id}`}
-                  className="font-medium text-primary hover:underline inline-flex items-center gap-1 mt-0.5"
+                  className="mt-0.5 inline-flex items-center gap-1 font-medium text-primary hover:underline"
                 >
                   <MapPin className="h-3 w-3" />
                   {parentLocation.name}
                 </Link>
               ) : (
-                <span className="text-muted-foreground text-xs italic">
+                <span className="text-xs italic text-muted-foreground">
                   {t('locations.noParent', 'Nincs szülő (gyökér)')}
                 </span>
               )}
@@ -174,26 +186,40 @@ export function LocationDetailPage() {
         <Card>
           <CardHeader className="py-4">
             <CardTitle className="text-base">
-              {t('locations.currentDevicesTitle', 'A helyszínen jelenleg elérhető / hozzárendelt eszközök')}
+              {t(
+                'locations.currentDevicesTitle',
+                'A helyszínen jelenleg elérhető / hozzárendelt eszközök'
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {currentLoading ? (
-              <p className="p-6 text-sm text-muted-foreground">{t('common.loading', 'Betöltés...')}...</p>
+              <p className="p-6 text-sm text-muted-foreground">
+                {t('common.loading', 'Betöltés...')}...
+              </p>
             ) : !currentDevices || currentDevices.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 <Laptop className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-                <p>{t('locations.noCurrentDevices', 'Jelenleg nincs eszköz ehhez a helyszínhez rendelve.')}</p>
+                <p>
+                  {t(
+                    'locations.noCurrentDevices',
+                    'Jelenleg nincs eszköz ehhez a helyszínhez rendelve.'
+                  )}
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
                     <tr>
-                      <th className="p-3 font-medium">{t('devices.inventoryNumber', 'Leltári szám')}</th>
+                      <th className="p-3 font-medium">
+                        {t('devices.inventoryNumber', 'Leltári szám')}
+                      </th>
                       <th className="p-3 font-medium">{t('devices.type', 'Típus')}</th>
                       <th className="p-3 font-medium">{t('devices.status', 'Státusz')}</th>
-                      <th className="p-3 font-medium text-right">{t('common.actions', 'Műveletek')}</th>
+                      <th className="p-3 text-right font-medium">
+                        {t('common.actions', 'Műveletek')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -232,16 +258,26 @@ export function LocationDetailPage() {
         <Card>
           <CardHeader className="py-4">
             <CardTitle className="text-base">
-              {t('locations.assignmentHistoryTitle', 'Hozzárendelési és eszközmozgási előzmények ezen a helyszínen')}
+              {t(
+                'locations.assignmentHistoryTitle',
+                'Hozzárendelési és eszközmozgási előzmények ezen a helyszínen'
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {historyLoading ? (
-              <p className="p-6 text-sm text-muted-foreground">{t('common.loading', 'Betöltés...')}...</p>
+              <p className="p-6 text-sm text-muted-foreground">
+                {t('common.loading', 'Betöltés...')}...
+              </p>
             ) : !assignmentHistory || assignmentHistory.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 <History className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
-                <p>{t('locations.noAssignmentHistory', 'Nem található korábbi hozzárendelési előzmény ehhez a helyszínhez.')}</p>
+                <p>
+                  {t(
+                    'locations.noAssignmentHistory',
+                    'Nem található korábbi hozzárendelési előzmény ehhez a helyszínhez.'
+                  )}
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -254,7 +290,9 @@ export function LocationDetailPage() {
                       <th className="p-3 font-medium">{t('assignments.toUser', 'Felhasználó')}</th>
                       <th className="p-3 font-medium">{t('assignments.date', 'Időpont')}</th>
                       <th className="p-3 font-medium">{t('assignments.status', 'Státusz')}</th>
-                      <th className="p-3 font-medium text-right">{t('common.actions', 'Műveletek')}</th>
+                      <th className="p-3 text-right font-medium">
+                        {t('common.actions', 'Műveletek')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">

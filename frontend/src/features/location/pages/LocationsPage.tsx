@@ -22,7 +22,10 @@ import {
 import { toast } from 'sonner'
 import { useAuthStore } from '@/lib/store/authStore'
 import { LocationTreeView } from '@/features/location/components/LocationTreeView'
-import { LocationTreeSelector, findLocationNode } from '@/features/location/components/LocationTreeSelector'
+import {
+  LocationTreeSelector,
+  findLocationNode,
+} from '@/features/location/components/LocationTreeSelector'
 type ViewMode = 'list' | 'tree'
 export function LocationsPage() {
   const { t } = useTranslation()
@@ -75,8 +78,13 @@ export function LocationsPage() {
     },
   })
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof locationApi.update>[1] }) =>
-      locationApi.update(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number
+      payload: Parameters<typeof locationApi.update>[1]
+    }) => locationApi.update(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] })
       setEditingLocation(null)
@@ -104,7 +112,7 @@ export function LocationsPage() {
     setEditType(loc.type)
     setEditParentId(loc.parentId ?? null)
     const pNode = findLocationNode(tree, loc.parentId)
-    setEditParentName(pNode ? pNode.name : (loc.parentId != null ? `Helyszín #${loc.parentId}` : ''))
+    setEditParentName(pNode ? pNode.name : loc.parentId != null ? `Helyszín #${loc.parentId}` : '')
   }
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -153,11 +161,7 @@ export function LocationsPage() {
           const pId = info.getValue() as number | null
           if (!pId) return <span className="text-muted-foreground">—</span>
           const pNode = findLocationNode(tree, pId)
-          return (
-            <span className="text-xs">
-              {pNode ? pNode.name : `#${pId}`}
-            </span>
-          )
+          return <span className="text-xs">{pNode ? pNode.name : `#${pId}`}</span>
         },
       },
       {
@@ -246,7 +250,7 @@ export function LocationsPage() {
         </div>
       </div>
       {isCreateOpen && (
-        <div className="rounded-lg border border-border bg-card p-6 shadow-lg space-y-4 max-w-lg">
+        <div className="max-w-lg space-y-4 rounded-lg border border-border bg-card p-6 shadow-lg">
           <h2 className="text-lg font-semibold">{t('locations.create')}</h2>
           <form onSubmit={handleCreateSubmit} className="space-y-3">
             <div>
@@ -287,9 +291,11 @@ export function LocationsPage() {
                   onClick={() => setParentSelectorOpen(true)}
                 >
                   {parentName ? (
-                    <span className="font-medium text-xs text-foreground">{parentName}</span>
+                    <span className="text-xs font-medium text-foreground">{parentName}</span>
                   ) : (
-                    <span className="text-muted-foreground">{t('locations.noParent', 'Nincs szülő (root)')}</span>
+                    <span className="text-muted-foreground">
+                      {t('locations.noParent', 'Nincs szülő (root)')}
+                    </span>
                   )}
                 </Button>
                 {parentId != null && (
@@ -389,11 +395,15 @@ export function LocationsPage() {
                   onClick={() => setEditParentSelectorOpen(true)}
                 >
                   {editParentName ? (
-                    <span className="font-medium text-xs text-foreground">{editParentName}</span>
+                    <span className="text-xs font-medium text-foreground">{editParentName}</span>
                   ) : editParentId != null ? (
-                    <span className="font-medium text-xs text-foreground">Helyszín #{editParentId}</span>
+                    <span className="text-xs font-medium text-foreground">
+                      Helyszín #{editParentId}
+                    </span>
                   ) : (
-                    <span className="text-muted-foreground">{t('locations.noParent', 'Nincs szülő (root)')}</span>
+                    <span className="text-muted-foreground">
+                      {t('locations.noParent', 'Nincs szülő (root)')}
+                    </span>
                   )}
                 </Button>
                 {editParentId != null && (

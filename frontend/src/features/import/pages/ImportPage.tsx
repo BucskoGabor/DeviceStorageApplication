@@ -8,7 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { importApi, type ImportPreviewResponse, type InvalidRow } from '@/features/import/api/importApi'
+import {
+  importApi,
+  type ImportPreviewResponse,
+  type InvalidRow,
+} from '@/features/import/api/importApi'
 
 /**
  * ImportPage — Excel import Upload → Preview → Confirm flow.
@@ -24,7 +28,9 @@ export function ImportPage() {
   const { t } = useTranslation()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<ImportPreviewResponse | null>(null)
-  const [importResult, setImportResult] = useState<Awaited<ReturnType<typeof importApi.execute>> | null>(null)
+  const [importResult, setImportResult] = useState<Awaited<
+    ReturnType<typeof importApi.execute>
+  > | null>(null)
   const [state, setState] = useState<ImportState>('EMPTY')
 
   // Preview mutation
@@ -39,7 +45,10 @@ export function ImportPage() {
     },
     onError: (error: any) => {
       const messageKey = error.response?.data?.messageKey
-      const fallback = t('import.excelError', 'A feltöltött fájl nem feldolgozható vagy érvénytelen szerkezetű Excel fájl.')
+      const fallback = t(
+        'import.excelError',
+        'A feltöltött fájl nem feldolgozható vagy érvénytelen szerkezetű Excel fájl.'
+      )
       toast.error(messageKey ? t(messageKey) : fallback, { position: 'top-right' })
     },
   })
@@ -59,15 +68,18 @@ export function ImportPage() {
   })
 
   // Dropzone konfiguráció
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const droppedFile = acceptedFiles[0]
-    if (!droppedFile) return
-    setFile(droppedFile)
-    setState('EMPTY')
-    setPreview(null)
-    setImportResult(null)
-    previewMutation.mutate(droppedFile)
-  }, [previewMutation])
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const droppedFile = acceptedFiles[0]
+      if (!droppedFile) return
+      setFile(droppedFile)
+      setState('EMPTY')
+      setPreview(null)
+      setImportResult(null)
+      previewMutation.mutate(droppedFile)
+    },
+    [previewMutation]
+  )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -221,7 +233,10 @@ export function ImportPage() {
                 </Button>
                 <Button
                   onClick={handleExecute}
-                  disabled={executeMutation.isPending || preview.validUsers.length + preview.validDevices.length === 0}
+                  disabled={
+                    executeMutation.isPending ||
+                    preview.validUsers.length + preview.validDevices.length === 0
+                  }
                 >
                   {executeMutation.isPending ? t('import.importing') : t('import.import')}
                 </Button>
@@ -242,11 +257,31 @@ export function ImportPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-              <ResultMetric label={t('import.usersInserted')} value={importResult.usersInserted} color="text-green-500" />
-              <ResultMetric label={t('import.usersUpdated')} value={importResult.usersUpdated} color="text-blue-500" />
-              <ResultMetric label={t('import.devicesInserted')} value={importResult.devicesInserted} color="text-green-500" />
-              <ResultMetric label={t('import.devicesUpdated')} value={importResult.devicesUpdated} color="text-blue-500" />
-              <ResultMetric label={t('import.errors')} value={importResult.errors} color={importResult.errors > 0 ? 'text-destructive' : 'text-muted-foreground'} />
+              <ResultMetric
+                label={t('import.usersInserted')}
+                value={importResult.usersInserted}
+                color="text-green-500"
+              />
+              <ResultMetric
+                label={t('import.usersUpdated')}
+                value={importResult.usersUpdated}
+                color="text-blue-500"
+              />
+              <ResultMetric
+                label={t('import.devicesInserted')}
+                value={importResult.devicesInserted}
+                color="text-green-500"
+              />
+              <ResultMetric
+                label={t('import.devicesUpdated')}
+                value={importResult.devicesUpdated}
+                color="text-blue-500"
+              />
+              <ResultMetric
+                label={t('import.errors')}
+                value={importResult.errors}
+                color={importResult.errors > 0 ? 'text-destructive' : 'text-muted-foreground'}
+              />
             </div>
             <div className="mt-6 flex justify-end">
               <Button onClick={handleReset}>{t('import.import')}</Button>

@@ -85,7 +85,9 @@ export function LoginForm() {
           aria-invalid={!!errors.password}
         />
         {errors.password && (
-          <p className="text-sm text-destructive">{t(errors.password.message ?? 'validationError')}</p>
+          <p className="text-sm text-destructive">
+            {t(errors.password.message ?? 'validationError')}
+          </p>
         )}
       </div>
 

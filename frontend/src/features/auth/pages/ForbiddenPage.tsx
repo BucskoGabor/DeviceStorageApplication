@@ -50,14 +50,15 @@ export function ForbiddenPage() {
             <CardTitle className="text-2xl">{t('forbidden.title')}</CardTitle>
           </div>
           <CardDescription>
-            {t('messages.permissionDenied', t('permissionDenied', 'Nincs megfelelő jogosultsága ehhez a művelethez.'))}
+            {t(
+              'messages.permissionDenied',
+              t('permissionDenied', 'Nincs megfelelő jogosultsága ehhez a művelethez.')
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <p className="mb-2 text-xs uppercase text-muted-foreground">
-              {t('users.role')}
-            </p>
+            <p className="mb-2 text-xs uppercase text-muted-foreground">{t('users.role')}</p>
             <Badge variant="secondary">{roleLabel}</Badge>
           </div>
 
@@ -82,9 +83,7 @@ export function ForbiddenPage() {
 
           <Separator />
 
-          <p className="text-sm text-muted-foreground">
-            {t('forbidden.helpText')}
-          </p>
+          <p className="text-sm text-muted-foreground">{t('forbidden.helpText')}</p>
 
           <div className="flex flex-wrap gap-2">
             <Button asChild>

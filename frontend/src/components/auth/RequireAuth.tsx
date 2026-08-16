@@ -29,9 +29,16 @@ export function RequireAuth({ children }: RequireAuthProps) {
   // Ha van access token, de nincs role → me hívás a role/permissions betöltéséhez
   useEffect(() => {
     if (accessToken && !role) {
-      authApi.me()
+      authApi
+        .me()
         .then((me) => {
-          setAuth(accessToken, me.email || me.emailHash, me.role, me.permissions, me.mustChangePassword)
+          setAuth(
+            accessToken,
+            me.email || me.emailHash,
+            me.role,
+            me.permissions,
+            me.mustChangePassword
+          )
         })
         .catch(() => {
           // 401 → access token lejárt

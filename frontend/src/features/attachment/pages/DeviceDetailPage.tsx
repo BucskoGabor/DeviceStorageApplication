@@ -5,7 +5,24 @@ import { useTranslation } from 'react-i18next'
 import { useDropzone } from 'react-dropzone'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Upload, Trash2, FileText, Paperclip, ArrowRightCircle, ArrowLeftCircle, ArrowLeft, Plus, Key, Eye, Download, Wrench, RotateCcw, Check, X, PackageX } from 'lucide-react'
+import {
+  Upload,
+  Trash2,
+  FileText,
+  Paperclip,
+  ArrowRightCircle,
+  ArrowLeftCircle,
+  ArrowLeft,
+  Plus,
+  Key,
+  Eye,
+  Download,
+  Wrench,
+  RotateCcw,
+  Check,
+  X,
+  PackageX,
+} from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,7 +43,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { attachmentApi, formatFileSize, downloadUrl, previewUrl, canPreview, type DeviceAttachment } from '@/features/attachment/api/attachmentApi'
+import {
+  attachmentApi,
+  formatFileSize,
+  downloadUrl,
+  previewUrl,
+  canPreview,
+  type DeviceAttachment,
+} from '@/features/attachment/api/attachmentApi'
 import { deviceApi } from '@/features/device/api/deviceApi'
 import { softwareApi } from '@/features/software/api/softwareApi'
 import { assignmentApi } from '@/features/assignment/api/assignmentApi'
@@ -86,7 +110,10 @@ export function DeviceDetailPage() {
   })
 
   const currentAssignment = assignmentsData?.content.find(
-    (a) => a.status === 'ASSIGNED' || a.status === 'PENDING_UNASSIGNMENT' || a.status === 'PENDING_ASSIGNMENT',
+    (a) =>
+      a.status === 'ASSIGNED' ||
+      a.status === 'PENDING_UNASSIGNMENT' ||
+      a.status === 'PENDING_ASSIGNMENT'
   )
 
   const requestMaintenanceMutation = useMutation({
@@ -97,7 +124,9 @@ export function DeviceDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['pending-maintenance'] })
       setMaintenanceDialogOpen(false)
       setMaintenanceReason('')
-      toast.success(t('devices.requestMaintenanceSuccess', 'Karbantartási kérelem sikeresen elküldve'))
+      toast.success(
+        t('devices.requestMaintenanceSuccess', 'Karbantartási kérelem sikeresen elküldve')
+      )
     },
     onError: (error: any) => {
       toast.error(resolveToastMessage(error.response))
@@ -136,7 +165,9 @@ export function DeviceDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
       queryClient.invalidateQueries({ queryKey: ['devices'] })
-      toast.success(t('devices.returnedFromMaintenanceSuccess', 'Eszköz visszavéve karbantartásból'))
+      toast.success(
+        t('devices.returnedFromMaintenanceSuccess', 'Eszköz visszavéve karbantartásból')
+      )
     },
     onError: (error: any) => {
       toast.error(resolveToastMessage(error.response))
@@ -277,7 +308,7 @@ export function DeviceDetailPage() {
           variant="ghost"
           size="sm"
           onClick={() => navigate('/devices')}
-          className="mb-2 -ml-2 text-muted-foreground hover:text-foreground"
+          className="-ml-2 mb-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t('devices.title', 'Eszközök')}
@@ -303,16 +334,13 @@ export function DeviceDetailPage() {
         {/* Karbantartás, Selejtezés és Törlés műveleti gombok */}
         {device && (
           <div className="flex flex-wrap items-center gap-2">
-            {(device.status === 'IN_STORAGE' || device.status === 'ASSIGNED') && canRequestMaintenance && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMaintenanceDialogOpen(true)}
-              >
-                <Wrench className="mr-1.5 h-4 w-4 text-amber-600" />
-                {t('devices.requestMaintenance', 'Karbantartás kérése')}
-              </Button>
-            )}
+            {(device.status === 'IN_STORAGE' || device.status === 'ASSIGNED') &&
+              canRequestMaintenance && (
+                <Button variant="outline" size="sm" onClick={() => setMaintenanceDialogOpen(true)}>
+                  <Wrench className="mr-1.5 h-4 w-4 text-amber-600" />
+                  {t('devices.requestMaintenance', 'Karbantartás kérése')}
+                </Button>
+              )}
 
             {device.status === 'MAINTENANCE' && canUpdateDevice && (
               <Button
@@ -326,16 +354,13 @@ export function DeviceDetailPage() {
               </Button>
             )}
 
-            {(device.status === 'IN_STORAGE' || device.status === 'MAINTENANCE') && canRequestDisposal && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDisposeDialogOpen(true)}
-              >
-                <PackageX className="mr-1.5 h-4 w-4 text-rose-600" />
-                {t('devices.requestDisposal', 'Selejtezés kérése')}
-              </Button>
-            )}
+            {(device.status === 'IN_STORAGE' || device.status === 'MAINTENANCE') &&
+              canRequestDisposal && (
+                <Button variant="outline" size="sm" onClick={() => setDisposeDialogOpen(true)}>
+                  <PackageX className="mr-1.5 h-4 w-4 text-rose-600" />
+                  {t('devices.requestDisposal', 'Selejtezés kérése')}
+                </Button>
+              )}
 
             {canDeleteDevice && device.status === 'DISPOSED' && (
               <Button
@@ -358,12 +383,13 @@ export function DeviceDetailPage() {
             <Wrench className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
             <div>
               <span className="block font-semibold text-amber-900 dark:text-amber-200">
-                {t('devices.pendingMaintenanceBannerTitle', 'Karbantartási kérelem jóváhagyásra vár')}
+                {t(
+                  'devices.pendingMaintenanceBannerTitle',
+                  'Karbantartási kérelem jóváhagyásra vár'
+                )}
               </span>
               {device.statusReason && (
-                <p className="mt-1 italic text-muted-foreground">
-                  "{device.statusReason}"
-                </p>
+                <p className="mt-1 italic text-muted-foreground">"{device.statusReason}"</p>
               )}
             </div>
           </div>
@@ -371,7 +397,9 @@ export function DeviceDetailPage() {
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                disabled={approveMaintenanceMutation.isPending || rejectMaintenanceMutation.isPending}
+                disabled={
+                  approveMaintenanceMutation.isPending || rejectMaintenanceMutation.isPending
+                }
                 onClick={() => approveMaintenanceMutation.mutate()}
               >
                 <Check className="mr-1 h-4 w-4" />
@@ -380,7 +408,9 @@ export function DeviceDetailPage() {
               <Button
                 size="sm"
                 variant="destructive"
-                disabled={approveMaintenanceMutation.isPending || rejectMaintenanceMutation.isPending}
+                disabled={
+                  approveMaintenanceMutation.isPending || rejectMaintenanceMutation.isPending
+                }
                 onClick={() => rejectMaintenanceMutation.mutate()}
               >
                 <X className="mr-1 h-4 w-4" />
@@ -401,9 +431,7 @@ export function DeviceDetailPage() {
                 {t('devices.pendingDisposalBannerTitle', 'Selejtezési kérelem jóváhagyásra vár')}
               </span>
               {device.statusReason && (
-                <p className="mt-1 italic text-muted-foreground">
-                  "{device.statusReason}"
-                </p>
+                <p className="mt-1 italic text-muted-foreground">"{device.statusReason}"</p>
               )}
             </div>
           </div>
@@ -432,23 +460,23 @@ export function DeviceDetailPage() {
       )}
 
       {/* Indoklás megjelenítése egyéb státusz esetén (pl. már karbantartás alatt vagy már selejtezve) */}
-      {device?.statusReason && device.status !== 'PENDING_MAINTENANCE' && device.status !== 'PENDING_DISPOSAL' && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-          <Wrench className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-          <div>
-            <span className="block font-semibold text-foreground">
-              {device.status === 'MAINTENANCE'
-                ? t('devices.maintenanceReason', 'Karbantartás indoka')
-                : device.status === 'DISPOSED'
-                  ? t('devices.disposalReason', 'Selejtezés indoka')
-                  : t('devices.statusReason', 'Státusz indoklás')}
-            </span>
-            <p className="mt-1 italic text-muted-foreground">
-              "{device.statusReason}"
-            </p>
+      {device?.statusReason &&
+        device.status !== 'PENDING_MAINTENANCE' &&
+        device.status !== 'PENDING_DISPOSAL' && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+            <Wrench className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+            <div>
+              <span className="block font-semibold text-foreground">
+                {device.status === 'MAINTENANCE'
+                  ? t('devices.maintenanceReason', 'Karbantartás indoka')
+                  : device.status === 'DISPOSED'
+                    ? t('devices.disposalReason', 'Selejtezés indoka')
+                    : t('devices.statusReason', 'Státusz indoklás')}
+              </span>
+              <p className="mt-1 italic text-muted-foreground">"{device.statusReason}"</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Aktuális hozzárendelés */}
       <Card>
@@ -471,21 +499,13 @@ export function DeviceDetailPage() {
               </div>
               <div className="flex gap-2">
                 {canAssign && device?.status === 'IN_STORAGE' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAssignDialogOpen(true)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
                     <ArrowRightCircle className="mr-1 h-4 w-4" />
                     {t('devices.assign')}
                   </Button>
                 )}
                 {canUnassign && device?.status === 'ASSIGNED' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUnassignDialogOpen(true)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setUnassignDialogOpen(true)}>
                     <ArrowLeftCircle className="mr-1 h-4 w-4" />
                     {t('devices.unassign')}
                   </Button>
@@ -494,15 +514,9 @@ export function DeviceDetailPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {t('assignments.noActiveAssignment')}
-              </p>
+              <p className="text-sm text-muted-foreground">{t('assignments.noActiveAssignment')}</p>
               {canAssign && device?.status === 'IN_STORAGE' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAssignDialogOpen(true)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
                   <ArrowRightCircle className="mr-1 h-4 w-4" />
                   {t('devices.assign')}
                 </Button>
@@ -533,7 +547,11 @@ export function DeviceDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('devices.requestMaintenance', 'Karbantartás kérése')}</DialogTitle>
             <DialogDescription>
-              {device?.inventoryNumber} #{deviceId} — {t('devices.requestMaintenanceDesc', 'Kérelem benyújtása karbantartásra indoklással.')}
+              {device?.inventoryNumber} #{deviceId} —{' '}
+              {t(
+                'devices.requestMaintenanceDesc',
+                'Kérelem benyújtása karbantartásra indoklással.'
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -545,7 +563,10 @@ export function DeviceDetailPage() {
                 id="maint-reason"
                 value={maintenanceReason}
                 onChange={(e) => setMaintenanceReason(e.target.value)}
-                placeholder={t('devices.maintenanceReasonPlaceholder', 'pl. kijelző hiba, akkumulátor csere')}
+                placeholder={t(
+                  'devices.maintenanceReasonPlaceholder',
+                  'pl. kijelző hiba, akkumulátor csere'
+                )}
               />
             </div>
           </div>
@@ -573,7 +594,10 @@ export function DeviceDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('devices.requestDisposal', 'Selejtezés kérése')}</DialogTitle>
             <DialogDescription>
-              {t('devices.requestDisposalDesc', 'Figyelem: A jóváhagyott selejtezés végleges állapotot eredményez.')}
+              {t(
+                'devices.requestDisposalDesc',
+                'Figyelem: A jóváhagyott selejtezés végleges állapotot eredményez.'
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -626,11 +650,7 @@ export function DeviceDetailPage() {
             <CardDescription>{deviceSoftware?.length ?? 0} szoftver</CardDescription>
           </div>
           {canUpdateDevice && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSoftwareDialogOpen(true)}
-            >
+            <Button size="sm" variant="outline" onClick={() => setSoftwareDialogOpen(true)}>
               <Plus className="mr-1 h-4 w-4" />
               {t('devices.addSoftware')}
             </Button>
@@ -654,8 +674,8 @@ export function DeviceDetailPage() {
                       <p className="text-sm font-medium">{sw.name}</p>
                       <p className="font-mono text-xs text-muted-foreground">
                         {canViewLicenseKey
-                          ? sw.licenseKey ?? sw.licenseKeyMasked ?? '—'
-                          : sw.licenseKeyMasked ?? '••••••••••••'}
+                          ? (sw.licenseKey ?? sw.licenseKeyMasked ?? '—')
+                          : (sw.licenseKeyMasked ?? '••••••••••••')}
                       </p>
                     </div>
                   </div>
@@ -690,7 +710,10 @@ export function DeviceDetailPage() {
       <ConfirmDialog
         open={detachSoftwareId !== null}
         onOpenChange={(open) => !open && setDetachSoftwareId(null)}
-        description={t('devices.confirmDetachSoftware', 'Biztosan eltávolítod ezt a szoftvert az eszközről?')}
+        description={t(
+          'devices.confirmDetachSoftware',
+          'Biztosan eltávolítod ezt a szoftvert az eszközről?'
+        )}
         onConfirm={() => {
           if (detachSoftwareId) {
             detachMutation.mutate(detachSoftwareId)
@@ -791,7 +814,10 @@ export function DeviceDetailPage() {
       <ConfirmDialog
         open={deleteDeviceDialogOpen}
         onOpenChange={setDeleteDeviceDialogOpen}
-        description={t('devices.confirmDelete', 'Biztosan véglegesen törölni szeretnéd ezt az eszközt? A művelet nem vonható vissza.')}
+        description={t(
+          'devices.confirmDelete',
+          'Biztosan véglegesen törölni szeretnéd ezt az eszközt? A művelet nem vonható vissza.'
+        )}
         loading={deleteDeviceMutation.isPending}
         onConfirm={() => deleteDeviceMutation.mutate()}
       />
@@ -833,21 +859,11 @@ function AttachmentItem({
       </div>
       <div className="flex items-center gap-1">
         {previewable && (
-          <Button
-            variant="ghost"
-            size="icon"
-            title={t('attachments.preview')}
-            onClick={onPreview}
-          >
+          <Button variant="ghost" size="icon" title={t('attachments.preview')} onClick={onPreview}>
             <Eye className="h-4 w-4 text-primary" />
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          title={t('attachments.download')}
-          onClick={onDownload}
-        >
+        <Button variant="ghost" size="icon" title={t('attachments.download')} onClick={onDownload}>
           <Download className="h-4 w-4" />
         </Button>
         {canDelete && (
@@ -916,7 +932,10 @@ function AttachmentPreviewDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => window.open(downloadUrl(attachment.id), '_blank')}>
+          <Button
+            variant="outline"
+            onClick={() => window.open(downloadUrl(attachment.id), '_blank')}
+          >
             <Download className="mr-2 h-4 w-4" />
             {t('attachments.download')}
           </Button>
@@ -980,7 +999,7 @@ function AttachSoftwareDialog({
                 <SelectValue placeholder={t('devices.selectSoftware')} />
               </SelectTrigger>
               <SelectContent>
-                {(!allSoftwarePage?.content || allSoftwarePage.content.length === 0) ? (
+                {!allSoftwarePage?.content || allSoftwarePage.content.length === 0 ? (
                   <SelectItem value="__none__" disabled>
                     {t('common.noData')}
                   </SelectItem>

@@ -14,7 +14,11 @@ interface RequirePermissionProps {
  * Role is NOT checked directly; permissions array in authStore includes both
  * role-inherited permissions AND direct user permissions.
  */
-export function RequirePermission({ permissions, anyPermission, children }: RequirePermissionProps) {
+export function RequirePermission({
+  permissions,
+  anyPermission,
+  children,
+}: RequirePermissionProps) {
   const accessToken = useAuthStore((state) => state.accessToken)
   const userPermissions = useAuthStore((state) => state.permissions)
 

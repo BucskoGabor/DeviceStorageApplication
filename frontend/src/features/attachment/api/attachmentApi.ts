@@ -97,9 +97,7 @@ export function previewUrl(attachmentId: number): string {
  */
 export function canPreview(mimeType: string): boolean {
   return (
-    mimeType.startsWith('image/') ||
-    mimeType === 'application/pdf' ||
-    mimeType.startsWith('text/')
+    mimeType.startsWith('image/') || mimeType === 'application/pdf' || mimeType.startsWith('text/')
   )
 }
 

@@ -99,7 +99,8 @@ export function LocationTreeSelector({
         <DialogHeader>
           <DialogTitle>{title || t('locations.selectParent', 'Helyszín kiválasztása')}</DialogTitle>
           <DialogDescription>
-            {description || t('locations.selectParentHelp', 'Válaszd ki a megfelelő helyszínt a listából.')}
+            {description ||
+              t('locations.selectParentHelp', 'Válaszd ki a megfelelő helyszínt a listából.')}
           </DialogDescription>
         </DialogHeader>
 

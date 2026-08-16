@@ -57,15 +57,22 @@ export function UnassignDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('assignments.unassignDialogTitle', 'Eszköz visszavétele (levétel)')}</DialogTitle>
+            <DialogTitle>
+              {t('assignments.unassignDialogTitle', 'Eszköz visszavétele (levétel)')}
+            </DialogTitle>
             <DialogDescription>
-              {t('assignments.unassignDialogDescription', 'Válaszd ki a raktárt, ahová az eszköz visszakerül.')}
+              {t(
+                'assignments.unassignDialogDescription',
+                'Válaszd ki a raktárt, ahová az eszköz visszakerül.'
+              )}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>{t('assignments.targetStorageLocation', 'Cél raktárhelyszín (kötelező)')}</Label>
+              <Label>
+                {t('assignments.targetStorageLocation', 'Cél raktárhelyszín (kötelező)')}
+              </Label>
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -75,7 +82,9 @@ export function UnassignDialog({
                 >
                   <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
                   {targetLocationName ? (
-                    <span className="font-medium text-xs text-foreground">{targetLocationName}</span>
+                    <span className="text-xs font-medium text-foreground">
+                      {targetLocationName}
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">
                       {t('assignments.selectStorageLocation', 'Válassz ki egy raktárat...')}
@@ -85,7 +94,10 @@ export function UnassignDialog({
               </div>
               {targetLocationId === null && (
                 <p className="text-xs text-destructive">
-                  {t('assignments.storageLocationRequired', 'A raktárhelyszín kiválasztása kötelező.')}
+                  {t(
+                    'assignments.storageLocationRequired',
+                    'A raktárhelyszín kiválasztása kötelező.'
+                  )}
                 </p>
               )}
             </div>

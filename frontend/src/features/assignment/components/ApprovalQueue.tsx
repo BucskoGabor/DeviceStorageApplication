@@ -38,7 +38,9 @@ export function ApprovalQueue() {
   const canApproveMaintenance = permissions.includes('DEVICE_MAINTENANCE_APPROVE')
   const canApproveDisposal = permissions.includes('DEVICE_DISPOSE_APPROVE')
 
-  const [activeTab, setActiveTab] = useState<'assignments' | 'maintenance' | 'disposal'>('assignments')
+  const [activeTab, setActiveTab] = useState<'assignments' | 'maintenance' | 'disposal'>(
+    'assignments'
+  )
 
   // 1. Assignments query
   const { data: pendingAssignments = [], isLoading: isLoadingAssignments } = useQuery({
@@ -234,118 +236,126 @@ export function ApprovalQueue() {
           {isLoadingAssignments ? (
             <p className="text-muted-foreground">{t('common.loading')}...</p>
           ) : pendingAssignments.length === 0 ? (
-            <p className="text-muted-foreground py-4 text-center">{t('assignments.noPendingAssignments', 'Nincs jóváhagyásra váró hozzárendelés')}</p>
+            <p className="py-4 text-center text-muted-foreground">
+              {t('assignments.noPendingAssignments', 'Nincs jóváhagyásra váró hozzárendelés')}
+            </p>
           ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('assignments.device')}</TableHead>
-                <TableHead>{t('assignments.status')}</TableHead>
-                <TableHead>{t('assignments.fromLocation')}</TableHead>
-                <TableHead>{t('assignments.toLocation')}</TableHead>
-                <TableHead>{t('assignments.toUser')}</TableHead>
-                <TableHead>{t('assignments.requestedBy')}</TableHead>
-                <TableHead>{t('audit.timestamp')}</TableHead>
-                <TableHead className="text-right">{t('common.actions')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pendingAssignments.map((a: DeviceAssignment) => {
-                const isPendingAssignment = a.status === 'PENDING_ASSIGNMENT'
-                const canActOnRow = canApproveAssignment
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('assignments.device')}</TableHead>
+                  <TableHead>{t('assignments.status')}</TableHead>
+                  <TableHead>{t('assignments.fromLocation')}</TableHead>
+                  <TableHead>{t('assignments.toLocation')}</TableHead>
+                  <TableHead>{t('assignments.toUser')}</TableHead>
+                  <TableHead>{t('assignments.requestedBy')}</TableHead>
+                  <TableHead>{t('audit.timestamp')}</TableHead>
+                  <TableHead className="text-right">{t('common.actions')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingAssignments.map((a: DeviceAssignment) => {
+                  const isPendingAssignment = a.status === 'PENDING_ASSIGNMENT'
+                  const canActOnRow = canApproveAssignment
 
-                return (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-mono text-xs font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <span>{a.device?.inventoryNumber ?? `#${a.device?.id ?? '?'}`}</span>
-                        {a.device?.id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => a.device && navigate(`/devices/${a.device.id}`)}
-                            title={t('common.details', 'Részletek')}
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={a.status} />
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {a.fromLocation?.name ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {a.toLocation?.name ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {a.toUser?.email ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {a.createdByUser?.email ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(a.createdDate).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        {isPendingAssignment && canApproveAssignment && (
-                          <Button
-                            size="sm"
-                            variant="default"
-                            disabled={approveAssignmentMutation.isPending || rejectAssignmentMutation.isPending}
-                            onClick={() => approveAssignmentMutation.mutate(a.id)}
-                          >
-                            <Check className="mr-1 h-4 w-4" />
-                            {t('assignments.approveAssignment')}
-                          </Button>
-                        )}
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-mono text-xs font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <span>{a.device?.inventoryNumber ?? `#${a.device?.id ?? '?'}`}</span>
+                          {a.device?.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => a.device && navigate(`/devices/${a.device.id}`)}
+                              title={t('common.details', 'Részletek')}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={a.status} />
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {a.fromLocation?.name ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {a.toLocation?.name ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {a.toUser?.email ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {a.createdByUser?.email ?? '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(a.createdDate).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          {isPendingAssignment && canApproveAssignment && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              disabled={
+                                approveAssignmentMutation.isPending ||
+                                rejectAssignmentMutation.isPending
+                              }
+                              onClick={() => approveAssignmentMutation.mutate(a.id)}
+                            >
+                              <Check className="mr-1 h-4 w-4" />
+                              {t('assignments.approveAssignment')}
+                            </Button>
+                          )}
 
-                        {!isPendingAssignment && canApproveAssignment && (
-                          <Button
-                            size="sm"
-                            variant="default"
-                            disabled={approveUnassignmentMutation.isPending || rejectAssignmentMutation.isPending}
-                            onClick={() => approveUnassignmentMutation.mutate(a.id)}
-                          >
-                            <Check className="mr-1 h-4 w-4" />
-                            {t('assignments.approveUnassignment')}
-                          </Button>
-                        )}
+                          {!isPendingAssignment && canApproveAssignment && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              disabled={
+                                approveUnassignmentMutation.isPending ||
+                                rejectAssignmentMutation.isPending
+                              }
+                              onClick={() => approveUnassignmentMutation.mutate(a.id)}
+                            >
+                              <Check className="mr-1 h-4 w-4" />
+                              {t('assignments.approveUnassignment')}
+                            </Button>
+                          )}
 
-                        {canActOnRow && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            disabled={
-                              approveAssignmentMutation.isPending ||
-                              approveUnassignmentMutation.isPending ||
-                              rejectAssignmentMutation.isPending
-                            }
-                            onClick={() => rejectAssignmentMutation.mutate(a.id)}
-                          >
-                            <X className="mr-1 h-4 w-4" />
-                            {t('assignments.rejectAssignment')}
-                          </Button>
-                        )}
+                          {canActOnRow && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={
+                                approveAssignmentMutation.isPending ||
+                                approveUnassignmentMutation.isPending ||
+                                rejectAssignmentMutation.isPending
+                              }
+                              onClick={() => rejectAssignmentMutation.mutate(a.id)}
+                            >
+                              <X className="mr-1 h-4 w-4" />
+                              {t('assignments.rejectAssignment')}
+                            </Button>
+                          )}
 
-                        {!canActOnRow && (
-                          <span className="text-xs text-muted-foreground italic">
-                            {t('common.readOnly', 'Csak megtekintés')}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+                          {!canActOnRow && (
+                            <span className="text-xs italic text-muted-foreground">
+                              {t('common.readOnly', 'Csak megtekintés')}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
       )}
 
       {/* 2. Maintenance Tab */}
@@ -354,7 +364,9 @@ export function ApprovalQueue() {
           {isLoadingMaintenance ? (
             <p className="text-muted-foreground">{t('common.loading')}...</p>
           ) : pendingMaintenance.length === 0 ? (
-            <p className="text-muted-foreground py-4 text-center">{t('devices.noPendingMaintenance', 'Nincs jóváhagyásra váró karbantartási kérelem')}</p>
+            <p className="py-4 text-center text-muted-foreground">
+              {t('devices.noPendingMaintenance', 'Nincs jóváhagyásra váró karbantartási kérelem')}
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -388,7 +400,7 @@ export function ApprovalQueue() {
                     <TableCell className="text-xs text-muted-foreground">
                       {device.currentLocation?.name ?? '—'}
                     </TableCell>
-                    <TableCell className="text-xs max-w-xs truncate font-medium text-amber-700 dark:text-amber-300">
+                    <TableCell className="max-w-xs truncate text-xs font-medium text-amber-700 dark:text-amber-300">
                       {device.statusReason || '—'}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -401,7 +413,10 @@ export function ApprovalQueue() {
                             <Button
                               size="sm"
                               variant="default"
-                              disabled={approveMaintenanceMutation.isPending || rejectMaintenanceMutation.isPending}
+                              disabled={
+                                approveMaintenanceMutation.isPending ||
+                                rejectMaintenanceMutation.isPending
+                              }
                               onClick={() => approveMaintenanceMutation.mutate(device.id)}
                             >
                               <Check className="mr-1 h-4 w-4" />
@@ -410,7 +425,10 @@ export function ApprovalQueue() {
                             <Button
                               size="sm"
                               variant="destructive"
-                              disabled={approveMaintenanceMutation.isPending || rejectMaintenanceMutation.isPending}
+                              disabled={
+                                approveMaintenanceMutation.isPending ||
+                                rejectMaintenanceMutation.isPending
+                              }
                               onClick={() => rejectMaintenanceMutation.mutate(device.id)}
                             >
                               <X className="mr-1 h-4 w-4" />
@@ -418,7 +436,7 @@ export function ApprovalQueue() {
                             </Button>
                           </>
                         ) : (
-                          <span className="text-xs text-muted-foreground italic">
+                          <span className="text-xs italic text-muted-foreground">
                             {t('common.readOnly', 'Csak megtekintés')}
                           </span>
                         )}
@@ -438,7 +456,9 @@ export function ApprovalQueue() {
           {isLoadingDisposal ? (
             <p className="text-muted-foreground">{t('common.loading')}...</p>
           ) : pendingDisposal.length === 0 ? (
-            <p className="text-muted-foreground py-4 text-center">{t('devices.noPendingDisposal', 'Nincs jóváhagyásra váró selejtezési kérelem')}</p>
+            <p className="py-4 text-center text-muted-foreground">
+              {t('devices.noPendingDisposal', 'Nincs jóváhagyásra váró selejtezési kérelem')}
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -472,7 +492,7 @@ export function ApprovalQueue() {
                     <TableCell className="text-xs text-muted-foreground">
                       {device.currentLocation?.name ?? '—'}
                     </TableCell>
-                    <TableCell className="text-xs max-w-xs truncate font-medium text-rose-700 dark:text-rose-300">
+                    <TableCell className="max-w-xs truncate text-xs font-medium text-rose-700 dark:text-rose-300">
                       {device.statusReason || '—'}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -485,7 +505,10 @@ export function ApprovalQueue() {
                             <Button
                               size="sm"
                               variant="default"
-                              disabled={approveDisposalMutation.isPending || rejectDisposalMutation.isPending}
+                              disabled={
+                                approveDisposalMutation.isPending ||
+                                rejectDisposalMutation.isPending
+                              }
                               onClick={() => approveDisposalMutation.mutate(device.id)}
                             >
                               <Check className="mr-1 h-4 w-4" />
@@ -494,7 +517,10 @@ export function ApprovalQueue() {
                             <Button
                               size="sm"
                               variant="destructive"
-                              disabled={approveDisposalMutation.isPending || rejectDisposalMutation.isPending}
+                              disabled={
+                                approveDisposalMutation.isPending ||
+                                rejectDisposalMutation.isPending
+                              }
                               onClick={() => rejectDisposalMutation.mutate(device.id)}
                             >
                               <X className="mr-1 h-4 w-4" />
@@ -502,7 +528,7 @@ export function ApprovalQueue() {
                             </Button>
                           </>
                         ) : (
-                          <span className="text-xs text-muted-foreground italic">
+                          <span className="text-xs italic text-muted-foreground">
                             {t('common.readOnly', 'Csak megtekintés')}
                           </span>
                         )}

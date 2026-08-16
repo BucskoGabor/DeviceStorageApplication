@@ -104,9 +104,9 @@ export function MyDashboardPage({ children }: { children?: React.ReactNode }) {
             {isMeLoading || isUserDetailLoading ? (
               <p className="text-sm text-muted-foreground">{t('common.loading')}...</p>
             ) : office ? (
-              <div className="rounded-md border border-border bg-card p-3 space-y-1">
+              <div className="space-y-1 rounded-md border border-border bg-card p-3">
                 <p className="text-sm font-semibold">{office.name}</p>
-                <p className="text-xs text-muted-foreground font-mono">
+                <p className="font-mono text-xs text-muted-foreground">
                   Type: {office.type} (#{office.id})
                 </p>
               </div>
@@ -124,7 +124,9 @@ export function MyDashboardPage({ children }: { children?: React.ReactNode }) {
                 <Activity className="h-5 w-5 text-primary" />
                 {t('dashboard.recentAssignments')}
               </CardTitle>
-              <CardDescription>{t('assignments.approvalQueue', 'Függőben lévő kérelmek')}</CardDescription>
+              <CardDescription>
+                {t('assignments.approvalQueue', 'Függőben lévő kérelmek')}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {isPendingLoading ? (

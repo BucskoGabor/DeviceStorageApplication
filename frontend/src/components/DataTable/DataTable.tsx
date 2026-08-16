@@ -168,7 +168,8 @@ export function DataTable<TData>({
       {/* Pagination */}
       <div className="flex items-center justify-between px-2">
         <div className="text-sm text-muted-foreground">
-          {t('common.page')} {page + 1} {t('common.of')} {totalPages} ({totalElements} {t('common.itemsPerPage')})
+          {t('common.page')} {page + 1} {t('common.of')} {totalPages} ({totalElements}{' '}
+          {t('common.itemsPerPage')})
         </div>
         <div className="flex items-center gap-2">
           <Button

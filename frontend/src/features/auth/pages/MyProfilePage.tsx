@@ -65,9 +65,7 @@ export function MyProfilePage() {
             value={
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">{t(roleI18nKey, roleLabel)}</Badge>
-                {!me.active && (
-                  <Badge variant="destructive">{t('users.inactive')}</Badge>
-                )}
+                {!me.active && <Badge variant="destructive">{t('users.inactive')}</Badge>}
               </div>
             }
           />
@@ -75,11 +73,7 @@ export function MyProfilePage() {
             icon={<Key className="h-4 w-4 text-muted-foreground" />}
             label={t('myProfile.password')}
             value={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPasswordDialogOpen(true)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPasswordDialogOpen(true)}>
                 <Key className="mr-2 h-4 w-4" />
                 {t('passwordChange.title')}
               </Button>
