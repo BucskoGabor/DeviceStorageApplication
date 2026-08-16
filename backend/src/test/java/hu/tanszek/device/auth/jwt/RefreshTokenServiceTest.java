@@ -70,7 +70,7 @@ class RefreshTokenServiceTest {
   void rotate_revokedTokenTriggersReuseDetectionChainRevoke() {
     AppUser user = buildUser();
     RefreshToken revoked = buildToken(user, "hash123", true, false);
-    when(refreshTokenRepository.findByTokenHash("hash123")).thenReturn(Optional.of(revoked));
+    when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(revoked));
 
     assertThatThrownBy(() -> service.rotate("plain"))
         .isInstanceOf(IllegalStateException.class)
@@ -82,7 +82,7 @@ class RefreshTokenServiceTest {
   void rotate_expiredTokenIsRevokedAndThrows() {
     AppUser user = buildUser();
     RefreshToken expired = buildToken(user, "hash456", false, true);
-    when(refreshTokenRepository.findByTokenHash("hash456")).thenReturn(Optional.of(expired));
+    when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(expired));
 
     assertThatThrownBy(() -> service.rotate("plain"))
         .isInstanceOf(IllegalStateException.class)
@@ -95,7 +95,7 @@ class RefreshTokenServiceTest {
   void rotate_validTokenIssuesNewAndRevokesOld() {
     AppUser user = buildUser();
     RefreshToken valid = buildToken(user, "hash789", false, false);
-    when(refreshTokenRepository.findByTokenHash("hash789")).thenReturn(Optional.of(valid));
+    when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(valid));
     when(refreshTokenRepository.save(any(RefreshToken.class)))
         .thenAnswer(inv -> inv.getArgument(0));
 
@@ -112,7 +112,7 @@ class RefreshTokenServiceTest {
   void revoke_marksTokenAsRevokedWhenFound() {
     AppUser user = buildUser();
     RefreshToken token = buildToken(user, "hash000", false, false);
-    when(refreshTokenRepository.findByTokenHash("hash000")).thenReturn(Optional.of(token));
+    when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(token));
 
     service.revoke("plain");
 

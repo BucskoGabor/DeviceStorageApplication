@@ -47,8 +47,10 @@ class LoginServiceTest {
     Authentication auth =
         new UsernamePasswordAuthenticationToken(
             "userHash", null, java.util.List.of(new SimpleGrantedAuthorityStub("ROLE_ADMIN")));
+    AppUser user = buildUser("userHash", passwordEncoder.encode("secret"));
     when(providerFactory.getActiveProvider()).thenReturn(provider);
     when(provider.authenticate("user@example.com", "secret")).thenReturn(auth);
+    when(userRepository.findByEmailHash("userHash")).thenReturn(Optional.of(user));
 
     Authentication result = service.authenticate("user@example.com", "secret");
 
