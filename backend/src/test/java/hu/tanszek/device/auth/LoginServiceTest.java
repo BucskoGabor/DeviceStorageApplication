@@ -1,15 +1,5 @@
 package hu.tanszek.device.auth;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Optional;
@@ -21,17 +11,26 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import hu.tanszek.device.auth.entity.Role;
 import hu.tanszek.device.user.entity.AppUser;
 import hu.tanszek.device.user.repository.AppUserRepository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 /**
  * Unit tesztek a {@link LoginService}-hez.
  *
- * <p>Az AuthProviderFactory, AuthProvider, AppUserRepository és Argon2PasswordEncoder mockolva van, a
- * LoginService belső rehash logikáját közvetlenül teszteljük.
+ * <p>Az AuthProviderFactory, AuthProvider, AppUserRepository és Argon2PasswordEncoder mockolva van,
+ * a LoginService belső rehash logikáját közvetlenül teszteljük.
  */
 class LoginServiceTest {
 

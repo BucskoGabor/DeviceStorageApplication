@@ -1,18 +1,8 @@
 package hu.tanszek.device.auth.jwt;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
 import java.util.HexFormat;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -24,6 +14,15 @@ import hu.tanszek.device.auth.entity.RefreshToken;
 import hu.tanszek.device.auth.repository.RefreshTokenRepository;
 import hu.tanszek.device.user.entity.AppUser;
 import hu.tanszek.device.user.repository.AppUserRepository;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tesztek a {@link RefreshTokenService}-hez.
