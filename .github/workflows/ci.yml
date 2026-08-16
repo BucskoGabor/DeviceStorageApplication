@@ -75,6 +75,10 @@ jobs:
         working-directory: frontend
         run: npx prettier --check 'src/**/*.{ts,tsx,css}'
 
+      - name: Unit & Component tests (Vitest)
+        working-directory: frontend
+        run: npm run test
+
       - name: Build
         working-directory: frontend
         run: npm run build
@@ -106,6 +110,10 @@ jobs:
       - name: Run smoke test
         run: ./scripts/smoke-test.sh
         continue-on-error: true  # Most egyes endpoint-ok még nincsenek implementálva
+
+      - name: Run backup & restore test
+        run: ./scripts/test-backup-restore.sh
+        continue-on-error: true
 
       - name: Show logs on failure
         if: failure()

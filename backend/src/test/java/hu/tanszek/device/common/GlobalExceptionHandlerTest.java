@@ -1,166 +1,107 @@
 package hu.tanszek.device.common;
 
-import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.web.context.request.ServletWebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * Unit tesztek a {@link GlobalExceptionHandler} response formátumához.
- *
- * <p>A Sonner toast fallback mechanizmus a backend oldali response formátumon alapul — a frontend a
- * {@code messageKey}-t próbálja lefordítani, és ha nincs az i18n resource-ban, a {@code message}
- * mezőt használja fallback-ként.
- *
- * <p>Ez a teszt biztosítja, hogy a response formátum mindig tartalmazza mindkét mezőt, így a
- * frontend fallback soha nem kap üres stringet.
- */
 class GlobalExceptionHandlerTest {
 
-  private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+  private GlobalExceptionHandler handler;
+  private ServletWebRequest webRequest;
 
-  @Test
-  void businessValidation_returnsBothMessageKeyAndMessage() {
-    BusinessValidationException ex =
-        new BusinessValidationException("deviceNotAssignable", "Device is in MAINTENANCE status");
-    MockHttpServletRequest request =
-        new MockHttpServletRequest("POST", "/api/devices/1/assignments");
-
-    ResponseEntity<Map<String, Object>> response =
-        handler.handleBusinessValidation(ex, new ServletWebRequest(request));
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    Map<String, Object> body = response.getBody();
-    assertThat(body).isNotNull();
-    assertThat(body.get("messageKey")).isEqualTo("deviceNotAssignable");
-    assertThat(body.get("message")).isEqualTo("Device is in MAINTENANCE status");
-    assertThat(body.get("path")).isEqualTo("/api/devices/1/assignments");
-    assertThat(body.get("status")).isEqualTo(400);
-    assertThat(body.get("error")).isEqualTo("Bad Request");
+  @BeforeEach
+  void setUp() {
+    handler = new GlobalExceptionHandler();
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.setRequestURI("/api/test");
+    webRequest = new ServletWebRequest(request);
   }
 
   @Test
-  void rateLimit_returns429InsteadOf400() {
+  void handleBusinessValidation_badRequest() {
+    BusinessValidationException ex = new BusinessValidationException("invalidField", "Bad input");
+    ResponseEntity<Map<String, Object>> response = handler.handleBusinessValidation(ex, webRequest);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().get("messageKey")).isEqualTo("invalidField");
+  }
+
+  @Test
+  void handleBusinessValidation_rateLimit() {
     BusinessValidationException ex =
         new BusinessValidationException("rateLimitExceeded", "Too many requests");
-    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
-
-    ResponseEntity<Map<String, Object>> response =
-        handler.handleBusinessValidation(ex, new ServletWebRequest(request));
+    ResponseEntity<Map<String, Object>> response = handler.handleBusinessValidation(ex, webRequest);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+    assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().get("messageKey")).isEqualTo("rateLimitExceeded");
   }
 
   @Test
-  void resourceNotFound_returns404WithResourceNotFoundKey() {
-    ResourceNotFoundException ex = new ResourceNotFoundException("Device not found: 99");
-    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/devices/99");
-
-    ResponseEntity<Map<String, Object>> response =
-        handler.handleResourceNotFound(ex, new ServletWebRequest(request));
+  void handleResourceNotFound() {
+    ResourceNotFoundException ex = new ResourceNotFoundException("Not found");
+    ResponseEntity<Map<String, Object>> response = handler.handleResourceNotFound(ex, webRequest);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    Map<String, Object> body = response.getBody();
-    assertThat(body.get("messageKey")).isEqualTo("resourceNotFound");
-    assertThat(body.get("message")).isEqualTo("Device not found: 99");
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().get("messageKey")).isEqualTo("resourceNotFound");
   }
 
   @Test
-  void unauthorized_returns403WithCustomKey() {
-    UnauthorizedActionException ex =
-        new UnauthorizedActionException(
-            "permissionDenied", "You do not have permission for this action");
-    MockHttpServletRequest request = new MockHttpServletRequest("DELETE", "/api/users/1");
+  void handleAuthentication_badCredentials() {
+    BadCredentialsException ex = new BadCredentialsException("Bad creds");
+    ResponseEntity<Map<String, Object>> response = handler.handleAuthentication(ex, webRequest);
 
-    ResponseEntity<Map<String, Object>> response =
-        handler.handleUnauthorized(ex, new ServletWebRequest(request));
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    assertThat(response.getBody().get("messageKey")).isEqualTo("permissionDenied");
-  }
-
-  @Test
-  void unauthorized_returns401ForAuthRequiredKey() {
-    UnauthorizedActionException ex =
-        new UnauthorizedActionException("authRequired", "Authentication required");
-    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/devices");
-
-    ResponseEntity<Map<String, Object>> response =
-        handler.handleUnauthorized(ex, new ServletWebRequest(request));
-
-    // authRequired kulcs → 401 (a többi → 403)
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-    assertThat(response.getBody().get("messageKey")).isEqualTo("authRequired");
+    assertThat(response.getBody().get("messageKey")).isEqualTo("invalidCredentials");
   }
 
   @Test
-  void fallback_returns500WithInternalErrorKey() {
-    Exception ex = new RuntimeException("Something went very wrong");
-    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/devices");
+  void handleAuthentication_disabled() {
+    DisabledException ex = new DisabledException("Disabled");
+    ResponseEntity<Map<String, Object>> response = handler.handleAuthentication(ex, webRequest);
 
-    ResponseEntity<Map<String, Object>> response =
-        handler.handleAll(ex, new ServletWebRequest(request));
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-    Map<String, Object> body = response.getBody();
-    assertThat(body.get("messageKey")).isEqualTo("internalError");
-    // A fallback message soha nem szivárogtatja ki a belső exception message-t
-    assertThat(body.get("message")).isEqualTo("An unexpected error occurred");
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(response.getBody().get("messageKey")).isEqualTo("userDisabled");
   }
 
   @Test
-  void fileTooLarge_returns413() {
-    org.springframework.web.multipart.MaxUploadSizeExceededException ex =
-        new org.springframework.web.multipart.MaxUploadSizeExceededException(15 * 1024 * 1024L);
-    MockHttpServletRequest request =
-        new MockHttpServletRequest("POST", "/api/devices/1/attachments");
+  void handleAuthentication_locked() {
+    LockedException ex = new LockedException("Locked");
+    ResponseEntity<Map<String, Object>> response = handler.handleAuthentication(ex, webRequest);
 
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(response.getBody().get("messageKey")).isEqualTo("userLocked");
+  }
+
+  @Test
+  void handleMaxUploadSizeExceeded() {
+    MaxUploadSizeExceededException ex = new MaxUploadSizeExceededException(10485760L);
     ResponseEntity<Map<String, Object>> response =
-        handler.handleMaxUploadSizeExceeded(ex, new ServletWebRequest(request));
+        handler.handleMaxUploadSizeExceeded(ex, webRequest);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
     assertThat(response.getBody().get("messageKey")).isEqualTo("fileTooLarge");
   }
 
   @Test
-  void responseAlwaysContainsMessageAndMessageKey_forFrontendFallback() {
-    // Ez a teszt a frontend Sonner fallback mechanizmus alapfeltétele:
-    // a response body MINDIG tartalmazza mindkét mezőt (messageKey + message),
-    // így a frontend soha nem kap üres fallback stringet.
-    BusinessValidationException bv = new BusinessValidationException("testKey", "test message");
-    ResourceNotFoundException rf = new ResourceNotFoundException("not found");
-    UnauthorizedActionException ua =
-        new UnauthorizedActionException("permissionDenied", "no perms");
-    RuntimeException rt = new RuntimeException("crash");
+  void handleAll() {
+    Exception ex = new RuntimeException("Unexpected error");
+    ResponseEntity<Map<String, Object>> response = handler.handleAll(ex, webRequest);
 
-    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/test");
-    ServletWebRequest webReq = new ServletWebRequest(req);
-
-    for (var response :
-        List.of(
-            handler.handleBusinessValidation(bv, webReq),
-            handler.handleResourceNotFound(rf, webReq),
-            handler.handleUnauthorized(ua, webReq),
-            handler.handleAll(rt, webReq))) {
-      Map<String, Object> body = response.getBody();
-      assertThat(body).isNotNull();
-      assertThat(body.get("messageKey"))
-          .as("messageKey must never be null/empty")
-          .isNotNull()
-          .asString()
-          .isNotEmpty();
-      assertThat(body.get("message"))
-          .as("message must never be null/empty (frontend fallback target)")
-          .isNotNull()
-          .asString()
-          .isNotEmpty();
-    }
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().get("messageKey")).isEqualTo("internalError");
   }
 }

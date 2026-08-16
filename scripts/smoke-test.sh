@@ -179,19 +179,56 @@ else
   PASSED=$((PASSED + 1))
 fi
 
-# ===== 9. Logout =====
-log_info "9. Logout..."
-LOGOUT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE_JAR" -X POST "$BACKEND_URL/api/auth/logout")
-if [ "$LOGOUT_STATUS" = "204" ]; then
-  log_info "Logout OK (204)"
+# ===== 9. Negative Security & Error Handling Tests =====
+log_info "9. Testing Negative Scenarios..."
+
+# 9.1 Bad credentials -> 401
+BAD_LOGIN_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BACKEND_URL/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@tanszek.local","password":"IncorrectPassword123!"}')
+if [ "$BAD_LOGIN_STATUS" = "401" ]; then
+  log_info "Negative Test: Bad password rejected with 401 OK"
   PASSED=$((PASSED + 1))
 else
-  log_warn "Logout returned $LOGOUT_STATUS (may not be implemented yet)"
+  log_err "Negative Test: Bad password returned $BAD_LOGIN_STATUS instead of 401"
+  FAILED=$((FAILED + 1))
+fi
+
+# 9.2 Unauthenticated access to protected resource -> 401 or 403
+NO_AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/api/users")
+if [ "$NO_AUTH_STATUS" = "401" ] || [ "$NO_AUTH_STATUS" = "403" ]; then
+  log_info "Negative Test: Unauthenticated request rejected with $NO_AUTH_STATUS OK"
+  PASSED=$((PASSED + 1))
+else
+  log_err "Negative Test: Unauthenticated request returned $NO_AUTH_STATUS"
+  FAILED=$((FAILED + 1))
+fi
+
+# 9.3 Non-existent resource lookup -> 404
+NOT_FOUND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE_JAR" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  "$BACKEND_URL/api/devices/999999")
+if [ "$NOT_FOUND_STATUS" = "404" ]; then
+  log_info "Negative Test: Non-existent ID returned 404 OK"
+  PASSED=$((PASSED + 1))
+else
+  log_err "Negative Test: Non-existent ID returned $NOT_FOUND_STATUS instead of 404"
+  FAILED=$((FAILED + 1))
+fi
+
+# ===== 10. Logout =====
+log_info "10. Logout..."
+LOGOUT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -b "$COOKIE_JAR" -X POST "$BACKEND_URL/api/auth/logout")
+if [ "$LOGOUT_STATUS" = "204" ] || [ "$LOGOUT_STATUS" = "200" ]; then
+  log_info "Logout OK ($LOGOUT_STATUS)"
+  PASSED=$((PASSED + 1))
+else
+  log_warn "Logout returned $LOGOUT_STATUS"
   PASSED=$((PASSED + 1))
 fi
 
-# ===== 10. Frontend health check =====
-log_info "10. Frontend health check..."
+# ===== 11. Frontend health check =====
+log_info "11. Frontend health check..."
 FRONT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL/")
 if [ "$FRONT_STATUS" = "200" ]; then
   log_info "Frontend OK ($FRONT_STATUS)"
