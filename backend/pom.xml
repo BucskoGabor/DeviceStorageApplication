@@ -234,6 +234,36 @@
                 </configuration>
             </plugin>
 
+            <!-- Surefire: unit tesztek (kihagyja az *IntegrationTest-eket, azokat a Failsafe kezeli) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+
+            <!-- Failsafe: integrációs tesztek (Testcontainers, Docker kell hozzá) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <includes>
+                        <include>**/*IntegrationTest.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+
             <!-- Code generator: i18n keys TypeScript union type -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

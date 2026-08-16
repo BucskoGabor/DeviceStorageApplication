@@ -31,15 +31,19 @@ jobs:
 
       - name: OWASP Dependency-Check
         working-directory: backend
-        run: mvn org.owasp:dependency-check-maven:check -B -q || true
+        if: ${{ env.NVD_API_KEY != '' }}
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: mvn org.owasp:dependency-check-maven:check -B -q -DnvdApiKey=$NVD_API_KEY
+        continue-on-error: true
 
       - name: Unit tests + Coverage
         working-directory: backend
         run: mvn test -B -q
 
-      - name: Integration tests (Testcontainers)
+      - name: Integration tests (Testcontainers, needs Docker)
         working-directory: backend
-        run: mvn verify -Pintegration -B -q
+        run: mvn verify -B -q
 
       - name: Build Docker image
         working-directory: backend
