@@ -16,9 +16,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * minden teszthez. A Flyway migrációk automatikusan lefutnak az alkalmazás indításakor
  * (application-test.yml Flyway config alapján).
  *
- * <p>A {@code @DirtiesContext} biztosítja, hogy minden teszt osztály friss Spring contextet kapjon — a
- * Testcontainers container a teszt osztály után leáll, és a Spring context cache a régi (leállított)
- * container connection-jét tárolná, ami miatt a Flyway migrációk nem futnának le az új containeren.
+   * <p>A {@code @DirtiesContext} biztosítja, hogy minden teszt osztály friss Spring contextet kapjon
+   * — a Testcontainers container a teszt osztály után leáll, és a Spring context cache a régi
+   * (leállított) container connection-jét tárolná, ami miatt a Flyway migrációk nem futnának le az új
+   * containeren.
  */
 @SpringBootTest
 @ActiveProfiles("test")
