@@ -22,8 +22,7 @@ import lombok.extern.slf4j.Slf4j;
  * </ul>
  *
  * <p>Bucket-ek {@code ConcurrentHashMap}-ben tárolódnak, kulcs az IP-cím vagy az email SHA-256
- * hash-e. Régi entry-k cleanup-ja a memory leak ellen (Task 5.5-ben implementálva, ha a rendszer
- * hosszabb ideig fut).
+ * hash-e. Régi entry-k cleanup-ja biztosítja a memória szivárgás megelőzését.
  *
  * <p>HA deployment esetén Redis-backed Bucket4j-re kell váltani (Future Work).
  */

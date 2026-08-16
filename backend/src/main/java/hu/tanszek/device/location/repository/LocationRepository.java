@@ -14,8 +14,7 @@ import hu.tanszek.device.location.entity.LocationType;
 /**
  * Location-ok repository.
  *
- * <p>A {@link JpaSpecificationExecutor} a Fázis 3-ban (Task 3.2) lesz használva a row-level
- * szűréshez és a dinamikus frontend szűrőkhöz.
+ * <p>A {@link JpaSpecificationExecutor} a dinamikus szűrésekhez és lekérdezésekhez biztosít támogatást.
  *
  * @see Location
  */

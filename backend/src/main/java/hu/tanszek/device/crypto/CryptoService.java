@@ -10,8 +10,7 @@ package hu.tanszek.device.crypto;
  *       tárolására (visszafejthető, admin megjelenítéshez)
  *   <li><b>SHA-256</b> — {@code email_hash} és {@code refresh_tokens.token_hash} mezőkre
  *       (egyirányú, gyors kereséshez)
- *   <li><b>Argon2id</b> — jelszavakhoz (Task 2.2-ben implementálva, a Spring Security {@code
- *       Argon2PasswordEncoder}-en keresztül)
+ *   <li><b>Argon2id</b> — jelszavakhoz (a Spring Security {@code Argon2PasswordEncoder}-en keresztül)
  * </ul>
  *
  * <p>Az {@link hu.tanszek.device.user.entity.AppUser} entitás használja az encrypt(email) és

@@ -23,7 +23,7 @@ import java.lang.annotation.Target;
  * hu.tanszek.device.common.UnauthorizedActionException} dobódik {@code permissionDenied}
  * messageKey-jel, amit a {@code GlobalExceptionHandler} 403 Forbidden-ként kezel.
  *
- * <p>A row-level filter (lásd Task 3.2) nem itt fut — az service-szinten van, hogy a row-szintű
+ * <p>A row-level filter nem itt fut — az service-szinten van, hogy a row-szintű
  * jogosultságot a permission check után ellenőrizze.
  *
  * @see hu.tanszek.device.auth.RequirePermissionAspect

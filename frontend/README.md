@@ -1,44 +1,34 @@
-# Frontend (Vite + React 18 + TypeScript)
+# Frontend Modul (React 18 + TypeScript + Vite)
 
-Ez a mappa fogja tartalmazni a Vite + React alkalmazást. A projekt inicializálása a Task 1.7-ben történik.
+A Tanszéki Eszköznyilvántartó Rendszer modern, reszponzív webes felhasználói felülete.
 
-Tervezett struktúra:
-```
-frontend/
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-├── index.html
-├── Dockerfile
-├── nginx.conf
-├── .env.example
-├── public/
-└── src/
-    ├── main.tsx
-    ├── App.tsx
-    ├── components/
-    │   ├── ui/         # shadcn komponensek
-    │   ├── DataTable/
-    │   ├── DiffViewer/
-    │   └── SonnerWrapper/
-    ├── features/
-    │   ├── auth/
-    │   ├── user/
-    │   ├── device/
-    │   ├── location/
-    │   ├── software/
-    │   ├── assignment/
-    │   ├── attachment/
-    │   └── audit/
-    ├── hooks/
-    ├── lib/
-    │   ├── api/
-    │   ├── i18n/       # hu.json, en.json, i18n-keys.ts (generált)
-    │   ├── theme/
-    │   └── validation/
-    ├── routes/
-    │   └── index.ts
-    └── types/
+## Főbb technológiák
+- **React 18** & **TypeScript**
+- **Vite** (Gyors fejlesztői környezet és optimalizált production build)
+- **TailwindCSS** & **Radix UI** / **shadcn/ui** komponensarchitektúra
+- **TanStack React Query** (Szerverállapot-kezelés, automatikus cache-elés és érvénytelenítés)
+- **React Router 6** (Kliensoldali útvonalválasztás és védett route-ok)
+- **Lucide Icons** (Egységes vektorgrafikus ikonkészlet)
+- **i18n Többnyelvűsítés** (Magyar és angol nyelvi támogatás)
+
+## Fejlesztői környezet futtatása
+```bash
+# Függőségek telepítése
+npm install
+
+# Fejlesztői szerver indítása (alapértelmezetten 5173-as port)
+npm run dev
+
+# Production build készítése
+npm run build
+
+# Kódminőség és linter ellenőrzése
+npm run lint
 ```
 
-Lásd: [`implementation_plan.md`](../implementation_plan.md) §4 (Frontend Architektúra).
+## Mappastruktúra
+- `src/features/`: Moduláris funkcionalitás (auth, device, assignment, location, software, audit, attachment, user)
+- `src/components/ui/`: Újrafelhasználható UI primitívek és vezérlőelemek
+- `src/lib/`: API kliens, fordítási fájlok (i18n), segédfüggvények
+- `src/routes/`: Alkalmazás navigáció és jogosultság-alapú védett útvonalak
+- `src/types/`: Globális TypeScript típusdefiníciók

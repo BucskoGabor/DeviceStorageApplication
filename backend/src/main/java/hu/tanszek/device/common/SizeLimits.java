@@ -3,13 +3,11 @@ package hu.tanszek.device.common;
 /**
  * SizeLimits — egységes méretkorlát konstansok a Bean Validation @Size annotációkhoz.
  *
- * <p>A háromszintű méretkorlát rendszer (Task 3.8):
+ * <p>A háromszintű méretkorlát rendszer:
  *
  * <ol>
- *   <li><b>Nginx</b> — frontend konténer nginx.conf {@code client_max_body_size 10M} (a /api/
- *       location block-ban, Task 1.1-ben beállítva)
- *   <li><b>Spring multipart</b> — application.yml {@code
- *       spring.servlet.multipart.max-file-size=10MB} (Task 1.2-ben beállítva)
+ *   <li><b>Nginx</b> — frontend konténer nginx.conf {@code client_max_body_size 10M}
+ *   <li><b>Spring multipart</b> — application.yml {@code spring.servlet.multipart.max-file-size=10MB}
  *   <li><b>Bean Validation</b> — DTO String mezők {@code @Size(max = ...)} (ez az interface)
  * </ol>
  *
