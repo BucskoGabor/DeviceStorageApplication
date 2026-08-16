@@ -1,10 +1,5 @@
 package hu.tanszek.device.auth;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -14,6 +9,11 @@ import org.junit.jupiter.api.Test;
 
 import hu.tanszek.device.config.entity.Config;
 import hu.tanszek.device.config.repository.ConfigRepository;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tesztek a {@link AuthProviderFactory}-hoz.

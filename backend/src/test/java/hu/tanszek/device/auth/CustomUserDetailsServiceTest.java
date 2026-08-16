@@ -1,10 +1,5 @@
 package hu.tanszek.device.auth;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Optional;
@@ -19,6 +14,11 @@ import hu.tanszek.device.auth.entity.Permission;
 import hu.tanszek.device.auth.entity.Role;
 import hu.tanszek.device.user.entity.AppUser;
 import hu.tanszek.device.user.repository.AppUserRepository;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tesztek a {@link CustomUserDetailsService}-hez.
