@@ -1,5 +1,7 @@
 package hu.tanszek.device.integration;
 
+import java.util.List;
+
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -38,18 +40,20 @@ public abstract class AbstractIntegrationTest {
    * PostgreSQL container — minden teszt osztály egy shared container-t kap. A Testcontainers
    * automatikusan elindítja a konténert az első teszt metódus előtt, és leállítja az utolsó után.
    *
-   * <p>A {@code withFixedExposedPort(5432, 5432)} biztosítja, hogy a Spring context cache kulcsa
+   * <p>A {@code setPortBindings(List.of("5432:5432"))} biztosítja, hogy a Spring context cache kulcsa
    * (amely a JDBC URL-t tartalmazza) konzisztens maradjon a teszt osztályok között — máskülönben a
    * Testcontainers random portot választ, és a második teszt osztály Spring context cache miss-t
    * okoz ami Hikari connection timeout-hoz vezethet.
    */
   @Container
   protected static final PostgreSQLContainer<?> postgresContainer =
-      new PostgreSQLContainer<>("postgres:16-alpine")
-          .withDatabaseName("tanszek_db_test")
+      new PostgreSQLContainer<>("postgres:16-alpine") {
+        {
+          setPortBindings(List.of("5432:5432"));
+        }
+      }.withDatabaseName("tanszek_db_test")
           .withUsername("admin")
           .withPassword("test_password")
-          .withFixedExposedPort(5432, 5432)
           .withReuse(true);
 
   /**
