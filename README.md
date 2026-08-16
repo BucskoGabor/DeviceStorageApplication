@@ -1,68 +1,55 @@
 # Egyetemi Informatikai Tanszéki Nyilvántartó Rendszer
 
-Egyetemi tanszéki eszköz- és szoftver-nyilvántartó rendszer. Spring Boot 3.3 backend + React/Vite frontend, docker-compose alapú on-premise deployment.
+Egyetemi tanszéki eszköz- és szoftver-nyilvántartó rendszer. Spring Boot 3.3 backend + React / Vite frontend, Docker Compose alapú on-premise környezettel.
 
 ## Áttekintés
 
-Ez a rendszer egy egyetemi informatikai tanszék eszközeinek (laptopok, monitorok, stb.), szoftvereinek (license-ek), helyszíneinek (tantermek, irodák, raktárak), és az eszközök user-ekhez való hozzárendelésének nyilvántartására szolgál.
+A rendszer az egyetemi tanszék fizikai eszközeinek (laptopok, monitorok, hálózati eszközök), szoftverlicenceinek, helyszíneinek (tantermek, irodák, raktárak), valamint az eszköz-kiosztások és felelősök nyilvántartását és kezelését biztosítja.
 
-- **3 role** (ADMIN, TEACHER, STUDENT) granularitású hozzáférés-kezeléssel
-- **Row-level security** — minden user csak a saját eszközeit látja (STUDENT), vagy a tanszéki környezetében lévőket (TEACHER)
-- **Audit log + rollback** — minden módosítás visszavonható a `changes_json` alapján
-- **Excel import** — tömeges felhasználó- és eszköz-import
-- **JWT + HttpOnly cookie** refresh token — XSS/CSRF ellen védett
-- **Bilingual UI** (magyar + angol, `react-i18next`)
-- **Dark mode** (shadcn + next-themes)
+### Főbb funkciók
 
-## Gyors indítás (fejlesztés)
+- **Szerepkör- és hozzáférés-kezelés:** 3 szerepkör (ADMIN, TEACHER, STUDENT) és granuláris jogosultsági rendszer.
+- **Row-level security:** Felhasználói szintű adatszűrés (a hallgatók a saját eszközeiket, az oktatók a hozzájuk tartozó tanszéki környezetet kezelik).
+- **Audit naplózás és visszavonás (rollback):** Minden módosítás naplózott JSON diff alapján, adminisztrátori visszavonási lehetőséggel.
+- **Excel import / export:** Tömeges felhasználó- és eszközimport előnézettel és validációval.
+- **Biztonságos autentikáció:** Argon2id jelszóhash, JWT hozzáférési tokenek és HttpOnly cookie refresh token rotáció CSRF védelemmel.
+- **Kétnyelvű kezelőfelület:** Magyar és angol nyelv támogatása (`react-i18next`).
+- **Sötét / világos téma:** Téma testreszabás (shadcn/ui + Tailwind CSS).
+
+## Gyors indítás (fejlesztői környezet)
 
 ```bash
-# 1. Repo skeleton (Task 1.8) — mappák, .env.example, .gitignore, stb.
+# 1. Repository klónozása
 git clone <repo-url>
-cd device-storage
+cd DeviceStorageApplication
 
-# 2. Bootstrap script (Task 1.8 része) — .env és backup.env generálás
+# 2. Környezeti változók inicializálása (első indítás előtt)
 ./scripts/bootstrap.sh
 
-# 3. Docker Compose (Task 1.1) — konténerek indítása
+# 3. Konténerek indítása
 docker compose up -d
 
-# 4. Belépés demo admin user-rel
-# http://localhost:5173 (Vite dev server) vagy http://localhost:80 (Nginx)
-# Email: admin@tanszek.local
-# Password: ChangeMe123!  ← first-login kötelező csere
+# 4. Alkalmazás megnyitása
+# Frontend: http://localhost:5173 (vagy production Nginx esetén http://localhost:80)
+# Backend API / Swagger UI: http://localhost:8080/swagger-ui.html
+# Alapértelmezett admin belépés: admin@tanszek.local / ChangeMe123! (első belépéskor jelszócsere kötelező)
 ```
 
 ## Architektúra
 
-Részletek: [`implementation_plan.md`](./implementation_plan.md)
-
-- **Monorepo:** `backend/`, `frontend/`, `docs/`, `scripts/`
-- **Backend:** Spring Boot 3.3 / Java 21 / Maven, feature-based package-ek, 11 DB tábla + BaseEntity
-- **Frontend:** Vite + React 18 + TypeScript + Tailwind + shadcn/ui + i18next
-- **Docker Compose:** 5 konténer (postgres, backend, frontend, backup, mailhog-dev)
-- **Security:** Argon2id jelszó-titkosítás, JWT kid rotáció, refresh token rotation, CSRF token, Rate limiting, Audit log
-
-## Fejlesztési fázisok
-
-A projekt 5 fázisban készül (33 task, ~2-3 hét single-dev scope-pal):
-
-1. **Fázis 1:** Infrastruktúra, DB, JPA entitások
-2. **Fázis 2:** Biztonság, titkosítás, auth, audit alapok
-3. **Fázis 3:** Üzleti logika, CRUD, Excel import, hibakezelés
-4. **Fázis 4:** Frontend integráció és UX
-5. **Fázis 5:** Tesztelés és QA
-
-Részletes task lista és haladás: [`agent_progress.md`](./agent_progress.md)
+- **Monorepo struktúra:**
+  - `backend/` — Spring Boot 3.3, Java 21, Maven, PostgreSQL, Flyway, Hibernate / JPA, Spring Security 6
+  - `frontend/` — React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Table & Query
+  - `scripts/` — Karbantartó, bootstrap és tesztelő szkriptek
+  - `docs/` — Részletes rendszerdokumentációk
+- **Docker infrastruktúra:** 5 konténer (PostgreSQL 16, Spring Boot API, Nginx frontend, pg_dump backup runner, Mailhog teszt SMTP).
 
 ## Dokumentáció
 
-- [`implementation_plan.md`](./implementation_plan.md) — részletes architektúra és döntések
-- [`agent_progress.md`](./agent_progress.md) — task tracker és haladás
-- [`docs/architecture.md`](./docs/architecture.md) — magas-szintű architektúra diagram
-- [`docs/deployment.md`](./docs/deployment.md) — telepítési útmutató
-- [`docs/runbook.md`](./docs/runbook.md) — üzemeltetési kézikönyv
+- [Architektúra leírás](file:///home/aglathyne/Documents/GitHub/DeviceStorageApplication/docs/architecture.md) — Rendszerfelépítés és komponensek
+- [Telepítési útmutató](file:///home/aglathyne/Documents/GitHub/DeviceStorageApplication/docs/deployment.md) — Production környezet beállítása
+- [Üzemeltetési kézikönyv](file:///home/aglathyne/Documents/GitHub/DeviceStorageApplication/docs/runbook.md) — Karbantartás, mentés és hibaelhárítás
 
-## License
+## Licenc
 
-MIT — lásd [`LICENSE`](./LICENSE).
+MIT — lásd a [LICENSE](file:///home/aglathyne/Documents/GitHub/DeviceStorageApplication/LICENSE) fájlt.

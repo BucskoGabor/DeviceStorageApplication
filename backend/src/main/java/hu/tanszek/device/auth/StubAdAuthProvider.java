@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
  * StubAdAuthProvider — AD/LDAP authentikáció placeholder.
  *
  * <p>Jelenleg NEM implementált — minden hívás {@link AuthenticationServiceException}-t dob. Az
- * AD/LDAP integráció a Future Work (lásd {@code agent_progress.md}).
+ * AD/LDAP integráció egy későbbi verzióban valósul meg.
  *
  * <p>Az {@link AuthProviderFactory} ezt a provider-t választja, ha a {@code configs.AUTH_PROVIDER}
  * értéke "AD".
