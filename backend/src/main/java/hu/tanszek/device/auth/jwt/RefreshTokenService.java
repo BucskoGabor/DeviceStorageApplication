@@ -9,6 +9,7 @@ import java.util.HexFormat;
 import java.util.NoSuchElementException;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import hu.tanszek.device.auth.entity.RefreshToken;
@@ -98,7 +99,7 @@ public class RefreshTokenService {
    * @return RotationResult az új plain token-nel és entitással
    * @throws NoSuchElementException ha a token nem található
    */
-  @Transactional
+  @Transactional(isolation = Isolation.SERIALIZABLE)
   public RotationResult rotate(String plainToken) {
     String tokenHash = sha256(plainToken);
     RefreshToken token =
@@ -106,8 +107,22 @@ public class RefreshTokenService {
             .findByTokenHash(tokenHash)
             .orElseThrow(() -> new NoSuchElementException("Refresh token not found"));
 
-    // Reuse detection: ha revoked, az egész chain revokeolódik
+    // Reuse detection: ha revoked, ellenőrizzük a grace period-ot (ha van replacedBy)
     if (token.isRevoked()) {
+      if (token.getReplacedBy() != null) {
+        Instant rotatedAt =
+            token.getUpdatedAt() != null ? token.getUpdatedAt() : token.getCreatedAt();
+        long gracePeriodSec =
+            jwtProperties != null && jwtProperties.getGracePeriodSec() > 0
+                ? Math.min(jwtProperties.getGracePeriodSec(), 60L)
+                : 60L;
+        if (rotatedAt != null && Instant.now().isBefore(rotatedAt.plusSeconds(gracePeriodSec))) {
+          log.info(
+              "Concurrent refresh within grace period for user {} — returning replaced token",
+              token.getUser().getEmailHash());
+          return new RotationResult(null, token.getReplacedBy());
+        }
+      }
       log.warn(
           "Refresh token reuse detected for user {} — revoking entire chain",
           token.getUser().getEmailHash());

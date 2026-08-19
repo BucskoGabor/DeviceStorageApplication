@@ -110,7 +110,7 @@ export function SoftwarePage() {
         header: t('softwares.installedDevices', 'Eszközök'),
         cell: (info) => {
           const sw = info.row.original
-          return <DevicesCell softwareId={sw.id} />
+          return <DevicesCell software={sw} />
         },
       },
       {
@@ -330,28 +330,24 @@ function LicenseKeyCell({ software, canView }: { software: Software; canView: bo
     </Badge>
   )
 }
-function DevicesCell({ softwareId }: { softwareId: number }) {
+function DevicesCell({ software }: { software: Software }) {
   const { t } = useTranslation()
-  const { data: devices, isLoading } = useQuery({
-    queryKey: softwareKeys.devices(softwareId),
-    queryFn: () => softwareApi.findDevicesBySoftware(softwareId),
-  })
-  if (isLoading) {
-    return <span className="text-xs text-muted-foreground">…</span>
-  }
-  if (!devices || devices.length === 0) {
+  const inventoryNumbers = software.deviceInventoryNumbers ?? []
+  const count = software.installedDeviceCount ?? inventoryNumbers.length
+
+  if (count === 0) {
     return <span className="text-xs text-muted-foreground">—</span>
   }
   return (
     <div className="flex max-w-[200px] flex-wrap gap-1">
-      {devices.slice(0, 3).map((d) => (
-        <Badge key={d.id} variant="secondary" className="font-mono text-xs">
-          {d.inventoryNumber}
+      {inventoryNumbers.slice(0, 3).map((inv) => (
+        <Badge key={inv} variant="secondary" className="font-mono text-xs">
+          {inv}
         </Badge>
       ))}
-      {devices.length > 3 && (
+      {count > 3 && (
         <Badge variant="outline" className="text-xs">
-          +{devices.length - 3} {t('softwares.more', 'további')}
+          +{count - 3} {t('softwares.more', 'további')}
         </Badge>
       )}
     </div>

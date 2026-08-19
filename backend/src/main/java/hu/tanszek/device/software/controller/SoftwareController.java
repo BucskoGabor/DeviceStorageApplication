@@ -1,5 +1,7 @@
 package hu.tanszek.device.software.controller;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -95,16 +97,35 @@ public class SoftwareController {
     var pageable = PageRequest.of(page, size, Sort.by("name").ascending());
     Page<Software> result = softwareRepository.findAll(pageable);
 
+    List<Software> softwareList = result.getContent();
+    List<Long> softwareIds = softwareList.stream().map(Software::getId).toList();
+
+    Map<Long, List<String>> inventoryNumbersBySoftwareId = new HashMap<>();
+    if (!softwareIds.isEmpty()) {
+      List<Object[]> rows = deviceRepository.findDeviceInventoryNumbersBySoftwareIds(softwareIds);
+      for (Object[] row : rows) {
+        Long sId = (Long) row[0];
+        String inv = (String) row[1];
+        inventoryNumbersBySoftwareId.computeIfAbsent(sId, k -> new ArrayList<>()).add(inv);
+      }
+    }
+
     boolean canViewKey = hasLicenseViewPermission(authentication);
 
     List<SoftwareDto> content =
-        result.getContent().stream()
+        softwareList.stream()
             .map(
-                s ->
-                    SoftwareDto.fromEntity(
-                        s, canViewKey, canViewKey ? safeDecrypt(s.getLicenseKeyEncrypted()) : null))
+                s -> {
+                  List<String> invList =
+                      inventoryNumbersBySoftwareId.getOrDefault(s.getId(), List.of());
+                  return SoftwareDto.fromEntity(
+                      s,
+                      canViewKey,
+                      canViewKey ? safeDecrypt(s.getLicenseKeyEncrypted()) : null,
+                      invList.size(),
+                      invList);
+                })
             .toList();
-
     return ResponseEntity.ok(
         Map.of(
             "content", content,

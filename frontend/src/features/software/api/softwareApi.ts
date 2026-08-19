@@ -14,6 +14,8 @@ export interface Software {
   name: string
   licenseKey?: string | null
   licenseKeyMasked?: string | null
+  installedDeviceCount?: number
+  deviceInventoryNumbers?: string[]
 }
 
 export interface PageResponse<T> {

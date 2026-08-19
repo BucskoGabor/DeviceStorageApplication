@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { deviceKeys, userKeys, locationKeys } from '@/lib/api/queryKeys'
 import { toast } from 'sonner'
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Download } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,6 +27,7 @@ type ImportState = 'EMPTY' | 'PREVIEW' | 'RESULT'
 
 export function ImportPage() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<ImportPreviewResponse | null>(null)
   const [importResult, setImportResult] = useState<Awaited<
@@ -59,6 +61,9 @@ export function ImportPage() {
     onSuccess: (data) => {
       setImportResult(data)
       setState('RESULT')
+      queryClient.invalidateQueries({ queryKey: deviceKeys.all })
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
+      queryClient.invalidateQueries({ queryKey: locationKeys.all })
       toast.success(t('import.importSuccess'), { position: 'top-right' })
     },
     onError: (error: any) => {

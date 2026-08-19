@@ -46,19 +46,37 @@ log_info "Új secret: ${NEW_SECRET:0:8}..."
 
 # ===== .env frissítés =====
 # A jelenlegi active átkerül a previous-be, az új lesz az active
-CURRENT_ACTIVE=$(grep "^JWT_KID_ACTIVE=" .env | cut -d'=' -f2)
+CURRENT_ACTIVE=$(grep "^JWT_KID_ACTIVE=" .env | cut -d'=' -f2-)
 log_info "Jelenlegi active secret átmozgatása a previous-be (grace period $GRACE_PERIOD másodperc)"
 
-# macOS / Linux sed kompatibilis
-sed -i.bak "s|^JWT_KID_PREVIOUS=.*|JWT_KID_PREVIOUS=$CURRENT_ACTIVE|" .env
-sed -i.bak "s|^JWT_KID_ACTIVE=.*|JWT_KID_ACTIVE=$NEW_SECRET|" .env
-rm -f .env.bak
+python3 - "$NEW_SECRET" "$CURRENT_ACTIVE" "$GRACE_PERIOD" << 'EOF'
+import sys
 
-# Grace period frissítés
-if grep -q "^JWT_KID_GRACE_PERIOD_SEC=" .env; then
-  sed -i.bak "s|^JWT_KID_GRACE_PERIOD_SEC=.*|JWT_KID_GRACE_PERIOD_SEC=$GRACE_PERIOD|" .env
-  rm -f .env.bak
-fi
+new_active = sys.argv[1]
+prev_active = sys.argv[2]
+grace = sys.argv[3]
+
+with open('.env', 'r') as f:
+    lines = f.readlines()
+
+has_prev = any(l.startswith('JWT_KID_PREVIOUS=') for l in lines)
+new_lines = []
+for line in lines:
+    if line.startswith('JWT_KID_PREVIOUS='):
+        new_lines.append(f'JWT_KID_PREVIOUS={prev_active}\n')
+    elif line.startswith('JWT_KID_ACTIVE='):
+        if not has_prev:
+            new_lines.append(f'JWT_KID_PREVIOUS={prev_active}\n')
+            has_prev = True
+        new_lines.append(f'JWT_KID_ACTIVE={new_active}\n')
+    elif line.startswith('JWT_KID_GRACE_PERIOD_SEC='):
+        new_lines.append(f'JWT_KID_GRACE_PERIOD_SEC={grace}\n')
+    else:
+        new_lines.append(line)
+
+with open('.env', 'w') as f:
+    f.writelines(new_lines)
+EOF
 
 log_info "JWT_KID_ACTIVE frissítve"
 log_info "JWT_KID_PREVIOUS a régi active-re állítva (grace period: $GRACE_PERIOD sec)"

@@ -87,5 +87,6 @@ class AuditRetentionJobTest {
 
     verify(auditLogRepository).findByTimestampBefore(any(Instant.class));
     verify(auditLogRepository).deleteByTimestampBefore(any(Instant.class));
+    verify(auditLogRepository, org.mockito.Mockito.never()).deleteAll(any());
   }
 }

@@ -2,6 +2,7 @@ package hu.tanszek.device.device;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import hu.tanszek.device.assignment.entity.AssignmentStatus;
 import hu.tanszek.device.assignment.entity.DeviceAssignment;
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.user.entity.AppUser;
@@ -48,7 +49,8 @@ public final class DeviceSpecifications {
           .where(
               cb.and(
                   cb.equal(subRoot.get("toUser").get("id"), currentUserId),
-                  cb.equal(subRoot.get("active"), true),
+                  cb.equal(subRoot.get("status"), AssignmentStatus.ASSIGNED),
+                  cb.isNull(subRoot.get("unassignDate")),
                   cb.equal(subRoot.get("device").get("id"), root.get("id"))));
 
       return cb.exists(subquery);
@@ -81,7 +83,8 @@ public final class DeviceSpecifications {
                       cb.equal(
                           subRoot.get("toLocation").get("id"),
                           currentUser.getOfficeLocation().getId()),
-                      cb.equal(subRoot.get("active"), true),
+                      cb.equal(subRoot.get("status"), AssignmentStatus.ASSIGNED),
+                      cb.isNull(subRoot.get("unassignDate")),
                       cb.equal(subRoot.get("device").get("id"), root.get("id"))));
 
           return cb.exists(subquery);

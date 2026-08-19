@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 
 import hu.tanszek.device.assignment.entity.AssignmentStatus;
 import hu.tanszek.device.assignment.entity.DeviceAssignment;
@@ -20,6 +21,7 @@ import hu.tanszek.device.auth.entity.Permission;
 import hu.tanszek.device.auth.entity.Role;
 import hu.tanszek.device.auth.repository.PermissionRepository;
 import hu.tanszek.device.auth.repository.RoleRepository;
+import hu.tanszek.device.crypto.CryptoService;
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.device.entity.DeviceStatus;
 import hu.tanszek.device.device.repository.DeviceRepository;
@@ -48,7 +50,8 @@ class EntityTypeRegistryTest {
   @Mock private DeviceAttachmentRepository attachmentRepository;
   @Mock private RoleRepository roleRepository;
   @Mock private PermissionRepository permissionRepository;
-
+  @Mock private CryptoService cryptoService;
+  @Mock private Argon2PasswordEncoder passwordEncoder;
   @InjectMocks private EntityTypeRegistry registry;
 
   @BeforeEach
@@ -459,13 +462,17 @@ class EntityTypeRegistryTest {
     when(roleRepository.save(any(Role.class))).thenAnswer(i -> i.getArgument(0));
     when(userRepository.findByEmailHash(any())).thenReturn(Optional.empty());
     when(userRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
+    when(cryptoService.encrypt(any())).thenAnswer(i -> "enc:" + i.getArgument(0));
+    when(passwordEncoder.encode(any())).thenReturn("hashed-pwd");
 
     Object loc =
         registry.recreateEntity("Location", 1L, Map.of("name", "Room 404", "type", "CLASSROOM"));
     assertThat(loc).isInstanceOf(Location.class);
 
-    Object sw = registry.recreateEntity("Software", 2L, Map.of("name", "IntelliJ"));
+    Object sw =
+        registry.recreateEntity("Software", 2L, Map.of("name", "IntelliJ", "licenseKey", "KEY123"));
     assertThat(sw).isInstanceOf(Software.class);
+    assertThat(((Software) sw).getLicenseKeyEncrypted()).isEqualTo("enc:KEY123");
 
     Object role = registry.recreateEntity("Role", 3L, Map.of("name", "ROLE_DEV"));
     assertThat(role).isInstanceOf(Role.class);
@@ -474,5 +481,9 @@ class EntityTypeRegistryTest {
         registry.recreateEntity(
             "User", 4L, Map.of("email", "test@tanszek.local", "emailHash", "h123"));
     assertThat(user).isInstanceOf(AppUser.class);
+    AppUser appUser = (AppUser) user;
+    assertThat(appUser.getEmailEncrypted()).isEqualTo("enc:test@tanszek.local");
+    assertThat(appUser.getPasswordHash()).isEqualTo("hashed-pwd");
+    assertThat(appUser.getPasswordChangedAt()).isNotNull();
   }
 }

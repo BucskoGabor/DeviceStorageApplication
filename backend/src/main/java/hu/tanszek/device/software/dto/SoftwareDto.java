@@ -1,5 +1,7 @@
 package hu.tanszek.device.software.dto;
 
+import java.util.List;
+
 import hu.tanszek.device.software.entity.Software;
 
 /**
@@ -13,7 +15,13 @@ import hu.tanszek.device.software.entity.Software;
  * <p>A licence key soha nem kerül a wire-ra titkosítatlan formában, ha a user nem jogosult — ez
  * defense-in-depth a DTO szintjén.
  */
-public record SoftwareDto(Long id, String name, String licenseKey, String licenseKeyMasked) {
+public record SoftwareDto(
+    Long id,
+    String name,
+    String licenseKey,
+    String licenseKeyMasked,
+    int installedDeviceCount,
+    List<String> deviceInventoryNumbers) {
   /**
    * Maszkolt formátum előállítása a titkosított blob alapján. Az encrypted string utolsó 4
    * karakterét használja (base64 padding figyelmen kívül hagyva).
@@ -26,14 +34,31 @@ public record SoftwareDto(Long id, String name, String licenseKey, String licens
     return "****-****-****-" + tail;
   }
 
-  public static SoftwareDto fromEntity(Software software, boolean canViewKey, String decryptedKey) {
+  public static SoftwareDto fromEntity(
+      Software software,
+      boolean canViewKey,
+      String decryptedKey,
+      int installedDeviceCount,
+      List<String> deviceInventoryNumbers) {
     if (canViewKey) {
-      return new SoftwareDto(software.getId(), software.getName(), decryptedKey, null);
+      return new SoftwareDto(
+          software.getId(),
+          software.getName(),
+          decryptedKey,
+          null,
+          installedDeviceCount,
+          deviceInventoryNumbers != null ? deviceInventoryNumbers : List.of());
     }
     return new SoftwareDto(
         software.getId(),
         software.getName(),
         null,
-        maskFromEncrypted(software.getLicenseKeyEncrypted()));
+        maskFromEncrypted(software.getLicenseKeyEncrypted()),
+        installedDeviceCount,
+        deviceInventoryNumbers != null ? deviceInventoryNumbers : List.of());
+  }
+
+  public static SoftwareDto fromEntity(Software software, boolean canViewKey, String decryptedKey) {
+    return fromEntity(software, canViewKey, decryptedKey, 0, List.of());
   }
 }

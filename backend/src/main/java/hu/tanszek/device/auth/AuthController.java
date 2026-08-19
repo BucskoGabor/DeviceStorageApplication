@@ -164,8 +164,9 @@ public class AuthController {
 
     try {
       RefreshTokenService.RotationResult rotated = refreshTokenService.rotate(refreshToken);
-      setRefreshTokenCookie(response, rotated.newPlainToken());
-
+      if (rotated.newPlainToken() != null) {
+        setRefreshTokenCookie(response, rotated.newPlainToken());
+      }
       // Access token a rotated refresh token user-jéhez (összes effektív jogosultsággal)
       AppUser user = rotated.newRefreshToken().getUser();
       String emailHash = user.getEmailHash();

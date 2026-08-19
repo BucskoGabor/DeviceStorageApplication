@@ -32,6 +32,11 @@ BACKUP_CONTAINER="${BACKUP_CONTAINER:-device-storage-backup}"
 POSTGRES_DB="${POSTGRES_DB:-tanszek_db}"
 POSTGRES_USER="${POSTGRES_USER:-admin}"
 
+cleanup_on_error() {
+  log_err "An error occurred during restore. Ensuring backend container is started..."
+  docker start "$BACKEND_CONTAINER" 2>/dev/null || true
+}
+trap cleanup_on_error ERR
 # ===== Backup fájl keresése =====
 BACKUP_FILE=""
 
@@ -65,16 +70,10 @@ docker exec "$POSTGRES_CONTAINER" \
 
 # ===== Restore =====
 log_info "Restoring backup..."
-docker exec -i "$POSTGRES_CONTAINER" \
-  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < <(docker exec -i "$BACKUP_CONTAINER" cat "$BACKUP_FILE")
+docker exec -i "$BACKUP_CONTAINER" cat "$BACKUP_FILE" | \
+  docker exec -i "$POSTGRES_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 
-if [ $? -eq 0 ]; then
-  log_info "Restore completed successfully"
-else
-  log_err "Restore failed"
-  docker start "$BACKEND_CONTAINER" 2>/dev/null || true
-  exit 1
-fi
+log_info "Restore completed successfully"
 
 # ===== Backend indítása =====
 log_info "Starting backend container..."

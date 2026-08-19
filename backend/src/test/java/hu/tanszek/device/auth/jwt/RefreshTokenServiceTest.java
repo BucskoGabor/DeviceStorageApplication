@@ -79,6 +79,22 @@ class RefreshTokenServiceTest {
   }
 
   @Test
+  void rotate_concurrentRefreshWithinGracePeriod_returnsReplacedToken() {
+    AppUser user = buildUser();
+    RefreshToken successor = buildToken(user, "hashSuccessor", false, false);
+    RefreshToken revoked = buildToken(user, "hash123", true, false);
+    revoked.setReplacedBy(successor);
+    revoked.setUpdatedAt(Instant.now());
+    when(refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(revoked));
+
+    RefreshTokenService.RotationResult result = service.rotate("plain");
+
+    assertThat(result.newRefreshToken()).isSameAs(successor);
+    assertThat(result.newPlainToken()).isNull();
+    verify(refreshTokenRepository, never()).save(any());
+  }
+
+  @Test
   void rotate_expiredTokenIsRevokedAndThrows() {
     AppUser user = buildUser();
     RefreshToken expired = buildToken(user, "hash456", false, true);

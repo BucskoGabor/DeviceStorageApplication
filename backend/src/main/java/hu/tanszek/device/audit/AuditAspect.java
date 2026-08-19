@@ -1,22 +1,16 @@
 package hu.tanszek.device.audit;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import hu.tanszek.device.audit.entity.AuditLog;
-import hu.tanszek.device.audit.repository.AuditLogRepository;
-import hu.tanszek.device.common.ScheduledJobMonitoring;
 import hu.tanszek.device.crypto.CryptoService;
 import hu.tanszek.device.user.repository.AppUserRepository;
 
@@ -65,12 +59,11 @@ public class AuditAspect {
           "targetUserId",
           "targetLocationId");
 
-  private final AuditLogRepository auditLogRepository;
   private final EntityTypeRegistry entityTypeRegistry;
   private final ObjectMapper objectMapper;
-  private final ScheduledJobMonitoring jobMonitoring;
   private final AppUserRepository userRepository;
   private final CryptoService cryptoService;
+  private final AsyncAuditLogService asyncAuditLogService;
 
   /**
    * @Around advice — minden AuditTarget annotációval ellátott service metódusra.
@@ -105,7 +98,7 @@ public class AuditAspect {
       result = joinPoint.proceed();
     } catch (Throwable t) {
       // Hiba esetén is logolunk (action='failed')
-      saveAuditLog(
+      asyncAuditLogService.saveAuditLog(
           entityType,
           entityId,
           beforeState,
@@ -122,7 +115,7 @@ public class AuditAspect {
     Object afterEntityId = entityId != null ? entityId : extractEntityIdFromState(afterState);
 
     // 4. Audit log mentés (csak ha van változás vagy fontos action)
-    saveAuditLog(
+    asyncAuditLogService.saveAuditLog(
         entityType,
         afterEntityId,
         beforeState,
@@ -288,119 +281,6 @@ public class AuditAspect {
       log.debug("Failed to extract request payload: {}", e.getMessage());
     }
     return null;
-  }
-
-  /**
-   * Audit log bejegyzés mentése @Async.
-   *
-   * <p>A {@code userEmail}-et a hívó (@Around advice) szinkronban olvassa ki a SecurityContext-ből,
-   * mert az @Async szál nem örökli a ThreadLocal SecurityContext-et. Ha itt hívnánk, minden rekord
-   * "anonymous" lenne.
-   */
-  @Async
-  public void saveAuditLog(
-      String entityType,
-      Object entityId,
-      Object beforeState,
-      Object afterState,
-      String action,
-      String requestPayload,
-      String errorMessage,
-      String userEmail) {
-    jobMonitoring.run(
-        "audit-log-write",
-        () -> {
-          try {
-            // Diff JSON összeállítása
-            String changesJson = buildChangesJson(beforeState, afterState);
-            if (changesJson == null) {
-              changesJson = "{}";
-            }
-
-            AuditLog auditLog =
-                AuditLog.builder()
-                    .timestamp(Instant.now())
-                    .userEmail(userEmail != null ? userEmail : "anonymous")
-                    .endpoint(action != null ? action : "unknown")
-                    .method("INTERNAL")
-                    .requestPayload(requestPayload)
-                    .changesJson(changesJson)
-                    .httpStatus(errorMessage != null ? 500 : 200)
-                    .entityType(entityType)
-                    .entityId(entityId != null ? ((Number) entityId).longValue() : null)
-                    .build();
-
-            auditLogRepository.save(auditLog);
-
-            log.info(
-                "Audit log saved: {} on {} (id={}) by {}", action, entityType, entityId, userEmail);
-          } catch (Exception e) {
-            log.error("Failed to save audit log for {} {} id={}", action, entityType, entityId, e);
-            throw e; // A monitoring wrapper elkapja és alert-et küld
-          }
-        });
-  }
-
-  /**
-   * changes_json összeállítása: {before: {...}, after: {...}}.
-   *
-   * <p>Az érzékeny mezőket maszkolja (case-insensitive substring match).
-   */
-  @SuppressWarnings("unchecked")
-  private String buildChangesJson(Object beforeState, Object afterState) {
-    try {
-      Map<String, Object> beforeMap =
-          beforeState instanceof Map
-              ? (Map<String, Object>) beforeState
-              : entityTypeRegistry.toJsonMap(beforeState);
-      Map<String, Object> afterMap =
-          afterState instanceof Map
-              ? (Map<String, Object>) afterState
-              : entityTypeRegistry.toJsonMap(afterState);
-
-      if (Objects.equals(beforeMap, afterMap)) {
-        return null;
-      }
-
-      Map<String, Object> changes = new HashMap<>();
-      changes.put("before", beforeMap != null ? maskSensitiveFields(beforeMap) : null);
-      changes.put("after", afterMap != null ? maskSensitiveFields(afterMap) : null);
-
-      return objectMapper.writeValueAsString(changes);
-    } catch (Exception e) {
-      log.warn("Failed to build changes_json", e);
-      return null;
-    }
-  }
-
-  /**
-   * Érzékeny mezők maszkolása: ***-re cserélés case-insensitive substring match-csel.
-   *
-   * <p>Példák: password → ***, passwordHash → ***, tokenHash → ***, licenseKeyEncrypted → ***.
-   */
-  private Map<String, Object> maskSensitiveFields(Map<String, Object> source) {
-    Map<String, Object> masked = new HashMap<>();
-    for (Map.Entry<String, Object> entry : source.entrySet()) {
-      String key = entry.getKey();
-      String keyLower = key.toLowerCase().replace("_", "").replace("-", "");
-
-      boolean isSensitive = false;
-      if (!keyLower.contains("mustchangepassword")) {
-        for (String sensitive : SENSITIVE_FIELDS) {
-          if (keyLower.contains(sensitive.toLowerCase().replace("_", ""))) {
-            isSensitive = true;
-            break;
-          }
-        }
-      }
-
-      if (isSensitive) {
-        masked.put(key, "***");
-      } else {
-        masked.put(key, entry.getValue());
-      }
-    }
-    return masked;
   }
 
   /** Current user email lekérése a SecurityContext-ből. */

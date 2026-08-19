@@ -205,7 +205,7 @@ export function LocationsPage() {
         },
       },
     ],
-    [t, canUpdate, canDelete, deleteMutation, navigate]
+    [t, canUpdate, canDelete, deleteMutation, navigate, tree]
   )
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault()

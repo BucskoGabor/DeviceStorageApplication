@@ -129,10 +129,8 @@ public class AuditRetentionJob {
       }
     }
 
-    // Archiválás utáni DB törlés: az exportált rekordok eltávolítása
     int archivedCount = recordsToArchive.size();
-    auditLogRepository.deleteAll(recordsToArchive);
-    log.info("Archived and deleted {} audit records from DB (cutoff: {})", archivedCount, cutoff);
+    log.info("Archived {} audit records (cutoff: {})", archivedCount, cutoff);
   }
 
   /** NDJSON.gz fájl kiírása az archive mappába. */

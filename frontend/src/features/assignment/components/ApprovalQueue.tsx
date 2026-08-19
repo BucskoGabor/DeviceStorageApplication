@@ -237,6 +237,16 @@ export function ApprovalQueue() {
                 {pendingAssignments.map((a: DeviceAssignment) => {
                   const isPendingAssignment = a.status === 'PENDING_ASSIGNMENT'
                   const canActOnRow = canApproveAssignment
+                  const isApproving =
+                    approveAssignmentMutation.isPending &&
+                    approveAssignmentMutation.variables === a.id
+                  const isUnassignApproving =
+                    approveUnassignmentMutation.isPending &&
+                    approveUnassignmentMutation.variables === a.id
+                  const isRejecting =
+                    rejectAssignmentMutation.isPending &&
+                    rejectAssignmentMutation.variables === a.id
+                  const isRowMutating = isApproving || isUnassignApproving || isRejecting
 
                   return (
                     <TableRow key={a.id}>
@@ -280,10 +290,7 @@ export function ApprovalQueue() {
                             <Button
                               size="sm"
                               variant="default"
-                              disabled={
-                                approveAssignmentMutation.isPending ||
-                                rejectAssignmentMutation.isPending
-                              }
+                              disabled={isRowMutating}
                               onClick={() => approveAssignmentMutation.mutate(a.id)}
                             >
                               <Check className="mr-1 h-4 w-4" />
@@ -295,10 +302,7 @@ export function ApprovalQueue() {
                             <Button
                               size="sm"
                               variant="default"
-                              disabled={
-                                approveUnassignmentMutation.isPending ||
-                                rejectAssignmentMutation.isPending
-                              }
+                              disabled={isRowMutating}
                               onClick={() => approveUnassignmentMutation.mutate(a.id)}
                             >
                               <Check className="mr-1 h-4 w-4" />
@@ -310,11 +314,7 @@ export function ApprovalQueue() {
                             <Button
                               size="sm"
                               variant="destructive"
-                              disabled={
-                                approveAssignmentMutation.isPending ||
-                                approveUnassignmentMutation.isPending ||
-                                rejectAssignmentMutation.isPending
-                              }
+                              disabled={isRowMutating}
                               onClick={() => rejectAssignmentMutation.mutate(a.id)}
                             >
                               <X className="mr-1 h-4 w-4" />
@@ -360,70 +360,74 @@ export function ApprovalQueue() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pendingMaintenance.map((device: Device) => (
-                  <TableRow key={device.id}>
-                    <TableCell className="font-mono text-xs font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <span>{device.inventoryNumber}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => navigate(`/devices/${device.id}`)}
-                          title={t('common.details', 'Részletek')}
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs">{device.type}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {device.currentLocation?.name ?? '—'}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate text-xs font-medium text-amber-700 dark:text-amber-300">
-                      {device.statusReason || '—'}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(device.updatedAt || device.createdAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        {canApproveMaintenance ? (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              disabled={
-                                approveMaintenanceMutation.isPending ||
-                                rejectMaintenanceMutation.isPending
-                              }
-                              onClick={() => approveMaintenanceMutation.mutate(device.id)}
-                            >
-                              <Check className="mr-1 h-4 w-4" />
-                              {t('devices.approveMaintenance', 'Jóváhagyás')}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              disabled={
-                                approveMaintenanceMutation.isPending ||
-                                rejectMaintenanceMutation.isPending
-                              }
-                              onClick={() => rejectMaintenanceMutation.mutate(device.id)}
-                            >
-                              <X className="mr-1 h-4 w-4" />
-                              {t('devices.rejectMaintenance', 'Elutasítás')}
-                            </Button>
-                          </>
-                        ) : (
-                          <span className="text-xs italic text-muted-foreground">
-                            {t('common.readOnly', 'Csak megtekintés')}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {pendingMaintenance.map((device: Device) => {
+                  const isApproving =
+                    approveMaintenanceMutation.isPending &&
+                    approveMaintenanceMutation.variables === device.id
+                  const isRejecting =
+                    rejectMaintenanceMutation.isPending &&
+                    rejectMaintenanceMutation.variables === device.id
+                  const isRowMutating = isApproving || isRejecting
+
+                  return (
+                    <TableRow key={device.id}>
+                      <TableCell className="font-mono text-xs font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <span>{device.inventoryNumber}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => navigate(`/devices/${device.id}`)}
+                            title={t('common.details', 'Részletek')}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">{device.type}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {device.currentLocation?.name ?? '—'}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate text-xs font-medium text-amber-700 dark:text-amber-300">
+                        {device.statusReason || '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(device.updatedAt || device.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          {canApproveMaintenance ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                disabled={isRowMutating}
+                                onClick={() => approveMaintenanceMutation.mutate(device.id)}
+                              >
+                                <Check className="mr-1 h-4 w-4" />
+                                {t('devices.approveMaintenance', 'Jóváhagyás')}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={isRowMutating}
+                                onClick={() => rejectMaintenanceMutation.mutate(device.id)}
+                              >
+                                <X className="mr-1 h-4 w-4" />
+                                {t('devices.rejectMaintenance', 'Elutasítás')}
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-xs italic text-muted-foreground">
+                              {t('common.readOnly', 'Csak megtekintés')}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
@@ -452,70 +456,74 @@ export function ApprovalQueue() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pendingDisposal.map((device: Device) => (
-                  <TableRow key={device.id}>
-                    <TableCell className="font-mono text-xs font-medium">
-                      <div className="flex items-center gap-1.5">
-                        <span>{device.inventoryNumber}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => navigate(`/devices/${device.id}`)}
-                          title={t('common.details', 'Részletek')}
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs">{device.type}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {device.currentLocation?.name ?? '—'}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate text-xs font-medium text-rose-700 dark:text-rose-300">
-                      {device.statusReason || '—'}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(device.updatedAt || device.createdAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        {canApproveDisposal ? (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              disabled={
-                                approveDisposalMutation.isPending ||
-                                rejectDisposalMutation.isPending
-                              }
-                              onClick={() => approveDisposalMutation.mutate(device.id)}
-                            >
-                              <Check className="mr-1 h-4 w-4" />
-                              {t('devices.approveDisposal', 'Jóváhagyás')}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              disabled={
-                                approveDisposalMutation.isPending ||
-                                rejectDisposalMutation.isPending
-                              }
-                              onClick={() => rejectDisposalMutation.mutate(device.id)}
-                            >
-                              <X className="mr-1 h-4 w-4" />
-                              {t('devices.rejectDisposal', 'Elutasítás')}
-                            </Button>
-                          </>
-                        ) : (
-                          <span className="text-xs italic text-muted-foreground">
-                            {t('common.readOnly', 'Csak megtekintés')}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {pendingDisposal.map((device: Device) => {
+                  const isApproving =
+                    approveDisposalMutation.isPending &&
+                    approveDisposalMutation.variables === device.id
+                  const isRejecting =
+                    rejectDisposalMutation.isPending &&
+                    rejectDisposalMutation.variables === device.id
+                  const isRowMutating = isApproving || isRejecting
+
+                  return (
+                    <TableRow key={device.id}>
+                      <TableCell className="font-mono text-xs font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <span>{device.inventoryNumber}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => navigate(`/devices/${device.id}`)}
+                            title={t('common.details', 'Részletek')}
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">{device.type}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {device.currentLocation?.name ?? '—'}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate text-xs font-medium text-rose-700 dark:text-rose-300">
+                        {device.statusReason || '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(device.updatedAt || device.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          {canApproveDisposal ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                disabled={isRowMutating}
+                                onClick={() => approveDisposalMutation.mutate(device.id)}
+                              >
+                                <Check className="mr-1 h-4 w-4" />
+                                {t('devices.approveDisposal', 'Jóváhagyás')}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={isRowMutating}
+                                onClick={() => rejectDisposalMutation.mutate(device.id)}
+                              >
+                                <X className="mr-1 h-4 w-4" />
+                                {t('devices.rejectDisposal', 'Elutasítás')}
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-xs italic text-muted-foreground">
+                              {t('common.readOnly', 'Csak megtekintés')}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}

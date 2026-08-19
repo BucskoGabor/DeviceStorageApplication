@@ -1,12 +1,15 @@
 package hu.tanszek.device.audit;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import hu.tanszek.device.assignment.entity.DeviceAssignment;
@@ -17,6 +20,7 @@ import hu.tanszek.device.auth.entity.Permission;
 import hu.tanszek.device.auth.entity.Role;
 import hu.tanszek.device.auth.repository.PermissionRepository;
 import hu.tanszek.device.auth.repository.RoleRepository;
+import hu.tanszek.device.crypto.CryptoService;
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.device.repository.DeviceRepository;
 import hu.tanszek.device.location.entity.Location;
@@ -47,6 +51,8 @@ public class EntityTypeRegistry {
   private final DeviceAttachmentRepository attachmentRepository;
   private final RoleRepository roleRepository;
   private final PermissionRepository permissionRepository;
+  private final CryptoService cryptoService;
+  private final Argon2PasswordEncoder passwordEncoder;
 
   /**
    * Entity lookup az entity_type string alapján.
@@ -427,9 +433,20 @@ public class EntityTypeRegistry {
       }
       case "Software" -> {
         String name = (String) fields.get("name");
+        String rawKey = null;
+        if (fields.get("licenseKey") != null) {
+          rawKey = fields.get("licenseKey").toString();
+        } else if (fields.get("licenseKeyEncrypted") != null) {
+          rawKey = fields.get("licenseKeyEncrypted").toString();
+        }
+        if (rawKey == null || rawKey.isBlank() || rawKey.contains("***")) {
+          rawKey = "RESTORED-KEY-" + (entityId != null ? entityId : System.currentTimeMillis());
+        }
+        String encryptedKey = cryptoService != null ? cryptoService.encrypt(rawKey) : rawKey;
         Software software =
             Software.builder()
                 .name(name != null && !"***".equals(name) ? name : "Restored Software")
+                .licenseKeyEncrypted(encryptedKey)
                 .build();
         return softwareRepository.save(software);
       }
@@ -459,13 +476,31 @@ public class EntityTypeRegistry {
           throw new hu.tanszek.device.common.BusinessValidationException(
               "duplicateEmail", "Ezzel az email címmel már létezik felhasználó.");
         }
+        String rawEmail =
+            fields.get("email") != null
+                ? fields.get("email").toString()
+                : (fields.get("emailEncrypted") != null
+                    ? fields.get("emailEncrypted").toString()
+                    : "restored"
+                        + (entityId != null ? entityId : System.currentTimeMillis())
+                        + "@tanszek.local");
+        String emailEncrypted = cryptoService != null ? cryptoService.encrypt(rawEmail) : rawEmail;
+        String emailHashVal =
+            emailHash != null
+                ? emailHash
+                : (cryptoService != null
+                    ? cryptoService.sha256(rawEmail)
+                    : "restored_" + System.currentTimeMillis());
+        String randomPassword = UUID.randomUUID().toString();
+        String passwordHash =
+            passwordEncoder != null ? passwordEncoder.encode(randomPassword) : "$argon2id$restored";
+
         AppUser user =
             AppUser.builder()
-                .emailHash(emailHash != null ? emailHash : "restored_" + System.currentTimeMillis())
-                .emailEncrypted(
-                    fields.get("email") != null
-                        ? fields.get("email").toString()
-                        : "restored@tanszek.local")
+                .emailHash(emailHashVal)
+                .emailEncrypted(emailEncrypted)
+                .passwordHash(passwordHash)
+                .passwordChangedAt(Instant.now())
                 .active(true)
                 .mustChangePassword(true)
                 .failedLoginCount(0)

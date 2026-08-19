@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 class AuditAspectTest {
 
   private AuditAspect aspect;
+  private AsyncAuditLogService asyncAuditLogService;
   private AuditLogRepository auditLogRepository;
   private EntityTypeRegistry entityTypeRegistry;
   private ScheduledJobMonitoring jobMonitoring;
@@ -53,21 +54,21 @@ class AuditAspectTest {
         .when(jobMonitoring)
         .run(eq("audit-log-write"), any(Runnable.class));
 
+    asyncAuditLogService =
+        new AsyncAuditLogService(
+            auditLogRepository, entityTypeRegistry, new ObjectMapper(), jobMonitoring);
+
     aspect =
         new AuditAspect(
-            auditLogRepository,
             entityTypeRegistry,
             new ObjectMapper(),
-            jobMonitoring,
             userRepository,
-            cryptoService);
+            cryptoService,
+            asyncAuditLogService);
   }
 
   @Test
-  void maskSensitiveFieldsReplacesPassword() throws Exception {
-    var method = AuditAspect.class.getDeclaredMethod("maskSensitiveFields", Map.class);
-    method.setAccessible(true);
-
+  void maskSensitiveFieldsReplacesPassword() {
     Map<String, Object> source = new HashMap<>();
     source.put("email", "admin@tanszek.local");
     source.put("password", "secret123");
@@ -76,8 +77,7 @@ class AuditAspectTest {
     source.put("licenseKey", "ABCD-1234");
     source.put("licenseKeyEncrypted", "encrypted...");
 
-    @SuppressWarnings("unchecked")
-    Map<String, Object> masked = (Map<String, Object>) method.invoke(aspect, source);
+    Map<String, Object> masked = asyncAuditLogService.maskSensitiveFields(source);
 
     assertThat(masked.get("email")).isEqualTo("admin@tanszek.local");
     assertThat(masked.get("password")).isEqualTo("***");
@@ -88,17 +88,13 @@ class AuditAspectTest {
   }
 
   @Test
-  void maskSensitiveFieldsIsCaseInsensitive() throws Exception {
-    var method = AuditAspect.class.getDeclaredMethod("maskSensitiveFields", Map.class);
-    method.setAccessible(true);
-
+  void maskSensitiveFieldsIsCaseInsensitive() {
     Map<String, Object> source = new HashMap<>();
     source.put("Password", "secret");
     source.put("TOKEN_HASH", "hash");
     source.put("License_Key_Encrypted", "enc");
 
-    @SuppressWarnings("unchecked")
-    Map<String, Object> masked = (Map<String, Object>) method.invoke(aspect, source);
+    Map<String, Object> masked = asyncAuditLogService.maskSensitiveFields(source);
 
     assertThat(masked.get("Password")).isEqualTo("***");
     assertThat(masked.get("TOKEN_HASH")).isEqualTo("***");
@@ -106,18 +102,14 @@ class AuditAspectTest {
   }
 
   @Test
-  void maskSensitiveFieldsKeepsNonSensitiveFields() throws Exception {
-    var method = AuditAspect.class.getDeclaredMethod("maskSensitiveFields", Map.class);
-    method.setAccessible(true);
-
+  void maskSensitiveFieldsKeepsNonSensitiveFields() {
     Map<String, Object> source = new HashMap<>();
     source.put("id", 1L);
     source.put("email", "test@x.com");
     source.put("active", true);
     source.put("name", "Tanterem 101");
 
-    @SuppressWarnings("unchecked")
-    Map<String, Object> masked = (Map<String, Object>) method.invoke(aspect, source);
+    Map<String, Object> masked = asyncAuditLogService.maskSensitiveFields(source);
 
     assertThat(masked.get("id")).isEqualTo(1L);
     assertThat(masked.get("email")).isEqualTo("test@x.com");
@@ -126,11 +118,7 @@ class AuditAspectTest {
   }
 
   @Test
-  void buildChangesJsonProducesBeforeAfterStructure() throws Exception {
-    var method =
-        AuditAspect.class.getDeclaredMethod("buildChangesJson", Object.class, Object.class);
-    method.setAccessible(true);
-
+  void buildChangesJsonProducesBeforeAfterStructure() {
     Map<String, Object> before = new HashMap<>();
     before.put("id", 1L);
     before.put("name", "Old Name");
@@ -139,7 +127,7 @@ class AuditAspectTest {
     after.put("id", 1L);
     after.put("name", "New Name");
 
-    String json = (String) method.invoke(aspect, before, after);
+    String json = asyncAuditLogService.buildChangesJson(before, after);
 
     assertThat(json).contains("\"before\"");
     assertThat(json).contains("\"after\"");
@@ -148,16 +136,12 @@ class AuditAspectTest {
   }
 
   @Test
-  void buildChangesJsonReturnsNullWhenBeforeAndAfterIdentical() throws Exception {
-    var method =
-        AuditAspect.class.getDeclaredMethod("buildChangesJson", Object.class, Object.class);
-    method.setAccessible(true);
-
+  void buildChangesJsonReturnsNullWhenBeforeAndAfterIdentical() {
     Map<String, Object> same = new HashMap<>();
     same.put("id", 1L);
     same.put("name", "Same");
 
-    String json = (String) method.invoke(aspect, same, same);
+    String json = asyncAuditLogService.buildChangesJson(same, same);
 
     assertThat(json).isNull();
   }
