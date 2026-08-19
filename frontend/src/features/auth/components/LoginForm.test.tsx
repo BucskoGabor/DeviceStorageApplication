@@ -34,9 +34,9 @@ describe('LoginForm', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByLabelText(/login\.email/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/login\.password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /login\.submit/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/Email/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Jelszó|Password/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Bejelentkezés|Sign in/i })).toBeInTheDocument()
   })
 
   it('submits credentials and navigates upon success', async () => {
@@ -55,9 +55,9 @@ describe('LoginForm', () => {
       </MemoryRouter>
     )
 
-    await user.type(screen.getByLabelText(/login\.email/i), 'admin@tanszek.local')
-    await user.type(screen.getByLabelText(/login\.password/i), 'ValidPass123!')
-    await user.click(screen.getByRole('button', { name: /login\.submit/i }))
+    await user.type(screen.getByLabelText(/Email/i), 'admin@tanszek.local')
+    await user.type(screen.getByLabelText(/Jelszó|Password/i), 'ValidPass123!')
+    await user.click(screen.getByRole('button', { name: /Bejelentkezés|Sign in/i }))
 
     await waitFor(() => {
       expect(authApi.login).toHaveBeenCalledWith({

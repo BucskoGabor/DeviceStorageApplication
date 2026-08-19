@@ -24,6 +24,12 @@ import { locationApi, type LocationTreeNode } from '@/features/location/api/loca
 import { useAuthStore } from '@/lib/store/authStore'
 import { toast } from 'sonner'
 import { resolveToastMessage } from '@/lib/utils/toastUtils'
+import { deviceKeys, locationKeys } from '@/lib/api/queryKeys'
+import {
+  invalidateAssignmentWorkflow,
+  invalidateMaintenanceWorkflow,
+  invalidateDisposalWorkflow,
+} from '@/lib/api/invalidation'
 
 const ALL_STATUSES: Device['status'][] = [
   'PENDING',
@@ -72,7 +78,7 @@ export function DevicesPage() {
   const pageSize = 20
 
   const { data, isLoading } = useQuery({
-    queryKey: ['devices', page, pageSize, search, statusFilter, typeFilter],
+    queryKey: deviceKeys.list({ page, pageSize, search, statusFilter, typeFilter }),
     queryFn: () =>
       deviceApi.findAll({
         page,
@@ -87,7 +93,7 @@ export function DevicesPage() {
     mutationFn: ({ id, payload }: { id: number; payload: Partial<Device> }) =>
       deviceApi.update(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: deviceKeys.all })
       setEditingDevice(null)
       toast.success(t('common.updated', 'Sikeresen frissítve'))
     },
@@ -100,8 +106,7 @@ export function DevicesPage() {
     mutationFn: ({ id, reason }: { id: number; reason: string }) =>
       deviceApi.requestMaintenance(id, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-maintenance'] })
+      invalidateMaintenanceWorkflow(queryClient)
       setMaintenanceDevice(null)
       setMaintenanceReason('')
       toast.success(
@@ -116,7 +121,7 @@ export function DevicesPage() {
   const returnFromMaintenanceMutation = useMutation({
     mutationFn: (id: number) => deviceApi.returnFromMaintenance(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      invalidateMaintenanceWorkflow(queryClient)
       toast.success(
         t('devices.returnedFromMaintenanceSuccess', 'Eszköz visszavéve karbantartásból')
       )
@@ -130,8 +135,7 @@ export function DevicesPage() {
     mutationFn: ({ id, reason }: { id: number; reason: string }) =>
       deviceApi.requestDisposal(id, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-disposal'] })
+      invalidateDisposalWorkflow(queryClient)
       setDisposeDeviceItem(null)
       setDisposeReason('')
       toast.success(t('devices.requestDisposalSuccess', 'Selejtezési kérelem sikeresen elküldve'))
@@ -144,7 +148,7 @@ export function DevicesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deviceApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: deviceKeys.all })
       setDeleteDeviceId(null)
       toast.success(t('common.deleted', 'Sikeresen törölve'))
     },
@@ -286,9 +290,8 @@ export function DevicesPage() {
   const [storageSelectorOpen, setStorageSelectorOpen] = useState(false)
 
   const { data: locationTree } = useQuery({
-    queryKey: ['locations', 'tree'],
+    queryKey: locationKeys.tree(),
     queryFn: () => locationApi.findTree(),
-    staleTime: 30000,
   })
 
   const selectedStorageLocation: LocationTreeNode | null = useMemo(() => {
@@ -307,8 +310,7 @@ export function DevicesPage() {
   const createMutation = useMutation({
     mutationFn: deviceApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      invalidateAssignmentWorkflow(queryClient)
       setIsCreateOpen(false)
       setInventoryNumber('')
       setStorageLocationId(null)

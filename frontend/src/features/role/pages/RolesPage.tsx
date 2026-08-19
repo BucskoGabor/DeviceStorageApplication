@@ -17,6 +17,7 @@ import { roleApi, type RoleDto } from '@/features/role/api/roleApi'
 import { RoleDialog } from '@/features/role/components/RoleDialog'
 import { useAuthStore } from '@/lib/store/authStore'
 import { toast } from 'sonner'
+import { roleKeys } from '@/lib/api/queryKeys'
 
 const SYSTEM_ROLES = ['ROLE_ADMIN', 'ROLE_TEACHER', 'ROLE_STUDENT']
 
@@ -31,19 +32,18 @@ export function RolesPage() {
   const [deletingRoleId, setDeletingRoleId] = useState<number | null>(null)
 
   const { data: roles = [], isLoading: isLoadingRoles } = useQuery({
-    queryKey: ['roles'],
+    queryKey: roleKeys.all,
     queryFn: roleApi.findAll,
   })
 
   const { data: allPermissions = [], isLoading: isLoadingPerms } = useQuery({
-    queryKey: ['permissions'],
+    queryKey: roleKeys.permissions(),
     queryFn: roleApi.getPermissions,
   })
-
   const createMutation = useMutation({
     mutationFn: (payload: { name: string; permissionIds: number[] }) => roleApi.create(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      queryClient.invalidateQueries({ queryKey: roleKeys.all })
       setIsCreateOpen(false)
       toast.success(t('roles.createdSuccess', 'Szerepkör sikeresen létrehozva'))
     },
@@ -62,7 +62,7 @@ export function RolesPage() {
       payload: { name?: string; permissionIds?: number[] }
     }) => roleApi.update(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      queryClient.invalidateQueries({ queryKey: roleKeys.all })
       setEditingRole(null)
       toast.success(t('roles.updatedSuccess', 'Szerepkör sikeresen frissítve'))
     },
@@ -75,7 +75,7 @@ export function RolesPage() {
   const deleteMutation = useMutation({
     mutationFn: roleApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      queryClient.invalidateQueries({ queryKey: roleKeys.all })
       setDeletingRoleId(null)
       toast.success(t('roles.deletedSuccess', 'Szerepkör sikeresen törölve'))
     },

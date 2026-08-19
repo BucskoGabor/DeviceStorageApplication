@@ -60,6 +60,11 @@ import { UnassignDialog } from '@/features/assignment/components/UnassignDialog'
 import { AssignmentHistoryTable } from '@/features/assignment/components/AssignmentHistoryTable'
 import { StatusBadge } from '@/features/assignment/components/StatusBadge'
 
+import { deviceKeys, assignmentKeys, softwareKeys } from '@/lib/api/queryKeys'
+import {
+  invalidateMaintenanceWorkflow,
+  invalidateDisposalWorkflow,
+} from '@/lib/api/invalidation'
 import { resolveToastMessage } from '@/lib/utils/toastUtils'
 
 /**
@@ -100,12 +105,12 @@ export function DeviceDetailPage() {
   const [uploadingFileName, setUploadingFileName] = useState<string | null>(null)
 
   const { data: device } = useQuery({
-    queryKey: ['device', deviceId],
+    queryKey: deviceKeys.detail(deviceId),
     queryFn: () => deviceApi.findById(deviceId),
   })
 
   const { data: assignmentsData } = useQuery({
-    queryKey: ['assignments', deviceId],
+    queryKey: assignmentKeys.byDevice(deviceId),
     queryFn: () => assignmentApi.findAssignmentsByDevice(deviceId, { page: 0, size: 50 }),
   })
 
@@ -119,9 +124,7 @@ export function DeviceDetailPage() {
   const requestMaintenanceMutation = useMutation({
     mutationFn: (reason: string) => deviceApi.requestMaintenance(deviceId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-maintenance'] })
+      invalidateMaintenanceWorkflow(queryClient)
       setMaintenanceDialogOpen(false)
       setMaintenanceReason('')
       toast.success(
@@ -136,10 +139,8 @@ export function DeviceDetailPage() {
   const approveMaintenanceMutation = useMutation({
     mutationFn: () => deviceApi.approveMaintenance(deviceId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-maintenance'] })
-      queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
+      invalidateMaintenanceWorkflow(queryClient)
+      queryClient.invalidateQueries({ queryKey: assignmentKeys.all })
       toast.success(t('devices.approveMaintenanceSuccess', 'Karbantartási kérelem jóváhagyva'))
     },
     onError: (error: any) => {
@@ -150,9 +151,7 @@ export function DeviceDetailPage() {
   const rejectMaintenanceMutation = useMutation({
     mutationFn: () => deviceApi.rejectMaintenance(deviceId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-maintenance'] })
+      invalidateMaintenanceWorkflow(queryClient)
       toast.success(t('devices.rejectMaintenanceSuccess', 'Karbantartási kérelem elutasítva'))
     },
     onError: (error: any) => {
@@ -163,8 +162,7 @@ export function DeviceDetailPage() {
   const returnFromMaintenanceMutation = useMutation({
     mutationFn: () => deviceApi.returnFromMaintenance(deviceId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      invalidateMaintenanceWorkflow(queryClient)
       toast.success(
         t('devices.returnedFromMaintenanceSuccess', 'Eszköz visszavéve karbantartásból')
       )
@@ -177,9 +175,7 @@ export function DeviceDetailPage() {
   const requestDisposalMutation = useMutation({
     mutationFn: (reason: string) => deviceApi.requestDisposal(deviceId, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-disposal'] })
+      invalidateDisposalWorkflow(queryClient)
       setDisposeDialogOpen(false)
       setDisposeReason('')
       toast.success(t('devices.requestDisposalSuccess', 'Selejtezési kérelem sikeresen elküldve'))
@@ -192,9 +188,7 @@ export function DeviceDetailPage() {
   const approveDisposalMutation = useMutation({
     mutationFn: () => deviceApi.approveDisposal(deviceId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-disposal'] })
+      invalidateDisposalWorkflow(queryClient)
       toast.success(t('devices.approveDisposalSuccess', 'Selejtezési kérelem jóváhagyva'))
     },
     onError: (error: any) => {
@@ -205,9 +199,7 @@ export function DeviceDetailPage() {
   const rejectDisposalMutation = useMutation({
     mutationFn: () => deviceApi.rejectDisposal(deviceId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-disposal'] })
+      invalidateDisposalWorkflow(queryClient)
       toast.success(t('devices.rejectDisposalSuccess', 'Selejtezési kérelem elutasítva'))
     },
     onError: (error: any) => {
@@ -218,7 +210,7 @@ export function DeviceDetailPage() {
   const deleteDeviceMutation = useMutation({
     mutationFn: () => deviceApi.delete(deviceId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      queryClient.invalidateQueries({ queryKey: deviceKeys.all })
       toast.success(t('common.deleted', 'Eszköz sikeresen törölve'))
       navigate('/devices')
     },
@@ -241,7 +233,7 @@ export function DeviceDetailPage() {
     mutationFn: (softwareId: number) => deviceApi.detachSoftware(deviceId, softwareId),
     onSuccess: (_data, softwareId) => {
       queryClient.invalidateQueries({ queryKey: ['device-software', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['software-devices', softwareId] })
+      queryClient.invalidateQueries({ queryKey: softwareKeys.devices(softwareId) })
       toast.success(t('common.success'))
     },
     onError: (error: any) => {
@@ -962,7 +954,7 @@ function AttachSoftwareDialog({
   const [selectedSoftwareId, setSelectedSoftwareId] = useState<string>('')
 
   const { data: allSoftwarePage } = useQuery({
-    queryKey: ['software', 'all'],
+    queryKey: softwareKeys.list({ page: 0, size: 50 }),
     queryFn: () => softwareApi.findAll({ page: 0, size: 50 }),
     enabled: open,
   })
@@ -971,7 +963,7 @@ function AttachSoftwareDialog({
     mutationFn: (softwareId: number) => deviceApi.attachSoftware(deviceId, softwareId),
     onSuccess: (_data, softwareId) => {
       queryClient.invalidateQueries({ queryKey: ['device-software', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['software-devices', softwareId] })
+      queryClient.invalidateQueries({ queryKey: softwareKeys.devices(softwareId) })
       toast.success(t('devices.softwareAttached'))
       setSelectedSoftwareId('')
       onOpenChange(false)

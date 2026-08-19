@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { locationApi } from '@/features/location/api/locationApi'
 import { StatusBadge } from '@/features/assignment/components/StatusBadge'
+import { locationKeys } from '@/lib/api/queryKeys'
 
 /**
  * LocationDetailPage — /admin/locations/:id route.
@@ -24,29 +25,30 @@ export function LocationDetailPage() {
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current')
 
   const { data: location, isLoading: locationLoading } = useQuery({
-    queryKey: ['location', locationId],
+    queryKey: locationKeys.detail(locationId),
     queryFn: () => locationApi.findById(locationId),
     enabled: Number.isFinite(locationId),
   })
 
   const { data: parentLocation } = useQuery({
-    queryKey: ['location', location?.parentId],
+    queryKey: location?.parentId
+      ? locationKeys.detail(location.parentId)
+      : (['locations', 'detail', 'disabled'] as const),
     queryFn: () => locationApi.findById(location!.parentId!),
     enabled: Boolean(location?.parentId),
   })
 
   const { data: currentDevices, isLoading: currentLoading } = useQuery({
-    queryKey: ['location-current-devices', locationId],
+    queryKey: locationKeys.devices(locationId),
     queryFn: () => locationApi.findCurrentDevices(locationId),
     enabled: Number.isFinite(locationId),
   })
 
   const { data: assignmentHistory, isLoading: historyLoading } = useQuery({
-    queryKey: ['location-assignment-history', locationId],
+    queryKey: locationKeys.history(locationId),
     queryFn: () => locationApi.findAssignmentHistory(locationId),
     enabled: Number.isFinite(locationId),
   })
-
   if (locationLoading) {
     return <p className="text-muted-foreground">{t('common.loading', 'Betöltés...')}...</p>
   }

@@ -8,6 +8,7 @@ import { authApi } from '@/features/auth/api/authApi'
 import { userApi } from '@/features/user/api/userApi'
 import { assignmentApi } from '@/features/assignment/api/assignmentApi'
 import { useAuthStore } from '@/lib/store/authStore'
+import { authKeys, userKeys, deviceKeys, assignmentKeys } from '@/lib/api/queryKeys'
 
 /**
  * MyDashboardPage — a bejelentkezett user saját dashboardja.
@@ -27,27 +28,26 @@ export function MyDashboardPage({ children }: { children?: React.ReactNode }) {
     permissions.includes('DEVICE_DISPOSE_APPROVE')
 
   const { data: me, isLoading: isMeLoading } = useQuery({
-    queryKey: ['me'],
+    queryKey: authKeys.me(),
     queryFn: () => authApi.me(),
   })
 
   const { data: myUserDetail, isLoading: isUserDetailLoading } = useQuery({
-    queryKey: ['user-detail', me?.id],
+    queryKey: me?.id ? userKeys.detail(me.id) : (['users', 'detail', 'disabled'] as const),
     queryFn: () => userApi.findById(me!.id),
     enabled: Boolean(me?.id),
   })
 
   const { data: devicesData, isLoading: isDevicesLoading } = useQuery({
-    queryKey: ['my-devices-summary'],
+    queryKey: deviceKeys.list({ page: 0, size: 5 }),
     queryFn: () => deviceApi.findAll({ page: 0, size: 5 }),
   })
 
   const { data: pendingAssignments, isLoading: isPendingLoading } = useQuery({
-    queryKey: ['pending-assignments-summary'],
+    queryKey: assignmentKeys.pending(),
     queryFn: () => assignmentApi.findPendingAssignments(),
     enabled: canViewApprovals,
   })
-
   const devices = devicesData?.content ?? []
   const office = myUserDetail?.officeLocation ?? myUserDetail?.officeLocationSummary
 

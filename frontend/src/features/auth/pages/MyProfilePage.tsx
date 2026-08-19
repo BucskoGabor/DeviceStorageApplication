@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { authApi } from '@/features/auth/api/authApi'
+import { authKeys } from '@/lib/api/queryKeys'
 import { PasswordChangeForm } from '@/features/auth/components/PasswordChangeForm'
 
 /**
@@ -25,9 +26,8 @@ export function MyProfilePage() {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
 
   const { data: me, isLoading } = useQuery({
-    queryKey: ['me'],
+    queryKey: authKeys.me(),
     queryFn: () => authApi.me(),
-    staleTime: 60000,
   })
 
   if (isLoading) {

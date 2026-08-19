@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { locationApi, type LocationTreeNode } from '../api/locationApi'
 import { useQuery } from '@tanstack/react-query'
+import { locationKeys } from '@/lib/api/queryKeys'
 
 export interface LocationTreeSelectorProps {
   open: boolean
@@ -70,10 +71,9 @@ export function LocationTreeSelector({
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
 
   const { data: tree, isLoading } = useQuery({
-    queryKey: ['locations', 'tree'],
+    queryKey: locationKeys.tree(),
     queryFn: () => locationApi.findTree(),
     enabled: open,
-    staleTime: 30000,
   })
 
   const toggleExpanded = (id: number) => {

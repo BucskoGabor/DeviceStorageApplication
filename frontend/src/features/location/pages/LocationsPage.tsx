@@ -26,6 +26,7 @@ import {
   LocationTreeSelector,
   findLocationNode,
 } from '@/features/location/components/LocationTreeSelector'
+import { locationKeys } from '@/lib/api/queryKeys'
 type ViewMode = 'list' | 'tree'
 export function LocationsPage() {
   const { t } = useTranslation()
@@ -54,18 +55,18 @@ export function LocationsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const pageSize = 20
   const { data, isLoading } = useQuery({
-    queryKey: ['locations', page, pageSize],
+    queryKey: locationKeys.list({ page, pageSize }),
     queryFn: () => locationApi.findAll({ page, size: pageSize }),
   })
   const { data: tree, isLoading: treeLoading } = useQuery({
-    queryKey: ['locations', 'tree'],
+    queryKey: locationKeys.tree(),
     queryFn: () => locationApi.findTree(),
     enabled: true,
   })
   const createMutation = useMutation({
     mutationFn: locationApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['locations'] })
+      queryClient.invalidateQueries({ queryKey: locationKeys.all })
       setIsCreateOpen(false)
       setName('')
       setParentId(null)
@@ -86,7 +87,7 @@ export function LocationsPage() {
       payload: Parameters<typeof locationApi.update>[1]
     }) => locationApi.update(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['locations'] })
+      queryClient.invalidateQueries({ queryKey: locationKeys.all })
       setEditingLocation(null)
       toast.success(t('common.updated', 'Sikeresen frissítve'))
     },
@@ -98,7 +99,7 @@ export function LocationsPage() {
   const deleteMutation = useMutation({
     mutationFn: locationApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['locations'] })
+      queryClient.invalidateQueries({ queryKey: locationKeys.all })
       toast.success(t('common.deleted', 'Sikeresen törölve'))
     },
     onError: (error: any) => {

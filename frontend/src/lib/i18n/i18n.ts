@@ -22,7 +22,7 @@ i18n.use(initReactI18next).init({
     hu: { translation: hu },
     en: { translation: en },
   },
-  lng: localStorage.getItem('device-storage-locale') ?? navigator.language.split('-')[0] ?? 'hu',
+  lng: (typeof localStorage !== 'undefined' ? localStorage.getItem('device-storage-locale') : null) ?? (typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : null) ?? 'hu',
   fallbackLng: 'hu',
   debug: import.meta.env.DEV,
   interpolation: {

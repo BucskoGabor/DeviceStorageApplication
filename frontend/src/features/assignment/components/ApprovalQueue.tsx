@@ -19,6 +19,12 @@ import { assignmentApi, type DeviceAssignment } from '../api/assignmentApi'
 import { deviceApi, type Device } from '@/features/device/api/deviceApi'
 import { StatusBadge } from './StatusBadge'
 import { useAuthStore } from '@/lib/store/authStore'
+import { assignmentKeys, maintenanceKeys, disposalKeys } from '@/lib/api/queryKeys'
+import {
+  invalidateAssignmentWorkflow,
+  invalidateMaintenanceWorkflow,
+  invalidateDisposalWorkflow,
+} from '@/lib/api/invalidation'
 
 /**
  * ApprovalQueue — Jóváhagyásra váró kérelmek listája:
@@ -44,14 +50,14 @@ export function ApprovalQueue() {
 
   // 1. Assignments query
   const { data: pendingAssignments = [], isLoading: isLoadingAssignments } = useQuery({
-    queryKey: ['pending-assignments'],
+    queryKey: assignmentKeys.pending(),
     queryFn: () => assignmentApi.findPendingAssignments(),
     refetchInterval: 30000,
   })
 
   // 2. Maintenance requests query
   const { data: pendingMaintenance = [], isLoading: isLoadingMaintenance } = useQuery({
-    queryKey: ['pending-maintenance'],
+    queryKey: maintenanceKeys.pending(),
     queryFn: () => deviceApi.findPendingMaintenance(),
     refetchInterval: 30000,
     enabled: canApproveMaintenance,
@@ -59,7 +65,7 @@ export function ApprovalQueue() {
 
   // 3. Disposal requests query
   const { data: pendingDisposal = [], isLoading: isLoadingDisposal } = useQuery({
-    queryKey: ['pending-disposal'],
+    queryKey: disposalKeys.pending(),
     queryFn: () => deviceApi.findPendingDisposal(),
     refetchInterval: 30000,
     enabled: canApproveDisposal,
@@ -68,14 +74,8 @@ export function ApprovalQueue() {
   // Assignment Mutations
   const approveAssignmentMutation = useMutation({
     mutationFn: (id: number) => assignmentApi.approveAssignment(id),
-    onSuccess: (_data, id) => {
-      const assignment = pendingAssignments.find((a) => a.id === id)
-      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      if (assignment?.device?.id) {
-        queryClient.invalidateQueries({ queryKey: ['device', assignment.device.id] })
-      }
+    onSuccess: () => {
+      invalidateAssignmentWorkflow(queryClient)
       toast.success(t('assignments.approveAssignmentSuccess'))
     },
     onError: (error: any) => {
@@ -85,14 +85,8 @@ export function ApprovalQueue() {
 
   const approveUnassignmentMutation = useMutation({
     mutationFn: (id: number) => assignmentApi.approveUnassignment(id),
-    onSuccess: (_data, id) => {
-      const assignment = pendingAssignments.find((a) => a.id === id)
-      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      if (assignment?.device?.id) {
-        queryClient.invalidateQueries({ queryKey: ['device', assignment.device.id] })
-      }
+    onSuccess: () => {
+      invalidateAssignmentWorkflow(queryClient)
       toast.success(t('assignments.approveUnassignmentSuccess'))
     },
     onError: (error: any) => {
@@ -102,14 +96,8 @@ export function ApprovalQueue() {
 
   const rejectAssignmentMutation = useMutation({
     mutationFn: (id: number) => assignmentApi.rejectAssignment(id),
-    onSuccess: (_data, id) => {
-      const assignment = pendingAssignments.find((a) => a.id === id)
-      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      if (assignment?.device?.id) {
-        queryClient.invalidateQueries({ queryKey: ['device', assignment.device.id] })
-      }
+    onSuccess: () => {
+      invalidateAssignmentWorkflow(queryClient)
       toast.success(t('assignments.rejectAssignmentSuccess'))
     },
     onError: (error: any) => {
@@ -120,10 +108,8 @@ export function ApprovalQueue() {
   // Maintenance Mutations
   const approveMaintenanceMutation = useMutation({
     mutationFn: (id: number) => deviceApi.approveMaintenance(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: ['pending-maintenance'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['device', id] })
+    onSuccess: () => {
+      invalidateMaintenanceWorkflow(queryClient)
       toast.success(t('devices.approveMaintenanceSuccess', 'Karbantartási kérelem jóváhagyva'))
     },
     onError: (error: any) => {
@@ -133,10 +119,8 @@ export function ApprovalQueue() {
 
   const rejectMaintenanceMutation = useMutation({
     mutationFn: (id: number) => deviceApi.rejectMaintenance(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: ['pending-maintenance'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['device', id] })
+    onSuccess: () => {
+      invalidateMaintenanceWorkflow(queryClient)
       toast.success(t('devices.rejectMaintenanceSuccess', 'Karbantartási kérelem elutasítva'))
     },
     onError: (error: any) => {
@@ -147,10 +131,8 @@ export function ApprovalQueue() {
   // Disposal Mutations
   const approveDisposalMutation = useMutation({
     mutationFn: (id: number) => deviceApi.approveDisposal(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: ['pending-disposal'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['device', id] })
+    onSuccess: () => {
+      invalidateDisposalWorkflow(queryClient)
       toast.success(t('devices.approveDisposalSuccess', 'Selejtezési kérelem jóváhagyva'))
     },
     onError: (error: any) => {
@@ -160,10 +142,8 @@ export function ApprovalQueue() {
 
   const rejectDisposalMutation = useMutation({
     mutationFn: (id: number) => deviceApi.rejectDisposal(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: ['pending-disposal'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
-      queryClient.invalidateQueries({ queryKey: ['device', id] })
+    onSuccess: () => {
+      invalidateDisposalWorkflow(queryClient)
       toast.success(t('devices.rejectDisposalSuccess', 'Selejtezési kérelem elutasítva'))
     },
     onError: (error: any) => {

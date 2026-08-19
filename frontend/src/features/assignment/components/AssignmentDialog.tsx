@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { userApi } from '@/features/user/api/userApi'
+import { userKeys } from '@/lib/api/queryKeys'
 import { useRequestAssignment } from '../hooks/useAssignments'
 import { LocationTreeSelector } from '@/features/location/components/LocationTreeSelector'
 
@@ -43,7 +44,7 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
   const [locationSelectorOpen, setLocationSelectorOpen] = useState(false)
 
   const { data: usersPage } = useQuery({
-    queryKey: ['users', 'all'],
+    queryKey: userKeys.list({ page: 0, size: 50 }),
     queryFn: () => userApi.findAll({ page: 0, size: 50 }),
     enabled: open,
   })

@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import { softwareKeys } from '@/lib/api/queryKeys'
 export function SoftwarePage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -36,13 +37,13 @@ export function SoftwarePage() {
   const [licenseKey, setLicenseKey] = useState('')
   const pageSize = 20
   const { data, isLoading } = useQuery({
-    queryKey: ['software', page, pageSize],
+    queryKey: softwareKeys.list({ page, pageSize }),
     queryFn: () => softwareApi.findAll({ page, size: pageSize }),
   })
   const createMutation = useMutation({
     mutationFn: softwareApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['software'] })
+      queryClient.invalidateQueries({ queryKey: softwareKeys.all })
       setIsCreateOpen(false)
       setName('')
       setLicenseKey('')
@@ -61,7 +62,7 @@ export function SoftwarePage() {
       payload: { name?: string; licenseKey?: string }
     }) => softwareApi.update(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['software'] })
+      queryClient.invalidateQueries({ queryKey: softwareKeys.all })
       setEditingSoftware(null)
       setName('')
       setLicenseKey('')
@@ -74,7 +75,7 @@ export function SoftwarePage() {
   const deleteMutation = useMutation({
     mutationFn: softwareApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['software'] })
+      queryClient.invalidateQueries({ queryKey: softwareKeys.all })
       toast.success(t('common.deleted', 'Sikeresen törölve'))
     },
   })
@@ -332,9 +333,8 @@ function LicenseKeyCell({ software, canView }: { software: Software; canView: bo
 function DevicesCell({ softwareId }: { softwareId: number }) {
   const { t } = useTranslation()
   const { data: devices, isLoading } = useQuery({
-    queryKey: ['software-devices', softwareId],
+    queryKey: softwareKeys.devices(softwareId),
     queryFn: () => softwareApi.findDevicesBySoftware(softwareId),
-    staleTime: 60000,
   })
   if (isLoading) {
     return <span className="text-xs text-muted-foreground">…</span>

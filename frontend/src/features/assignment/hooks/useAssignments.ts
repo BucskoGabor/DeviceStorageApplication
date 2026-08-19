@@ -7,13 +7,15 @@ import {
   type DeviceAssignment,
   type CreateAssignmentPayload,
 } from '../api/assignmentApi'
+import { assignmentKeys } from '@/lib/api/queryKeys'
+import { invalidateAssignmentWorkflow } from '@/lib/api/invalidation'
 
 /**
  * useAssignmentsByDevice — egy device teljes assignment history lekérdezése.
  */
 export function useAssignmentsByDevice(deviceId: number) {
   return useQuery({
-    queryKey: ['assignments', deviceId],
+    queryKey: assignmentKeys.byDevice(deviceId),
     queryFn: () => assignmentApi.findAssignmentsByDevice(deviceId, { page: 0, size: 50 }),
     enabled: Number.isFinite(deviceId),
   })
@@ -24,7 +26,7 @@ export function useAssignmentsByDevice(deviceId: number) {
  */
 export function usePendingAssignments() {
   return useQuery({
-    queryKey: ['pending-assignments'],
+    queryKey: assignmentKeys.pending(),
     queryFn: () => assignmentApi.findPendingAssignments(),
     refetchInterval: 30000,
   })
@@ -40,9 +42,7 @@ export function useRequestAssignment(deviceId: number, onSuccess?: () => void) {
     mutationFn: (payload: CreateAssignmentPayload) =>
       assignmentApi.requestAssignment(deviceId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
+      invalidateAssignmentWorkflow(queryClient)
       toast.success(t('assignments.requestAssignmentSuccess'))
       onSuccess?.()
     },
@@ -55,15 +55,13 @@ export function useRequestAssignment(deviceId: number, onSuccess?: () => void) {
 /**
  * useApproveAssignment — POST /api/devices/assignments/{id}/approve
  */
-export function useApproveAssignment(deviceId: number) {
+export function useApproveAssignment(_deviceId?: number) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (assignmentId: number) => assignmentApi.approveAssignment(assignmentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
+      invalidateAssignmentWorkflow(queryClient)
       toast.success(t('assignments.approveAssignmentSuccess'))
     },
     onError: (error: any) => {
@@ -75,7 +73,7 @@ export function useApproveAssignment(deviceId: number) {
 /**
  * useRequestUnassignment — POST /api/devices/assignments/{id}/unassign
  */
-export function useRequestUnassignment(deviceId: number) {
+export function useRequestUnassignment(_deviceId?: number) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   return useMutation({
@@ -87,9 +85,7 @@ export function useRequestUnassignment(deviceId: number) {
       targetLocationId?: number
     }) => assignmentApi.requestUnassignment(assignmentId, targetLocationId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
+      invalidateAssignmentWorkflow(queryClient)
       toast.success(t('assignments.requestUnassignmentSuccess'))
     },
     onError: (error: any) => {
@@ -101,15 +97,13 @@ export function useRequestUnassignment(deviceId: number) {
 /**
  * useApproveUnassignment — POST /api/devices/assignments/{id}/approve-unassign
  */
-export function useApproveUnassignment(deviceId: number) {
+export function useApproveUnassignment(_deviceId?: number) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (unassignmentId: number) => assignmentApi.approveUnassignment(unassignmentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
-      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
+      invalidateAssignmentWorkflow(queryClient)
       toast.success(t('assignments.approveUnassignmentSuccess'))
     },
     onError: (error: any) => {
@@ -121,19 +115,13 @@ export function useApproveUnassignment(deviceId: number) {
 /**
  * useRejectAssignment — POST /api/devices/assignments/{id}/reject
  */
-export function useRejectAssignment(deviceId?: number) {
+export function useRejectAssignment(_deviceId?: number) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (assignmentId: number) => assignmentApi.rejectAssignment(assignmentId),
     onSuccess: () => {
-      if (deviceId) {
-        queryClient.invalidateQueries({ queryKey: ['assignments', deviceId] })
-        queryClient.invalidateQueries({ queryKey: ['device', deviceId] })
-      }
-      queryClient.invalidateQueries({ queryKey: ['assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['pending-assignments'] })
-      queryClient.invalidateQueries({ queryKey: ['devices'] })
+      invalidateAssignmentWorkflow(queryClient)
       toast.success(t('assignments.rejectAssignmentSuccess'))
     },
     onError: (error: any) => {

@@ -22,6 +22,7 @@ import { useAuthStore } from '@/lib/store/authStore'
 import { authApi } from '@/features/auth/api/authApi'
 import { assignmentApi } from '@/features/assignment/api/assignmentApi'
 import { deviceApi } from '@/features/device/api/deviceApi'
+import { assignmentKeys, maintenanceKeys, disposalKeys } from '@/lib/api/queryKeys'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
@@ -65,21 +66,21 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Pending counts for badge
   const { data: pendingAssignments = [] } = useQuery({
-    queryKey: ['pending-assignments-count'],
+    queryKey: assignmentKeys.pending(),
     queryFn: () => assignmentApi.findPendingAssignments(),
     enabled: canApproveAssignments,
     refetchInterval: 30000,
   })
 
   const { data: pendingMaintenance = [] } = useQuery({
-    queryKey: ['pending-maintenance-count'],
+    queryKey: maintenanceKeys.pending(),
     queryFn: () => deviceApi.findPendingMaintenance(),
     enabled: canApproveMaintenance,
     refetchInterval: 30000,
   })
 
   const { data: pendingDisposal = [] } = useQuery({
-    queryKey: ['pending-disposal-count'],
+    queryKey: disposalKeys.pending(),
     queryFn: () => deviceApi.findPendingDisposal(),
     enabled: canApproveDisposal,
     refetchInterval: 30000,

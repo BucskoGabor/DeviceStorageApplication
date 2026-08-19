@@ -23,6 +23,7 @@ import { useAuthStore } from '@/lib/store/authStore'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { LocationTreeSelector } from '@/features/location/components/LocationTreeSelector'
+import { userKeys, roleKeys } from '@/lib/api/queryKeys'
 
 export function UsersPage() {
   const { t } = useTranslation()
@@ -52,18 +53,18 @@ export function UsersPage() {
   const pageSize = 20
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', page, pageSize],
+    queryKey: userKeys.list({ page, pageSize }),
     queryFn: () => userApi.findAll({ page, size: pageSize }),
   })
 
   const { data: roles = [] } = useQuery({
-    queryKey: ['roles'],
+    queryKey: roleKeys.all,
     queryFn: roleApi.findAll,
     enabled: canCreate || canUpdate,
   })
 
   const { data: allPermissions = [] } = useQuery<PermissionDto[]>({
-    queryKey: ['permissions'],
+    queryKey: roleKeys.permissions(),
     queryFn: roleApi.getPermissions,
     enabled: canCreate || canUpdate,
   })
@@ -71,7 +72,7 @@ export function UsersPage() {
   const createMutation = useMutation({
     mutationFn: userApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
       setIsCreateOpen(false)
       setEmail('')
       setSelectedRole('ROLE_TEACHER')
@@ -95,7 +96,7 @@ export function UsersPage() {
     mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof userApi.update>[1] }) =>
       userApi.update(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
       setEditingUser(null)
       toast.success(t('common.updated', 'Sikeresen frissítve'))
     },
@@ -114,7 +115,7 @@ export function UsersPage() {
   const deleteMutation = useMutation({
     mutationFn: userApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
       toast.success(t('common.deleted', 'Sikeresen törölve'))
     },
     onError: (error: any) => {
@@ -132,7 +133,7 @@ export function UsersPage() {
   const unlockMutation = useMutation({
     mutationFn: userApi.unlock,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
       toast.success(t('users.unlockAccount', 'Fiók feloldva'))
     },
   })

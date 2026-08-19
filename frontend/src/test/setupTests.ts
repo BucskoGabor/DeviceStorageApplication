@@ -1,3 +1,4 @@
+import '@/lib/i18n/i18n'
 import '@testing-library/jest-dom'
 
 if (typeof window !== 'undefined') {

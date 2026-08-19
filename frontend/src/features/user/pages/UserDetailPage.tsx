@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { userApi } from '@/features/user/api/userApi'
 import { StatusBadge } from '@/features/assignment/components/StatusBadge'
+import { userKeys } from '@/lib/api/queryKeys'
 
 /**
  * UserDetailPage — /admin/users/:id route.
@@ -28,23 +29,22 @@ export function UserDetailPage() {
   const [activeTab, setActiveTab] = useState<'current' | 'history'>('current')
 
   const { data: user, isLoading: isUserLoading } = useQuery({
-    queryKey: ['user', userId],
+    queryKey: userKeys.detail(userId),
     queryFn: () => userApi.findById(userId),
     enabled: Number.isFinite(userId),
   })
 
   const { data: currentDevices, isLoading: isCurrentLoading } = useQuery({
-    queryKey: ['user-current-devices', userId],
+    queryKey: userKeys.devices(userId),
     queryFn: () => userApi.findCurrentDevices(userId),
     enabled: Number.isFinite(userId),
   })
 
   const { data: assignmentHistory, isLoading: isHistoryLoading } = useQuery({
-    queryKey: ['user-assignment-history', userId],
+    queryKey: userKeys.history(userId),
     queryFn: () => userApi.findAssignmentHistory(userId),
     enabled: Number.isFinite(userId),
   })
-
   if (isUserLoading) {
     return <p className="text-muted-foreground">{t('common.loading')}...</p>
   }

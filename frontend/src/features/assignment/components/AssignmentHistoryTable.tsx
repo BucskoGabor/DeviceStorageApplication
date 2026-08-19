@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
+import { assignmentKeys } from '@/lib/api/queryKeys'
 import {
   Table,
   TableBody,
@@ -24,7 +25,7 @@ export function AssignmentHistoryTable({ deviceId }: AssignmentHistoryTableProps
   const { t } = useTranslation()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['assignments', deviceId],
+    queryKey: assignmentKeys.byDevice(deviceId),
     queryFn: () => assignmentApi.findAssignmentsByDevice(deviceId, { page: 0, size: 50 }),
   })
 

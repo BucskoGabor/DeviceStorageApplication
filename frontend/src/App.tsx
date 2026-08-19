@@ -9,20 +9,17 @@ import { Toaster } from '@/components/SonnerWrapper'
 
 /**
  * QueryClient konfiguráció:
- * - staleTime: 30s — az adat 30 másodpercig frissnek számít
+ * - staleTime: 5s — 5 másodperces deduplication ablak
  * - retry: 1 — egyszer retry hiba esetén
- * - refetchOnWindowFocus: false — ne refetcheljen window focus-ra (kivéve ha explicit kérik)
  */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30 * 1000,
+      staleTime: 5 * 1000,
       retry: 1,
-      refetchOnWindowFocus: false,
     },
   },
 })
-
 /**
  * Az alkalmazás gyökér komponense.
  *

@@ -20,6 +20,8 @@ import { type ColumnDef } from '@tanstack/react-table'
 import { auditApi, type AuditLog } from '@/features/audit/api/auditApi'
 import { DiffViewer } from '@/components/DiffViewer/DiffViewer'
 import { useAuthStore } from '@/lib/store/authStore'
+import { auditKeys } from '@/lib/api/queryKeys'
+import { invalidateAuditRollback } from '@/lib/api/invalidation'
 
 /**
  * AuditPage — admin/audit táblázat (szűrő, lapozás, diff side panel, rollback gomb).
@@ -39,7 +41,7 @@ export function AuditPage() {
   const pageSize = 20
 
   const { data, isLoading } = useQuery({
-    queryKey: ['audit', page, pageSize, filterEmail, filterEntityType, filterEntityId],
+    queryKey: auditKeys.list({ page, pageSize, filterEmail, filterEntityType, filterEntityId }),
     queryFn: () =>
       auditApi.findAll({
         page,
@@ -53,7 +55,7 @@ export function AuditPage() {
   const rollbackMutation = useMutation({
     mutationFn: (id: number) => auditApi.rollback(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['audit'] })
+      invalidateAuditRollback(queryClient)
       toast.success(t('audit.rollbackSuccess'), { position: 'top-right' })
       setSelectedLog(null)
     },
