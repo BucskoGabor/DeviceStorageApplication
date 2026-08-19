@@ -3,7 +3,7 @@
 #
 # Feladatok:
 #   1. .env.example → .env másolása (ha .env még nem létezik)
-#   2. backup.env.example → backup.env másolása (ha backup.env még nem létezik)
+#   2. backup/backup.env.example → backup.env másolása (ha backup.env még nem létezik)
 #   3. JWT secret és Crypto AES key generálása (ha még placeholder a .env-ben)
 #   4. Ellenőrzés, hogy a Docker elérhető
 #
@@ -40,11 +40,11 @@ fi
 
 # 2. backup.env másolása
 if [ ! -f "backup.env" ]; then
-    if [ -f "backup.env.example" ]; then
-        cp backup.env.example backup.env
+    if [ -f "backup/backup.env.example" ]; then
+        cp backup/backup.env.example backup.env
         log_info "backup.env létrehozva a backup.env.example alapján"
     else
-        log_err "backup.env.example nem található!"
+        log_err "backup/backup.env.example nem található!"
         exit 1
     fi
 else
@@ -57,17 +57,17 @@ generate_secret() {
     openssl rand -base64 32
 }
 
-if grep -q "^JWT_KID_ACTIVE=<base64-256-bit-secret>" .env; then
+if grep -qE "^JWT_KID_ACTIVE=(<base64-256-bit-secret>|replace-with-openssl-rand-base64-32)\$" .env; then
     NEW_SECRET=$(generate_secret)
     # macOS és Linux sed különbözik — itt portable megoldás
-    sed -i.bak "s|^JWT_KID_ACTIVE=<base64-256-bit-secret>|JWT_KID_ACTIVE=${NEW_SECRET}|" .env
+    sed -i.bak "s|^JWT_KID_ACTIVE=.*|JWT_KID_ACTIVE=${NEW_SECRET}|" .env
     rm -f .env.bak
     log_info "JWT_KID_ACTIVE generálva (256-bit Base64)"
 fi
 
-if grep -q "^CRYPTO_AES_KEY=<base64-256-bit-key>" .env; then
+if grep -qE "^CRYPTO_AES_KEY=(<base64-256-bit-key>|replace-with-openssl-rand-base64-32)\$" .env; then
     NEW_KEY=$(generate_secret)
-    sed -i.bak "s|^CRYPTO_AES_KEY=<base64-256-bit-key>|CRYPTO_AES_KEY=${NEW_KEY}|" .env
+    sed -i.bak "s|^CRYPTO_AES_KEY=.*|CRYPTO_AES_KEY=${NEW_KEY}|" .env
     rm -f .env.bak
     log_info "CRYPTO_AES_KEY generálva (256-bit Base64)"
 fi

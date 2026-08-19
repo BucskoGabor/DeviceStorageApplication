@@ -10,7 +10,8 @@ RUN apk add --no-cache \
     dcron \
     bash \
     curl \
-    tzdata
+    tzdata \
+    su-exec
 
 # Időzóna beállítás
 ENV TZ=UTC
@@ -33,10 +34,19 @@ COPY --chown=backup:backup backup.env.example /etc/backup.env
 # Jogosultságok
 RUN chmod +x /usr/local/bin/backup.sh /usr/local/bin/cleanup.sh && \
     chmod 0644 /etc/crontabs/backup
-
-# User váltás backup-ra
-USER backup
+# Crond root-ként fut, mert a non-root user CAP_SETGID nélkül indul
+# (a --cap-add SETGID csak bounding set-be kerül, effektívbe nem), és a
+# BusyBox dcron setpgid hívásához effektív CAP_SETGID kell. A tényleges
+# backup parancs su-exec-kel backup userre vált.
+#
+# A CMD `sh -c "..."` formátumban van, hogy a BusyBox dcron ne legyen
+# közvetlenül PID 1 — a kernel EPERM-et ad a setpgid(0,0) hívásra, ha
+# a hívó processz a PID-namespace init folyamata. Az sh PID 1, a crond
+# child processzként indul, és a setpgid sikeresen lefut.
+USER root
 WORKDIR /home/backup
-
-# Crond futtatás foreground-ban (a konténer életben tartásához)
-CMD ["crond", "-f", "-d", "0"]
+# A `crond &` háttérbe küldése + `wait` kell, mert különben a busybox sh az
+# utolsó parancsot automatikusan exec-eli, és a crond PID 1-gyé válik.
+# A BusyBox dcron setpgid(0,0) hívása EPERM-et ad PID 1-ként (PID ns init
+# folyamat nem válthat sessiont), ezért kell a sh mint PID 1 + crond child.
+CMD ["sh", "-c", "crond -f -d 0 & wait"]

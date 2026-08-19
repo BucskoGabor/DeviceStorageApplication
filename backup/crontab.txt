@@ -8,5 +8,5 @@ POSTGRES_DB=tanszek_db
 POSTGRES_USER=admin
 BACKUP_RETENTION_DAYS=30
 
-# Napi backup 02:00-kor (UTC)
-0 2 * * * /usr/local/bin/backup.sh >> /var/backups/backup.log 2>&1
+# Napi backup 02:00-kor (UTC) — su-exec-kel backup userként fut
+0 2 * * * su-exec backup /usr/local/bin/backup.sh >> /var/backups/backup.log 2>&1

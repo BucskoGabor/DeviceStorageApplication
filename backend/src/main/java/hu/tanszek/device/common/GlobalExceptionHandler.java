@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,9 +43,12 @@ import lombok.extern.slf4j.Slf4j;
  * <ul>
  *   <li>{@link BusinessValidationException} → 400 (vagy 429 rateLimitExceeded esetén)
  *   <li>{@link ResourceNotFoundException} → 404
+ *   <li>{@link NoResourceFoundException} → 404 (Spring 6+ DispatcherServlet „no route match” handler)
  *   <li>{@link UnauthorizedActionException} → 401/403
  *   <li>{@link AuthenticationException} (BadCredentials, Disabled, Locked) → 401
+ *   <li>{@link HttpMessageNotReadableException} → 400 (hibás JSON body)
  *   <li>{@link MethodArgumentNotValidException} → 400 validation hibákkal
+ *   <li>{@link MaxUploadSizeExceededException} → 413 (10 MB felett)
  *   <li>{@link Exception} fallback → 500
  * </ul>
  */
@@ -89,6 +93,29 @@ public class GlobalExceptionHandler {
             null);
 
     log.warn("Resource not found: {} at {} — {}", "?", getPath(request), ex.getMessage());
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+  }
+
+  /**
+   * NoResourceFoundException — Spring 6+ ezt dobja, ha egy request egyetlen route-hoz sem
+   * illeszkedik (DispatcherServlet → ResourceHttpRequestHandler). Alapértelmezetten 404-et adna,
+   * de mivel a fallback {@code @ExceptionHandler(Exception.class)} elfogja és 500-zá fordítja,
+   * explicit handler kell, hogy a REST kliensek helyes 404-es státuszt kapjanak.
+   */
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<Map<String, Object>> handleNoResourceFound(
+      NoResourceFoundException ex, WebRequest request) {
+    String path = getPath(request);
+    Map<String, Object> body =
+        createBody(
+            HttpStatus.NOT_FOUND.value(),
+            "Not Found",
+            "resourceNotFound",
+            "No handler for " + path,
+            path,
+            null);
+
+    log.debug("No resource found: {}", path);
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
   }
 

@@ -66,7 +66,11 @@ public class JwtProperties {
     try {
       decoded = Base64.getDecoder().decode(activeKeyBase64);
     } catch (IllegalArgumentException e) {
-      throw new IllegalStateException("jwt.kids.active is not valid base64", e);
+      try {
+        decoded = Base64.getUrlDecoder().decode(activeKeyBase64);
+      } catch (IllegalArgumentException e2) {
+        throw new IllegalStateException("jwt.kids.active is not valid base64", e2);
+      }
     }
     if (decoded.length < 32) {
       throw new IllegalStateException(

@@ -98,7 +98,7 @@ jobs:
       - name: Set up .env files
         run: |
           cp .env.example .env
-          cp backup.env.example backup.env
+          cp backup/backup.env.example backup.env
           ./scripts/bootstrap.sh
 
       - name: Start docker-compose

@@ -9,7 +9,7 @@
 #
 # Használat:
 #   cp .env.example .env
-#   cp backup.env.example backup.env
+#   cp backup/backup.env.example backup.env
 #   ./scripts/bootstrap.sh   # JWT/Crypto secret generálás
 #   docker compose --profile dev up -d   # dev mód (mailhog is)
 #   docker compose up -d                 # production mód (mailhog nélkül)
@@ -156,7 +156,6 @@ services:
     build:
       context: ./backup
       dockerfile: Dockerfile
-      network: host
     container_name: device-storage-backup
     restart: unless-stopped
     env_file:
@@ -187,9 +186,12 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    # BusyBox dcron setpgid hívása EPERM-et ad, ha a crond a konténer PID 1
+    # folyamata. A Dockerfile `sh -c "crond ... & wait"` CMD-t használ, így
+    # sh a PID 1, a crond child process, és a setpgid sikeresen lefut. A
+    # cron job-ok su-exec-kel backup userre váltanak.
     security_opt:
       - no-new-privileges:true
-
   # ===== MailHog (dev profile only, SMTP mock) =====
   mailhog:
     image: mailhog/mailhog:latest
