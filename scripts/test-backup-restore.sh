@@ -41,7 +41,7 @@ $DOCKER_COMPOSE exec -T backup /usr/local/bin/backup.sh || {
 
 # 4. Mentés fájl meglétének és tartalmának vizsgálata
 log_info "2. Mentés vizsgálata..."
-DATE=$(date +%Y-%m-%d)
+DATE=$($DOCKER_COMPOSE exec -T backup date +%Y-%m-%d)
 BACKUP_EXISTS=$($DOCKER_COMPOSE exec -T backup sh -c "[ -s /var/backups/${DATE}.sql ] && echo 'OK' || echo 'FAIL'")
 
 if [ "$BACKUP_EXISTS" != "OK" ]; then
