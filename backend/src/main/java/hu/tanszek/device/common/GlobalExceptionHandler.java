@@ -43,7 +43,8 @@ import lombok.extern.slf4j.Slf4j;
  * <ul>
  *   <li>{@link BusinessValidationException} → 400 (vagy 429 rateLimitExceeded esetén)
  *   <li>{@link ResourceNotFoundException} → 404
- *   <li>{@link NoResourceFoundException} → 404 (Spring 6+ DispatcherServlet „no route match” handler)
+ *   <li>{@link NoResourceFoundException} → 404 (Spring 6+ DispatcherServlet „no route match”
+ *       handler)
  *   <li>{@link UnauthorizedActionException} → 401/403
  *   <li>{@link AuthenticationException} (BadCredentials, Disabled, Locked) → 401
  *   <li>{@link HttpMessageNotReadableException} → 400 (hibás JSON body)
@@ -98,8 +99,8 @@ public class GlobalExceptionHandler {
 
   /**
    * NoResourceFoundException — Spring 6+ ezt dobja, ha egy request egyetlen route-hoz sem
-   * illeszkedik (DispatcherServlet → ResourceHttpRequestHandler). Alapértelmezetten 404-et adna,
-   * de mivel a fallback {@code @ExceptionHandler(Exception.class)} elfogja és 500-zá fordítja,
+   * illeszkedik (DispatcherServlet → ResourceHttpRequestHandler). Alapértelmezetten 404-et adna, de
+   * mivel a fallback {@code @ExceptionHandler(Exception.class)} elfogja és 500-zá fordítja,
    * explicit handler kell, hogy a REST kliensek helyes 404-es státuszt kapjanak.
    */
   @ExceptionHandler(NoResourceFoundException.class)
