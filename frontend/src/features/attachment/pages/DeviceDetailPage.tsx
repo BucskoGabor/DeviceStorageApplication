@@ -61,10 +61,7 @@ import { AssignmentHistoryTable } from '@/features/assignment/components/Assignm
 import { StatusBadge } from '@/features/assignment/components/StatusBadge'
 
 import { deviceKeys, assignmentKeys, softwareKeys } from '@/lib/api/queryKeys'
-import {
-  invalidateMaintenanceWorkflow,
-  invalidateDisposalWorkflow,
-} from '@/lib/api/invalidation'
+import { invalidateMaintenanceWorkflow, invalidateDisposalWorkflow } from '@/lib/api/invalidation'
 import { resolveToastMessage } from '@/lib/utils/toastUtils'
 
 /**

@@ -33,7 +33,13 @@ public class MailService {
 
   private final JavaMailSender mailSender;
 
-  @Value("${spring.mail.username:noreply@tanszek.local}")
+  // A feladó cím a `mail.from` kulcsból olvasódik (általában noreply@tanszek.local),
+  // fallback a `spring.mail.username` (SMTP hitelesítési user, pl. felhős SMTP
+  // szolgáltatóknál gyakran "apikey" — ez NEM használható From címként), végső
+  // fallback a noreply@tanszek.local default. A docker-compose és az application.yml
+  // a `MAIL_FROM` env var-t a `mail.from` kulcshoz köti, így production-ben a From
+  // cím független az SMTP auth user-től.
+  @Value("${mail.from:${spring.mail.username:noreply@tanszek.local}}")
   private String fromAddress;
 
   /** Küldési kísérletek számlálója (debug / monitoring célokra). */

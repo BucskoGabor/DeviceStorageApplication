@@ -104,6 +104,20 @@ public class DeviceService {
               + device.getStatus());
     }
 
+    // Üzleti szabály 1b: Deduplikáció — ha már van függőben lévő PENDING_ASSIGNMENT
+    // ugyanarra az eszközre, ne engedélyezzünk újat. Különben dupla kattintás / hálózati
+    // race condition esetén két PENDING_ASSIGNMENT keletkezhet, és az approve bármelyiket
+    // elfogadhatja — a másik árva rekord marad.
+    Optional<DeviceAssignment> existingPending =
+        assignmentRepository.findFirstByDeviceIdAndStatus(
+            deviceId, AssignmentStatus.PENDING_ASSIGNMENT);
+    if (existingPending.isPresent()) {
+      throw new BusinessValidationException(
+          "assignmentAlreadyPending",
+          "Device already has a pending assignment request (id="
+              + existingPending.get().getId()
+              + ")");
+    }
     // Üzleti szabály 2: Vagy location, vagy user megadása kötelező, egyszerre mindkettő vagy egyik
     // sem tilos
     if ((targetLocationId == null && targetUserId == null)
@@ -373,17 +387,27 @@ public class DeviceService {
 
     Device device = assignment.getDevice();
     if (previousStatus == AssignmentStatus.PENDING_ASSIGNMENT) {
+      // A PENDING_ASSIGNMENT elutasítása: az eszköz marad IN_STORAGE-ban (nem volt
+      // még sikeres hozzárendelés), és a korábbi aktív assignment-et (amit a
+      // requestAssignment PENDING_UNASSIGNMENT-re állított) visszaállítjuk ASSIGNED-re.
+      // Különben az eszköz IN_STORAGE-ba kerül, és a régi aktív assignment örökre
+      // PENDING_UNASSIGNMENT marad (árva rekord).
       device.setStatus(DeviceStatus.IN_STORAGE);
-      // Restore previous active assignment (undo the new-assignment request)
       assignmentRepository
-          .findFirstByDeviceIdAndStatusOrderByCreatedDateDesc(
-              device.getId(), AssignmentStatus.ASSIGNED)
+          .findFirstByDeviceIdAndStatus(device.getId(), AssignmentStatus.PENDING_UNASSIGNMENT)
           .ifPresent(
               prev -> {
+                prev.setStatus(AssignmentStatus.ASSIGNED);
+                prev.setUnassignCreatedDate(null);
                 assignmentRepository.save(prev);
+                // Az eszköz státusza újra ASSIGNED, mert a régi kapcsolat érvényben marad.
+                device.setStatus(DeviceStatus.ASSIGNED);
               });
+      deviceRepository.save(device);
     } else if (previousStatus == AssignmentStatus.PENDING_UNASSIGNMENT) {
+      // A PENDING_UNASSIGNMENT elutasítása: az eszköz marad ASSIGNED, a kérelem REJECTED.
       device.setStatus(DeviceStatus.ASSIGNED);
+      deviceRepository.save(device);
     }
     DeviceAssignment saved = assignmentRepository.save(assignment);
     log.info("Assignment rejected: id={}, by={}", assignmentId, rejectedByUserId);
@@ -428,13 +452,18 @@ public class DeviceService {
           "Status transition not allowed: " + currentStatus + " → " + newStatus);
     }
 
-    // Ha IN_STORAGE-ra váltunk és van aktív assignment, inaktiváljuk
+    // Ha IN_STORAGE-ra váltunk és van aktív assignment, inaktiváljuk.
+    // Korábban csak az unassignCreatedDate-et állította be, de az assignment
+    // státusza ASSIGNED maradt — inkonzisztens állapot (az eszköz IN_STORAGE-ban van,
+    // miközben a hozzárendelés formálisan ASSIGNED). A státuszt most IN_STORAGE-ra
+    // állítjuk, history célokra megtartva a rekordot, de már nem aktív.
     if (newStatus == DeviceStatus.IN_STORAGE) {
       assignmentRepository
           .findFirstByDeviceIdAndStatus(deviceId, AssignmentStatus.ASSIGNED)
           .ifPresent(
               activeAssignment -> {
                 activeAssignment.setUnassignCreatedDate(java.time.Instant.now());
+                activeAssignment.setStatus(AssignmentStatus.IN_STORAGE);
                 assignmentRepository.save(activeAssignment);
               });
     }

@@ -40,4 +40,14 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
 
   /** User audit history (lapozható, controller használja). */
   Page<AuditLog> findByUserEmailOrderByTimestampDesc(String userEmail, Pageable pageable);
+
+  /**
+   * Rollback idempotencia-védelem: van-e már rollback bejegyzés erre az audit log ID-ra.
+   *
+   * <p>Az AuditRollbackService a requestPayload mezőbe "auditLogId={id}" formátumban írja az
+   * eredeti audit log azonosítóját, így a keresés konkrétan az adott audit logra szűr — nem
+   * globálisan az összes rollback-re.
+   */
+  java.util.Optional<AuditLog> findByEndpointAndRequestPayload(
+      String endpoint, String requestPayload);
 }

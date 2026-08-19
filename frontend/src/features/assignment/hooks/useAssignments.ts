@@ -131,9 +131,14 @@ export function useRejectAssignment(_deviceId?: number) {
 }
 
 /**
- * useDeviceCurrentAssignment — a device aktuális (active=true) assignmentje a listából.
+ * useDeviceCurrentAssignment — a device jelenlegi aktív assignmentje a listából.
+ *
+ * <p>Aktív assignment: status === 'ASSIGNED'. A PENDING_UNASSIGNMENT is
+ * "még fennálló" kapcsolat (a user épp visszaadja, de a device nála van),
+ * ezért azt is aktívnak tekintjük. A backend nem ad vissza `active` flag-et
+ * — a status az egyetlen megbízható jel.
  */
 export function useDeviceCurrentAssignment(deviceId: number): DeviceAssignment | undefined {
   const { data } = useAssignmentsByDevice(deviceId)
-  return data?.content.find((a) => a.active)
+  return data?.content.find((a) => a.status === 'ASSIGNED' || a.status === 'PENDING_UNASSIGNMENT')
 }

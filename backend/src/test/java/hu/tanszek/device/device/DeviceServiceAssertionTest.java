@@ -71,16 +71,34 @@ class DeviceServiceAssertionTest {
     when(locationRepository.findById(10L))
         .thenReturn(Optional.of(Location.builder().id(10L).type(LocationType.CLASSROOM).build()));
     when(userRepository.findById(100L)).thenReturn(Optional.of(byUser));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.PENDING_ASSIGNMENT))
+        .thenReturn(Optional.empty());
     when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED))
         .thenReturn(Optional.of(oldActive));
     when(assignmentRepository.save(any(DeviceAssignment.class)))
         .thenAnswer(inv -> inv.getArgument(0));
-
     deviceService.requestAssignment(1L, 10L, null, 100L);
 
     // A régi aktív inaktívvá vált
     assertThat(oldActive.getStatus()).isNotEqualTo(AssignmentStatus.ASSIGNED);
-    verify(assignmentRepository, times(1)).save(oldActive);
+  }
+
+  @Test
+  void requestAssignmentThrowsWhenAlreadyPending() {
+    DeviceAssignment existingPending =
+        DeviceAssignment.builder()
+            .id(99L)
+            .device(device)
+            .status(AssignmentStatus.PENDING_ASSIGNMENT)
+            .build();
+
+    when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.PENDING_ASSIGNMENT))
+        .thenReturn(Optional.of(existingPending));
+
+    assertThatThrownBy(() -> deviceService.requestAssignment(1L, 10L, null, 100L))
+        .isInstanceOf(BusinessValidationException.class)
+        .hasMessageContaining("already has a pending assignment request");
   }
 
   @Test

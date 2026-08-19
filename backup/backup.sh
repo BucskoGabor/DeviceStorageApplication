@@ -9,13 +9,22 @@ TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
 DATE=$(date +%Y-%m-%d)
 BACKUP_FILE="${BACKUP_DIR}/${DATE}.sql"
 
+# Cron környezetben a dcron nem örökli automatikusan a konténer env-et,
+# ezért a hiányzó változókat a /etc/backup.env fájlból töltjük be
+# (a docker-compose env_file direktívával mountolja, vagy COPY-val kerül a képbe).
+if [ -z "${PGPASSWORD:-}" ] && [ -f /etc/backup.env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . /etc/backup.env
+  set +a
+fi
+
+export PGPASSWORD="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
 # PostgreSQL connection params (env var-okból)
 PG_HOST="${POSTGRES_HOST:-postgres}"
 PG_DB="${POSTGRES_DB:-tanszek_db}"
 PG_USER="${POSTGRES_USER:-admin}"
-
 # Log
-echo "[$(date -Iseconds)] Backup indítása: ${BACKUP_FILE}"
 
 # pg_dump futtatása
 pg_dump \

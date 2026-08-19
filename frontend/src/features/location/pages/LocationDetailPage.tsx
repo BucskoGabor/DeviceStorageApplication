@@ -34,7 +34,13 @@ export function LocationDetailPage() {
     queryKey: location?.parentId
       ? locationKeys.detail(location.parentId)
       : (['locations', 'detail', 'disabled'] as const),
-    queryFn: () => locationApi.findById(location!.parentId!),
+    // Korábban `location!.parentId!` volt — most a `enabled` guard-ra építünk, és
+    // a queryFn-ben típusbiztos undefined check-et végzünk, így a TS strict null
+    // check-et is kielégítjük, és runtime sem crashel.
+    queryFn: () =>
+      location?.parentId
+        ? locationApi.findById(location.parentId)
+        : Promise.reject(new Error('parentId is missing')),
     enabled: Boolean(location?.parentId),
   })
 
@@ -335,7 +341,7 @@ export function LocationDetailPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/devices/${item.device!.id}`)}
+                              onClick={() => navigate(`/devices/${item.device?.id}`)}
                               title={t('common.details', 'Eszköz adatlap')}
                             >
                               <Eye className="mr-1.5 h-4 w-4" />

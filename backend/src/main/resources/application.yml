@@ -38,8 +38,10 @@ spring:
 server:
   port: 8080
   error:
-    include-message: always
-    include-binding-errors: always
+    # Production-safe default: a belső hibaüzenetek és binding error-ok nem szivárognak
+    # ki a kliens felé. A dev profile felülírja `always`-ra a kényelmes debuggoláshoz.
+    include-message: never
+    include-binding-errors: never
 
 spring.cloud.refresh.enabled: ${SPRING_CLOUD_REFRESH_ENABLED:true}
 
@@ -61,8 +63,10 @@ jwt:
   access-token-ttl-min: ${JWT_ACCESS_TTL_MIN:15}
   refresh-token-ttl-days: ${JWT_REFRESH_TTL_DAYS:30}
   grace-period-sec: ${JWT_KID_GRACE_PERIOD_SEC:3600}
-  # Refresh token cookie secure flag. Dev: false (HTTP). Prod: true (HTTPS terminálás után).
-  cookie-secure: ${JWT_COOKIE_SECURE:false}
+  # Refresh token cookie secure flag. Production-safe default: true (HTTPS only).
+  # A dev profile felülírja false-ra, hogy HTTP-n is működjön a helyi fejlesztés.
+  # Production deploy-nál a JWT_COOKIE_SECURE=false explicit beállítás KERÜLENDŐ.
+  cookie-secure: ${JWT_COOKIE_SECURE:true}
   kids:
     active: ${JWT_KID_ACTIVE:dGVzdF9zZWNyZXRfa2V5X2Zvcl9kZXZlbG9wbWVudF8xMjM0NTY3ODkw}
     previous: ${JWT_KID_PREVIOUS:}

@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -55,6 +56,15 @@ public class AuditAspect {
     "password", "secret", "token", "licensekey", "license_key"
   };
 
+  private static final Set<String> EXCLUDED_PARAM_NAMES =
+      Set.of(
+          "byUserId",
+          "uploadedByUserId",
+          "approvedByUserId",
+          "rejectedByUserId",
+          "targetUserId",
+          "targetLocationId");
+
   private final AuditLogRepository auditLogRepository;
   private final EntityTypeRegistry entityTypeRegistry;
   private final ObjectMapper objectMapper;
@@ -83,6 +93,11 @@ public class AuditAspect {
       beforeState = captureBeforeState(entityType, entityId);
     }
 
+    // A userEmail-et szinkronban, a SecurityContext-ből olvassuk ki — az @Async
+    // szál nem örökli a ThreadLocal SecurityContext-et, így ha az async metódusban
+    // hívnánk getCurrentUserEmail()-t, minden audit log "anonymous" lenne.
+    String userEmail = getCurrentUserEmail();
+
     // 2. Service method futtatás
     String requestPayload = extractRequestPayload(joinPoint);
     Object result;
@@ -97,7 +112,8 @@ public class AuditAspect {
           null,
           action + "_failed",
           requestPayload,
-          t.getMessage());
+          t.getMessage(),
+          userEmail);
       throw t;
     }
 
@@ -106,7 +122,15 @@ public class AuditAspect {
     Object afterEntityId = entityId != null ? entityId : extractEntityIdFromState(afterState);
 
     // 4. Audit log mentés (csak ha van változás vagy fontos action)
-    saveAuditLog(entityType, afterEntityId, beforeState, afterState, action, requestPayload, null);
+    saveAuditLog(
+        entityType,
+        afterEntityId,
+        beforeState,
+        afterState,
+        action,
+        requestPayload,
+        null,
+        userEmail);
 
     return result;
   }
@@ -146,19 +170,68 @@ public class AuditAspect {
 
   /** Entity ID kinyerése a joinPoint paramétereiből. */
   private Object extractEntityId(ProceedingJoinPoint joinPoint, String entityType) {
-    for (Object arg : joinPoint.getArgs()) {
+    org.aspectj.lang.reflect.MethodSignature sig = null;
+    if (joinPoint.getSignature() instanceof org.aspectj.lang.reflect.MethodSignature s) {
+      sig = s;
+    }
+    String[] paramNames = sig != null ? sig.getParameterNames() : null;
+    Object[] args = joinPoint.getArgs();
+
+    for (int i = 0; i < args.length; i++) {
+      Object arg = args[i];
       if (arg == null) continue;
+
+      // 1) Ha maga az entity a paraméter (pl. UserDto), azonos típusú class-simple-name
+      //    alapján, és onnan olvassuk a getId-t.
       if (isEntityType(arg, entityType)) {
         try {
           return arg.getClass().getMethod("getId").invoke(arg);
         } catch (Exception e) {
           log.warn("Failed to extract entity ID from {}", arg.getClass(), e);
         }
-      } else if (arg instanceof Long) {
-        return arg;
+      }
+
+      // 2) Long paraméter esetén a paraméternév vizsgálata
+      if (arg instanceof Long && paramNames != null && i < paramNames.length) {
+        String paramName = paramNames[i];
+        if (isMatchingEntityIdParam(paramName, entityType)) {
+          return arg;
+        }
       }
     }
     return null;
+  }
+
+  private boolean isMatchingEntityIdParam(String paramName, String entityType) {
+    if (paramName == null || EXCLUDED_PARAM_NAMES.contains(paramName)) {
+      return false;
+    }
+    if ("id".equalsIgnoreCase(paramName)) {
+      return true;
+    }
+    if (entityType != null && !entityType.isEmpty()) {
+      String expected =
+          Character.toLowerCase(entityType.charAt(0)) + entityType.substring(1) + "Id";
+      if (expected.equalsIgnoreCase(paramName)) {
+        return true;
+      }
+      if (("AppUser".equalsIgnoreCase(entityType) || "User".equalsIgnoreCase(entityType))
+          && "userId".equalsIgnoreCase(paramName)) {
+        return true;
+      }
+      if (("DeviceAssignment".equalsIgnoreCase(entityType)
+              || "Assignment".equalsIgnoreCase(entityType))
+          && ("assignmentId".equalsIgnoreCase(paramName)
+              || "unassignmentId".equalsIgnoreCase(paramName))) {
+        return true;
+      }
+      if (("DeviceAttachment".equalsIgnoreCase(entityType)
+              || "Attachment".equalsIgnoreCase(entityType))
+          && "attachmentId".equalsIgnoreCase(paramName)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Entity ID kinyerése az AFTER state-ből (ha create esetén az ID még nincs paraméterben). */
@@ -217,7 +290,13 @@ public class AuditAspect {
     return null;
   }
 
-  /** Audit log bejegyzés mentése @Async. */
+  /**
+   * Audit log bejegyzés mentése @Async.
+   *
+   * <p>A {@code userEmail}-et a hívó (@Around advice) szinkronban olvassa ki a SecurityContext-ből,
+   * mert az @Async szál nem örökli a ThreadLocal SecurityContext-et. Ha itt hívnánk, minden rekord
+   * "anonymous" lenne.
+   */
   @Async
   public void saveAuditLog(
       String entityType,
@@ -226,7 +305,8 @@ public class AuditAspect {
       Object afterState,
       String action,
       String requestPayload,
-      String errorMessage) {
+      String errorMessage,
+      String userEmail) {
     jobMonitoring.run(
         "audit-log-write",
         () -> {
@@ -237,13 +317,10 @@ public class AuditAspect {
               changesJson = "{}";
             }
 
-            // User email lekérése a SecurityContext-ből
-            String userEmail = getCurrentUserEmail();
-
             AuditLog auditLog =
                 AuditLog.builder()
                     .timestamp(Instant.now())
-                    .userEmail(userEmail)
+                    .userEmail(userEmail != null ? userEmail : "anonymous")
                     .endpoint(action != null ? action : "unknown")
                     .method("INTERNAL")
                     .requestPayload(requestPayload)
@@ -255,7 +332,8 @@ public class AuditAspect {
 
             auditLogRepository.save(auditLog);
 
-            log.info("Audit log saved: {} on {} (id={})", action, entityType, entityId);
+            log.info(
+                "Audit log saved: {} on {} (id={}) by {}", action, entityType, entityId, userEmail);
           } catch (Exception e) {
             log.error("Failed to save audit log for {} {} id={}", action, entityType, entityId, e);
             throw e; // A monitoring wrapper elkapja és alert-et küld

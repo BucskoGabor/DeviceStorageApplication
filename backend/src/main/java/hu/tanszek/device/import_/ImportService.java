@@ -107,7 +107,25 @@ public class ImportService {
       int devicesInserted = 0, devicesUpdated = 0;
       int errors = 0;
 
-      // ===== User-ek import =====
+      // ===== Lookup cache-ek előtöltése =====
+      // Korábban minden sorban lefutott a `locationRepository.findByType(OFFICE)` és a
+      // `roleRepository.findByName(...)`, ami 1000+ soros importnál ezres nagyságrendű
+      // felesleges DB lekérdezést jelentett. Az egész import egy tranzakcióban fut,
+      // tehát a cache itt biztonságos — a tranzakció végén minden commit egyszerre megy.
+      // A lokációk lookup típus-korlátozás nélküli: az eszközök lehetnek STORAGE, LAB,
+      // SERVER_ROOM, stb. típusú helyen, nem csak OFFICE.
+      java.util.Map<String, Location> locationByName = new java.util.HashMap<>();
+      for (Location l : locationRepository.findAll()) {
+        if (l.getName() != null) {
+          locationByName.put(l.getName(), l);
+        }
+      }
+      java.util.Map<String, Role> roleByName = new java.util.HashMap<>();
+      for (Role r : roleRepository.findAll()) {
+        if (r.getName() != null) {
+          roleByName.put(r.getName(), r);
+        }
+      }
       for (ImportUserRow row : preview.validUsers()) {
         try {
           String emailHash = cryptoService.sha256(row.email());
@@ -115,30 +133,32 @@ public class ImportService {
 
           String emailEncrypted = cryptoService.encrypt(row.email());
 
-          // Role lookup
+          // Role lookup — cache-ből (O(1) memória-lookup), fallback repository-ból
           Role role =
-              roleRepository
-                  .findByName(row.role())
+              Optional.ofNullable(roleByName.get(row.role()))
+                  .or(() -> roleRepository.findByName(row.role()))
                   .orElseThrow(
                       () ->
                           new BusinessValidationException(
                               "invalidRole", "Unknown role: " + row.role()));
 
-          // Office location lookup (ha megadva)
+          // Office location lookup (ha megadva) — cache-ből, fallback repository-ból
           Location office = null;
           if (row.officeLocationName() != null && !row.officeLocationName().isBlank()) {
             office =
-                locationRepository
-                    .findByType(hu.tanszek.device.location.entity.LocationType.OFFICE)
-                    .stream()
-                    .filter(l -> l.getName().equals(row.officeLocationName()))
-                    .findFirst()
+                Optional.ofNullable(locationByName.get(row.officeLocationName()))
+                    .or(
+                        () ->
+                            locationRepository
+                                .findByType(hu.tanszek.device.location.entity.LocationType.OFFICE)
+                                .stream()
+                                .filter(l -> l.getName().equals(row.officeLocationName()))
+                                .findFirst())
                     .orElseThrow(
                         () ->
                             new ResourceNotFoundException(
-                                "Office location not found: " + row.officeLocationName()));
+                                "Location not found: " + row.officeLocationName()));
           }
-
           boolean active = row.active() == null || row.active();
 
           if (existing.isPresent()) {
@@ -187,12 +207,16 @@ public class ImportService {
 
           Location location = null;
           if (row.locationName() != null && !row.locationName().isBlank()) {
+            // Cache-ből, típus-korlátozás nélkül — fallback repository-ból
             location =
-                locationRepository
-                    .findByType(hu.tanszek.device.location.entity.LocationType.OFFICE)
-                    .stream()
-                    .filter(l -> l.getName().equals(row.locationName()))
-                    .findFirst()
+                Optional.ofNullable(locationByName.get(row.locationName()))
+                    .or(
+                        () ->
+                            locationRepository
+                                .findByType(hu.tanszek.device.location.entity.LocationType.OFFICE)
+                                .stream()
+                                .filter(l -> l.getName().equals(row.locationName()))
+                                .findFirst())
                     .orElseThrow(
                         () ->
                             new ResourceNotFoundException(

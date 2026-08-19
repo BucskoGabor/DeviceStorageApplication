@@ -20,3 +20,12 @@ logging:
   level:
     root: DEBUG
     hu.tanszek: TRACE
+
+# Dev környezetben a refresh token cookie-t HTTP-n is elfogadjuk (nincs HTTPS terminálás),
+# és a belső hibaüzenetek megjelennek a kliens felé a kényelmes debuggoláshoz.
+jwt:
+  cookie-secure: false
+server:
+  error:
+    include-message: always
+    include-binding-errors: always

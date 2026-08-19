@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -29,11 +30,18 @@ interface AssignmentDialogProps {
   deviceId: number
 }
 
+const PAGE_SIZE = 50
+
 /**
  * AssignmentDialog — Eszköz hozzárendelési kérés indítása.
  *
  * Szabály: Az eszköz VAGY Helyszínhez (Location), VAGY Felhasználóhoz (User) rendelhető hozzá,
  * egyszerre mindkettő vagy egyik sem tilos.
+ *
+ * <p>A user lista a backend PAGINATION_MAX_SIZE=50 korlátja miatt csak az első 50
+ * aktív user-t tölti be. Ezt a korlátot a user kereső inputtal hidaljuk át: a
+ * user begépelheti a keresett user email-jét / szerepkörét, és a kliens oldalon
+ * szűrjük a listát.
  */
 export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDialogProps) {
   const { t } = useTranslation()
@@ -42,21 +50,33 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
   const [targetLocationName, setTargetLocationName] = useState<string>('')
   const [targetUserId, setTargetUserId] = useState<string>('__none__')
   const [locationSelectorOpen, setLocationSelectorOpen] = useState(false)
+  const [userSearch, setUserSearch] = useState<string>('')
 
   const { data: usersPage } = useQuery({
-    queryKey: userKeys.list({ page: 0, size: 50 }),
-    queryFn: () => userApi.findAll({ page: 0, size: 50 }),
+    queryKey: userKeys.list({ page: 0, size: PAGE_SIZE }),
+    queryFn: () => userApi.findAll({ page: 0, size: PAGE_SIZE }),
     enabled: open,
   })
+
+  const activeUsers = useMemo(() => (usersPage?.content ?? []).filter((u) => u.active), [usersPage])
+
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase()
+    if (!q) return activeUsers
+    return activeUsers.filter((u) => {
+      const email = (u.email || u.emailMasked || '').toLowerCase()
+      const role = (u.role?.name || '').toLowerCase()
+      return email.includes(q) || role.includes(q)
+    })
+  }, [activeUsers, userSearch])
 
   const requestMutation = useRequestAssignment(deviceId, () => {
     setTargetLocationId(null)
     setTargetLocationName('')
     setTargetUserId('__none__')
+    setUserSearch('')
     onOpenChange(false)
   })
-
-  const activeUsers = usersPage?.content.filter((u) => u.active) ?? []
 
   const handleSubmit = () => {
     if (targetType === 'location') {
@@ -149,20 +169,42 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="target-user">{t('devices.selectUser')}</Label>
+                <Label htmlFor="target-user-search">{t('devices.selectUser')}</Label>
+                <Input
+                  id="target-user-search"
+                  type="search"
+                  placeholder={t('users.searchByEmail', 'Keresés email vagy szerepkör szerint…')}
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="mb-2"
+                />
                 <Select value={targetUserId} onValueChange={setTargetUserId}>
                   <SelectTrigger id="target-user">
-                    <SelectValue placeholder={t('devices.selectUser')} />
+                    <SelectValue
+                      placeholder={
+                        filteredUsers.length === 0
+                          ? t('users.noMatch', 'Nincs találat')
+                          : t('devices.selectUser')
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">—</SelectItem>
-                    {activeUsers.map((u) => (
+                    {filteredUsers.map((u) => (
                       <SelectItem key={u.id} value={String(u.id)}>
                         {u.email || u.emailMasked || `#${u.id}`} ({u.role?.name ?? '—'})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {activeUsers.length >= PAGE_SIZE && (
+                  <p className="text-xs text-muted-foreground">
+                    {t('users.showingFirstN', {
+                      count: PAGE_SIZE,
+                      defaultValue: `Az első ${PAGE_SIZE} aktív user jelenik meg. Használd a keresőt a többi megtalálásához.`,
+                    })}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -185,12 +227,12 @@ export function AssignmentDialog({ open, onOpenChange, deviceId }: AssignmentDia
       <LocationTreeSelector
         open={locationSelectorOpen}
         onOpenChange={setLocationSelectorOpen}
+        selectedId={targetLocationId}
+        excludeGroupType
         onSelect={(id, node) => {
           setTargetLocationId(id)
           setTargetLocationName(node?.name ?? '')
         }}
-        selectedId={targetLocationId}
-        excludeGroupType
       />
     </>
   )

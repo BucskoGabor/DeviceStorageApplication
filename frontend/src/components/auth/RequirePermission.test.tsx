@@ -96,9 +96,7 @@ describe('RequirePermission', () => {
           <Route
             path="/approvals"
             element={
-              <RequirePermission
-                anyPermission={['DEVICE_ASSIGN', 'DEVICE_MAINTENANCE_APPROVE']}
-              >
+              <RequirePermission anyPermission={['DEVICE_ASSIGN', 'DEVICE_MAINTENANCE_APPROVE']}>
                 <div>Approval Queue</div>
               </RequirePermission>
             }

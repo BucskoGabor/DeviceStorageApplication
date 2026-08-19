@@ -18,6 +18,7 @@ import hu.tanszek.device.attachment.entity.DeviceAttachment;
 import hu.tanszek.device.attachment.repository.DeviceAttachmentRepository;
 import hu.tanszek.device.auth.entity.Permission;
 import hu.tanszek.device.auth.entity.Role;
+import hu.tanszek.device.auth.repository.PermissionRepository;
 import hu.tanszek.device.auth.repository.RoleRepository;
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.device.entity.DeviceStatus;
@@ -46,6 +47,7 @@ class EntityTypeRegistryTest {
   @Mock private SoftwareRepository softwareRepository;
   @Mock private DeviceAttachmentRepository attachmentRepository;
   @Mock private RoleRepository roleRepository;
+  @Mock private PermissionRepository permissionRepository;
 
   @InjectMocks private EntityTypeRegistry registry;
 
@@ -158,20 +160,37 @@ class EntityTypeRegistryTest {
 
   @Test
   void toJsonMap_and_applyJsonMap_Device() {
+    Location loc = Location.builder().name("Raktar A").type(LocationType.STORAGE).build();
+    loc.setId(15L);
+
     Device dev =
         Device.builder()
             .id(1L)
             .type("Laptop")
             .inventoryNumber("INV-001")
             .status(DeviceStatus.IN_STORAGE)
+            .currentLocation(loc)
             .build();
 
     Map<String, Object> map = registry.toJsonMap(dev);
     assertThat(map.get("inventoryNumber")).isEqualTo("INV-001");
+    assertThat(map.get("currentLocationId")).isEqualTo(15L);
 
-    registry.applyJsonMap(dev, Map.of("type", "Desktop", "status", "MAINTENANCE"));
+    Location newLoc = Location.builder().name("Raktar B").type(LocationType.STORAGE).build();
+    newLoc.setId(25L);
+    when(locationRepository.findById(25L)).thenReturn(Optional.of(newLoc));
+
+    registry.applyJsonMap(
+        dev, Map.of("type", "Desktop", "status", "MAINTENANCE", "currentLocationId", 25L));
     assertThat(dev.getType()).isEqualTo("Desktop");
     assertThat(dev.getStatus()).isEqualTo(DeviceStatus.MAINTENANCE);
+    assertThat(dev.getCurrentLocation().getId()).isEqualTo(25L);
+
+    // Test explicit null clears currentLocation
+    Map<String, Object> clearLocMap = new java.util.HashMap<>();
+    clearLocMap.put("currentLocationId", null);
+    registry.applyJsonMap(dev, clearLocMap);
+    assertThat(dev.getCurrentLocation()).isNull();
   }
 
   @Test
@@ -182,22 +201,57 @@ class EntityTypeRegistryTest {
             .name("ROLE_TEACHER")
             .permissions(Set.of(Permission.builder().name("DEVICE_READ").build()))
             .build();
+    Location office = Location.builder().name("Iroda 101").type(LocationType.OFFICE).build();
+    office.setId(30L);
+    Permission directPerm = Permission.builder().id(99L).name("EXPORT_DATA").build();
+
     AppUser user =
         AppUser.builder()
             .id(10L)
             .emailHash("hash123")
             .emailEncrypted("enc123")
             .role(role)
+            .officeLocation(office)
+            .permissions(new java.util.HashSet<>(Set.of(directPerm)))
             .active(true)
             .mustChangePassword(false)
             .build();
 
     Map<String, Object> map = registry.toJsonMap(user);
     assertThat(map.get("emailHash")).isEqualTo("hash123");
+    assertThat(map.get("officeLocationId")).isEqualTo(30L);
+    assertThat(map.get("permissions")).isEqualTo(java.util.List.of("EXPORT_DATA"));
 
-    registry.applyJsonMap(user, Map.of("active", false, "mustChangePassword", true));
+    Location newOffice = Location.builder().name("Iroda 102").type(LocationType.OFFICE).build();
+    newOffice.setId(35L);
+    when(locationRepository.findById(35L)).thenReturn(Optional.of(newOffice));
+
+    Permission newDirectPerm = Permission.builder().id(100L).name("IMPORT_DATA").build();
+    when(permissionRepository.findByName("IMPORT_DATA")).thenReturn(Optional.of(newDirectPerm));
+
+    registry.applyJsonMap(
+        user,
+        Map.of(
+            "active",
+            false,
+            "mustChangePassword",
+            true,
+            "officeLocationId",
+            35L,
+            "permissions",
+            java.util.List.of("IMPORT_DATA")));
     assertThat(user.isActive()).isFalse();
     assertThat(user.isMustChangePassword()).isTrue();
+    assertThat(user.getOfficeLocation().getId()).isEqualTo(35L);
+    assertThat(user.getPermissions()).extracting("name").containsExactly("IMPORT_DATA");
+
+    // Test explicit null clears officeLocation and permissions
+    Map<String, Object> clearMap = new java.util.HashMap<>();
+    clearMap.put("officeLocationId", null);
+    clearMap.put("permissions", null);
+    registry.applyJsonMap(user, clearMap);
+    assertThat(user.getOfficeLocation()).isNull();
+    assertThat(user.getPermissions()).isEmpty();
   }
 
   @Test
@@ -253,15 +307,140 @@ class EntityTypeRegistryTest {
   }
 
   @Test
+  void applyJsonMap_User_restoresRoleId() {
+    // A user jelenleg ROLE_STUDENT (a rollback UTÁN: tanár → diák váltás).
+    // A beforeState a ROLE_TEACHER roleId-t tartalmazza.
+    Role teacherRole = Role.builder().id(5L).name("ROLE_TEACHER").build();
+    Role studentRole = Role.builder().id(6L).name("ROLE_STUDENT").build();
+    AppUser user = AppUser.builder().id(20L).emailHash("h").role(studentRole).build();
+
+    when(roleRepository.findById(5L)).thenReturn(Optional.of(teacherRole));
+
+    registry.applyJsonMap(user, Map.of("roleId", 5));
+
+    // A user role-ját vissza kellett állítani tanárra.
+    assertThat(user.getRole().getId()).isEqualTo(5L);
+    assertThat(user.getRole().getName()).isEqualTo("ROLE_TEACHER");
+  }
+
+  @Test
+  void applyJsonMap_User_clearsRoleWhenRoleIdIsNull() {
+    // Ha a beforeState.roleId = null, a user role-ja törlődik.
+    Role oldRole = Role.builder().id(7L).name("ROLE_X").build();
+    AppUser user = AppUser.builder().id(21L).emailHash("h").role(oldRole).build();
+
+    Map<String, Object> before = new java.util.HashMap<>();
+    before.put("roleId", null);
+
+    registry.applyJsonMap(user, before);
+
+    assertThat(user.getRole()).isNull();
+  }
+
+  @Test
+  void applyJsonMap_DeviceAssignment_restoresReferences() {
+    // A DeviceAssignment jelenleg egy másik device-hoz van rendelve (a rollback
+    // UTÁN: a device megváltozott). A beforeState az eredeti device/location/user
+    // ID-kat tartalmazza.
+    Device origDevice = Device.builder().id(50L).type("laptop").build();
+    Location origFromLoc = Location.builder().id(60L).name("From").build();
+    Location origToLoc = Location.builder().id(61L).name("To").build();
+    AppUser origFromUser = AppUser.builder().id(70L).emailHash("x").build();
+    AppUser origToUser = AppUser.builder().id(71L).emailHash("y").build();
+
+    Device currentDevice = Device.builder().id(99L).type("monitor").build();
+    Location currentToLoc = Location.builder().id(199L).name("Current").build();
+
+    DeviceAssignment assign =
+        DeviceAssignment.builder()
+            .id(1L)
+            .device(currentDevice)
+            .toLocation(currentToLoc)
+            .status(AssignmentStatus.ASSIGNED)
+            .build();
+
+    when(deviceRepository.findById(50L)).thenReturn(Optional.of(origDevice));
+    when(locationRepository.findById(60L)).thenReturn(Optional.of(origFromLoc));
+    when(locationRepository.findById(61L)).thenReturn(Optional.of(origToLoc));
+    when(userRepository.findById(70L)).thenReturn(Optional.of(origFromUser));
+    when(userRepository.findById(71L)).thenReturn(Optional.of(origToUser));
+
+    Map<String, Object> before =
+        Map.of(
+            "deviceId", 50,
+            "fromLocationId", 60,
+            "toLocationId", 61,
+            "fromUserId", 70,
+            "toUserId", 71);
+
+    registry.applyJsonMap(assign, before);
+
+    // Minden referenciát vissza kellett állítani.
+    assertThat(assign.getDevice().getId()).isEqualTo(50L);
+    assertThat(assign.getFromLocation().getId()).isEqualTo(60L);
+    assertThat(assign.getToLocation().getId()).isEqualTo(61L);
+    assertThat(assign.getFromUser().getId()).isEqualTo(70L);
+    assertThat(assign.getToUser().getId()).isEqualTo(71L);
+  }
+
+  @Test
+  void applyJsonMap_Role_restoresPermissions() {
+    // A role jelenleg 1 permissionnel rendelkezik (a rollback UTÁN: a DEVICE_ASSIGN
+    // törölve lett). A beforeState a teljes permission listát tartalmazza.
+    Permission readPerm = Permission.builder().id(101L).name("DEVICE_READ").build();
+    Permission writePerm = Permission.builder().id(102L).name("DEVICE_ASSIGN").build();
+
+    Role role = Role.builder().id(4L).name("ROLE_VIEWER").build();
+    role.getPermissions().add(readPerm); // jelenlegi state: csak DEVICE_READ
+
+    Map<String, Object> before =
+        Map.of(
+            "name",
+            "ROLE_VIEWER",
+            "permissions",
+            java.util.List.of("DEVICE_READ", "DEVICE_ASSIGN"));
+
+    when(permissionRepository.findByName("DEVICE_READ")).thenReturn(Optional.of(readPerm));
+    when(permissionRepository.findByName("DEVICE_ASSIGN")).thenReturn(Optional.of(writePerm));
+
+    registry.applyJsonMap(role, before);
+
+    // A role-nak most mindkét permissiont vissza kellett kapnia.
+    assertThat(role.getPermissions())
+        .extracting("name")
+        .containsExactlyInAnyOrder("DEVICE_READ", "DEVICE_ASSIGN");
+  }
+
+  @Test
+  void applyJsonMap_Role_clearsPermissionsWhenBeforeHasNull() {
+    // Ha a beforeState.permissions = null, a rollback kiüríti a role permissionjeit.
+    Role role = Role.builder().id(5L).name("ROLE_EMPTY").build();
+    role.getPermissions().add(Permission.builder().id(1L).name("X").build());
+
+    Map<String, Object> before = new java.util.HashMap<>();
+    before.put("name", "ROLE_EMPTY");
+    before.put("permissions", null);
+
+    registry.applyJsonMap(role, before);
+
+    assertThat(role.getPermissions()).isEmpty();
+  }
+
+  @Test
   void recreateEntity_Device() {
     when(deviceRepository.findByInventoryNumber("INV-999")).thenReturn(Optional.empty());
     when(deviceRepository.save(any(Device.class))).thenAnswer(i -> i.getArgument(0));
+
+    Location loc = Location.builder().name("Storage").build();
+    loc.setId(55L);
+    when(locationRepository.findById(55L)).thenReturn(Optional.of(loc));
 
     Map<String, Object> fields =
         Map.of(
             "type", "Monitor",
             "inventoryNumber", "INV-999",
-            "status", "DISPOSED");
+            "status", "DISPOSED",
+            "currentLocationId", 55L);
 
     Object result = registry.recreateEntity("Device", 10L, fields);
 
@@ -270,6 +449,7 @@ class EntityTypeRegistryTest {
     assertThat(dev.getType()).isEqualTo("Monitor");
     assertThat(dev.getInventoryNumber()).isEqualTo("INV-999");
     assertThat(dev.getStatus()).isEqualTo(DeviceStatus.DISPOSED);
+    assertThat(dev.getCurrentLocation().getId()).isEqualTo(55L);
   }
 
   @Test

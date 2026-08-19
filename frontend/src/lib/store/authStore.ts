@@ -28,7 +28,7 @@ interface AuthState {
   // Actions
   setAuth: (
     token: string,
-    email: string,
+    email: string | null,
     role: string,
     permissions: string[],
     mustChangePassword: boolean

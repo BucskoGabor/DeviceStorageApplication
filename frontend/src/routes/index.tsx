@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { MyDashboardPage } from '@/features/auth/pages/MyDashboardPage'
 import { ForbiddenPage } from '@/features/auth/pages/ForbiddenPage'
+import { NotFoundPage } from '@/features/auth/pages/NotFoundPage'
 import { PasswordChangeForm } from '@/features/auth/components/PasswordChangeForm'
 import { useAuthStore } from '@/lib/store/authStore'
 import { RequireAuth } from '@/components/auth/RequireAuth'
@@ -162,6 +163,11 @@ export function AppRoutes() {
           element={
             <RequirePermission
               anyPermission={[
+                // ASSIGNMENT_APPROVE azért kell, mert a backend AssignmentController
+                // ezt a permission-t követeli meg a jóváhagyás endpointokon
+                // (approve / approve-unassign / reject / findPending). Ha csak
+                // DEVICE_ASSIGN lenne meg, a user beléphet, de minden hívás 403-at adna.
+                'ASSIGNMENT_APPROVE',
                 'DEVICE_ASSIGN',
                 'DEVICE_UNASSIGN',
                 'DEVICE_MAINTENANCE_APPROVE',
@@ -228,11 +234,14 @@ export function AppRoutes() {
         <Route path="/admin/roles" element={<Navigate to="/roles" replace />} />
         <Route path="/admin/audit" element={<Navigate to="/audit" replace />} />
         <Route path="/admin/import" element={<Navigate to="/import" replace />} />
+
+        {/* 404-es oldal — catch-all a védett útvonalakon belül */}
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
 
-      {/* Fallback */}
+      {/* Root fallback — ismeretlen URL-ek */}
       <Route path="/" element={<Navigate to="/my-dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/my-dashboard" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }

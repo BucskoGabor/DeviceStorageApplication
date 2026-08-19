@@ -25,6 +25,10 @@ RUN addgroup -g 1000 backup && \
 COPY --chown=backup:backup backup.sh /usr/local/bin/backup.sh
 COPY --chown=backup:backup cleanup.sh /usr/local/bin/cleanup.sh
 COPY --chown=backup:backup crontab.txt /etc/crontabs/backup
+# backup.env.example bemásolása /etc/backup.env néven a konténerbe.
+# A docker-compose env_file direktíva felülírja ezt a fájlt a valódi titkokkal
+# futásidőben, így a backup.sh a /etc/backup.env-ből mindig tud olvasni.
+COPY --chown=backup:backup backup.env.example /etc/backup.env
 
 # Jogosultságok
 RUN chmod +x /usr/local/bin/backup.sh /usr/local/bin/cleanup.sh && \

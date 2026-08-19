@@ -95,11 +95,12 @@ apiClient.interceptors.response.use(
 
       // Refresh-in-progress lock: ha már fut egy refresh, várunk arra
       if (!refreshPromise) {
-        refreshPromise = performRefresh()
+        refreshPromise = performRefresh().finally(() => {
+          refreshPromise = null
+        })
       }
 
       const newToken = await refreshPromise
-      refreshPromise = null
 
       if (newToken) {
         originalRequest.headers = {
@@ -109,9 +110,10 @@ apiClient.interceptors.response.use(
         return apiClient.request(originalRequest)
       }
 
-      // Refresh failure: redirect login
+      // Refresh failure: a clearAuth hatására az accessToken null lesz, és az
+      // AppRoutes `!accessToken` ága a /login route-ra irányít (SPA-n belül,
+      // QueryClient cache és form state megőrzésével — nincs full reload).
       useAuthStore.getState().clearAuth()
-      window.location.href = '/login'
     }
 
     return Promise.reject(error)

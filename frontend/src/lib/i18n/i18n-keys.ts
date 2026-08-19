@@ -13,6 +13,7 @@ export const i18nKeys = [
   'authenticationFailed',
   'created',
   'deleted',
+  'deviceHasAssignmentHistory',
   'deviceNotAssignable',
   'deviceNotFound',
   'deviceStatusTransitionNotAllowed',
@@ -64,6 +65,8 @@ export const defaultMessages: Record<MessageKey, string> = {
   authenticationFailed: 'Hitelesítés sikertelen',
   created: 'Sikeresen létrehozva',
   deleted: 'Sikeresen törölve',
+  deviceHasAssignmentHistory:
+    'Az eszköz nem törölhető véglegesen, mert hozzárendelési előzményekkel rendelkezik. Az életciklus lezárásához használja a selejtezést (DISPOSED státusz).',
   deviceNotAssignable: 'Az eszköz MAINTENANCE vagy DISPOSED státuszú, nem adható ki',
   deviceNotFound: 'Eszköz nem található',
   deviceStatusTransitionNotAllowed: 'Nem megengedett státusz átmenet',

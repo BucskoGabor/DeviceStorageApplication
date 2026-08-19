@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -18,14 +18,10 @@ import { locationKeys } from '@/lib/api/queryKeys'
 export interface LocationTreeSelectorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSelect: (locationId: number | null, locationNode?: LocationTreeNode | null) => void
+  onSelect: (id: number | null, node: LocationTreeNode | null) => void
   selectedId?: number | null
   title?: string
   description?: string
-  /**
-   * Ha megadva, kizárja a GROUP típusú location-öket
-   * (pl. assignment célhelyszín kiválasztásához).
-   */
   excludeGroupType?: boolean
   onlyStorageType?: boolean
 }
@@ -40,7 +36,7 @@ export function findLocationNode(
   if (!nodes || id == null) return null
   for (const node of nodes) {
     if (node.id === id) return node
-    if (node.children && node.children.length > 0) {
+    if (node.children) {
       const found = findLocationNode(node.children, id)
       if (found) return found
     }
@@ -49,13 +45,40 @@ export function findLocationNode(
 }
 
 /**
+ * Összegyűjti a {@code targetId} node-ig vezető útvonal összes ős ID-ját.
+ *
+ * <p>Ha a {@code targetId} nem található a fában, üres Set-et ad vissza.
+ * A path argumentum a rekurzió belső állapota — a hívó ne adja meg.
+ *
+ * <p>Példa: a fa [{id:1, children:[{id:2, children:[{id:3}]}]}, targetId=3]
+ * → Set {1, 2} (a 3-as node NEM kerül bele, csak az ősei).
+ */
+export function collectAncestorIds(
+  nodes: LocationTreeNode[],
+  targetId: number,
+  path: number[] = []
+): Set<number> {
+  for (const node of nodes) {
+    if (node.id === targetId) {
+      return new Set(path)
+    }
+    if (node.children && node.children.length > 0) {
+      const found = collectAncestorIds(node.children, targetId, [...path, node.id])
+      if (found.size > 0 || node.children.some((c) => c.id === targetId)) {
+        return found
+      }
+    }
+  }
+  return new Set()
+}
+
+/**
  * LocationTreeSelector — hierarchikus helyszínválasztó Dialog-ban.
  *
- * Fa nézetben jeleníti meg a teljes hierarchiát (a /api/locations/tree endpoint alapján).
- * A user kiválaszthatja a kívánt node-ot, vagy a "—" opciót (nincs kiválasztott).
- *
- * Reusable komponens — használható az AssignmentDialog-ban és a
- * Location create/edit űrlapokban a parent kiválasztásához.
+ * <p>A {@code selectedId} prop-pal megadott kiválasztott node-ot a dialog
+ * megnyitásakor automatikusan megkeressük a fában, és az összes ős node-ot
+ * hozzáadjuk az {@code expandedIds} halmazhoz — így a user azonnal látja a
+ * kiválasztott elemet, nem kell kézzel kibontania a fastruktúrát.
  */
 export function LocationTreeSelector({
   open,
@@ -75,6 +98,24 @@ export function LocationTreeSelector({
     queryFn: () => locationApi.findTree(),
     enabled: open,
   })
+
+  // Ha van selectedId, a dialog megnyitásakor automatikusan kibontjuk a kiválasztott
+  // node összes ősét, hogy a user azonnal lássa a kijelölt elemet.
+  const initialExpanded = useMemo(() => {
+    if (!selectedId || !tree) return new Set<number>()
+    return collectAncestorIds(tree, selectedId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tree, selectedId])
+
+  useEffect(() => {
+    if (initialExpanded.size > 0) {
+      setExpandedIds((prev) => {
+        const next = new Set(prev)
+        initialExpanded.forEach((id) => next.add(id))
+        return next
+      })
+    }
+  }, [initialExpanded])
 
   const toggleExpanded = (id: number) => {
     setExpandedIds((prev) => {
@@ -171,66 +212,69 @@ function TreeRow({
   excludeGroupType,
   onlyStorageType = false,
 }: TreeRowProps) {
-  const hasChildren = node.children.length > 0
   const isExpanded = expandedIds.has(node.id)
   const isSelected = selectedId === node.id
-  const isDisabled =
-    (excludeGroupType && node.type === 'GROUP') || (onlyStorageType && node.type !== 'STORAGE')
+  const isSelectable =
+    (!excludeGroupType || node.type !== 'GROUP') && (!onlyStorageType || node.type === 'STORAGE')
+  const hasChildren = node.children && node.children.length > 0
 
   return (
-    <>
+    <div>
       <div
-        className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-sm ${
-          isDisabled
-            ? 'cursor-not-allowed opacity-50'
-            : isSelected
-              ? 'bg-accent font-medium'
-              : 'hover:bg-accent'
+        className={`flex items-center gap-1 rounded-md hover:bg-accent ${
+          isSelected ? 'bg-accent font-medium' : ''
         }`}
-        style={{ paddingLeft: `${depth * 1.25 + 0.5}rem` }}
+        style={{ paddingLeft: `${depth * 1.25}rem` }}
       >
         {hasChildren ? (
           <button
+            type="button"
             onClick={() => onToggle(node.id)}
-            className="flex h-4 w-4 items-center justify-center"
+            className="rounded p-1 hover:bg-accent-foreground/10"
             aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >
             {isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
+              <ChevronDown className="h-3.5 w-3.5" />
             ) : (
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-3.5 w-3.5" />
             )}
           </button>
         ) : (
-          <span className="w-4" />
+          <span className="inline-block w-5" />
         )}
         <button
-          onClick={() => !isDisabled && onSelect(node)}
-          disabled={isDisabled}
-          className="flex flex-1 items-center gap-2 text-left disabled:cursor-not-allowed"
+          type="button"
+          onClick={() => isSelectable && onSelect(node)}
+          disabled={!isSelectable}
+          className={`flex flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm ${
+            isSelectable ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+          }`}
         >
           <span className="flex-1">{node.name}</span>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-[10px]">
             {typeLabel(node.type)}
           </Badge>
-          {isSelected && <Check className="ml-1 h-4 w-4" />}
+          {isSelected && <Check className="ml-2 h-4 w-4" />}
         </button>
       </div>
-      {isExpanded &&
-        node.children.map((child) => (
-          <TreeRow
-            key={child.id}
-            node={child}
-            depth={depth + 1}
-            expandedIds={expandedIds}
-            onToggle={onToggle}
-            onSelect={onSelect}
-            selectedId={selectedId}
-            excludeGroupType={excludeGroupType}
-            onlyStorageType={onlyStorageType}
-          />
-        ))}
-    </>
+      {isExpanded && hasChildren && (
+        <div>
+          {node.children!.map((child) => (
+            <TreeRow
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              expandedIds={expandedIds}
+              onToggle={onToggle}
+              onSelect={onSelect}
+              selectedId={selectedId}
+              excludeGroupType={excludeGroupType}
+              onlyStorageType={onlyStorageType}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -238,10 +282,10 @@ function typeLabel(type: LocationTreeNode['type']): string {
   switch (type) {
     case 'OFFICE':
       return 'Iroda'
-    case 'CLASSROOM':
-      return 'Tanterem'
     case 'STORAGE':
       return 'Raktár'
+    case 'CLASSROOM':
+      return 'Tanterem'
     case 'GROUP':
       return 'Csoport'
     default:

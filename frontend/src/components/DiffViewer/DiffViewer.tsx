@@ -24,12 +24,21 @@ interface DiffViewerProps {
 type DiffState = 'unchanged' | 'added' | 'removed' | 'modified'
 
 function classifyChange(beforeVal: unknown, afterVal: unknown): DiffState {
-  const beforePresent = beforeVal !== undefined
-  const afterPresent = afterVal !== undefined
+  // A JSON deszerializáció során a hiányzó mező `undefined`, míg a kifejezetten
+  // null-ra állított mező `null` lesz. Ha ezeket megkülönböztetnénk, akkor pl.
+  // egy `field: null → field: undefined` változás "modified"-ként jelenne meg,
+  // pedig a felhasználó számára ez nem valódi változás (mindkettő "nincs érték").
+  // A normalizálás: mindkettőt `null`-ként kezeljük az összehasonlításnál.
+  const normalize = (v: unknown) => (v === undefined ? null : v)
+  const beforeNorm = normalize(beforeVal)
+  const afterNorm = normalize(afterVal)
+
+  const beforePresent = beforeVal !== undefined && beforeVal !== null
+  const afterPresent = afterVal !== undefined && afterVal !== null
 
   if (!beforePresent && afterPresent) return 'added'
   if (beforePresent && !afterPresent) return 'removed'
-  if (JSON.stringify(beforeVal) !== JSON.stringify(afterVal)) return 'modified'
+  if (JSON.stringify(beforeNorm) !== JSON.stringify(afterNorm)) return 'modified'
   return 'unchanged'
 }
 

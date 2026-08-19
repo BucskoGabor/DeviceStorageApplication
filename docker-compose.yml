@@ -99,7 +99,7 @@ services:
       - uploads_data:/var/uploads:rw
       - audit_archive_data:/var/backups/archive/audit:rw
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q 'UP'"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health 2>/dev/null | grep -q '\"status\":\"UP\"'"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -132,7 +132,7 @@ services:
     container_name: device-storage-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "80:8080"
     depends_on:
       backend:
         condition: service_healthy

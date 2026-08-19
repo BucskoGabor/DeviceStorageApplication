@@ -26,19 +26,22 @@ export function RequirePermission({
     return <Navigate to="/login" replace />
   }
 
-  let hasAccess = true
-
+  // AND szemantika: ha mindkét prop meg van adva, mindkettőnek teljesülnie kell.
+  // - `permissions` (AND): a usernek MINDENT meg kell kapnia.
+  // - `anyPermission` (OR): a usernek LEGALÁBB EGYET meg kell kapnia.
+  // - Ha mindkettő definiálva van, a kettő együttesen is AND-ként viselkedik
+  //   (a `permissions` blokkolja az `anyPermission` hatását is).
+  let hasAllPermissions = true
   if (permissions && permissions.length > 0) {
-    const hasAll = permissions.every((p) => userPermissions.includes(p))
-    if (!hasAll) hasAccess = false
+    hasAllPermissions = permissions.every((p) => userPermissions.includes(p))
   }
 
+  let hasAnyPermission = true
   if (anyPermission && anyPermission.length > 0) {
-    const hasAny = anyPermission.some((p) => userPermissions.includes(p))
-    if (!hasAny) hasAccess = false
+    hasAnyPermission = anyPermission.some((p) => userPermissions.includes(p))
   }
 
-  if (!hasAccess) {
+  if (!hasAllPermissions || !hasAnyPermission) {
     return <Navigate to="/403" replace />
   }
 

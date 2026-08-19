@@ -3,6 +3,7 @@ import {
   type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
+  type OnChangeFn,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
@@ -58,6 +59,13 @@ interface DataTableProps<TData> {
   searchColumnId?: string
   onSearchChange?: (value: string) => void
   searchValue?: string
+
+  // Opcionális szerver-oldali rendezés — ha megadod, a DataTable a belső
+  // sort state-jét szinkronban tartja a parent által vezérelt rendezéssel.
+  // Így a vizuális sort indicator (↑/↓) mindig a tényleges szerver-oldali
+  // rendezést tükrözi, nem egy lokális (és figyelmen kívül hagyott) state-et.
+  sorting?: SortingState
+  onSortingChange?: OnChangeFn<SortingState>
 }
 
 export function DataTable<TData>({
@@ -72,9 +80,14 @@ export function DataTable<TData>({
   searchColumnId,
   onSearchChange,
   searchValue = '',
+  sorting: controlledSorting,
+  onSortingChange: onControlledSortingChange,
 }: DataTableProps<TData>) {
   const { t } = useTranslation()
-  const [sorting, setSorting] = useState<SortingState>([])
+  // Ha a parent vezérli a sort state-et, használjuk azt; különben belső state.
+  const [internalSorting, setInternalSorting] = useState<SortingState>([])
+  const sorting = controlledSorting ?? internalSorting
+  const handleSortingChange = onControlledSortingChange ?? setInternalSorting
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
 
   const totalPages = useMemo(
@@ -86,7 +99,7 @@ export function DataTable<TData>({
     data,
     columns,
     state: { sorting, columnFilters },
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

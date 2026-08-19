@@ -410,7 +410,7 @@ export function UserDetailPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/devices/${item.device!.id}`)}
+                              onClick={() => navigate(`/devices/${item.device?.id}`)}
                               title={t('common.details', 'Eszköz adatlap')}
                             >
                               <Eye className="mr-1.5 h-4 w-4" />

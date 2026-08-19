@@ -31,6 +31,15 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>DELETE: before != null, after == null → hozd létre újra az entitást
  * </ul>
  *
+ * <p>Idempotencia-védelem: ha már rollback-eltük az adott audit logot, a második hívás {@code
+ * BusinessValidationException}-t dob. Ez megakadályozza, hogy dupla rollback DELETE-re a
+ * recreateEntity ismét hívódjon, ami vagy duplicate key hibát adna, vagy felülírná a jelenlegi
+ * állapotot.
+ *
+ * <p>Típusbiztonságos cast: a changes Map-ből a before/after kiolvasásánál instanceof check-et
+ * végzünk — ha a JSON struktúra nem megfelelő (pl. a before egy string), null-t adunk vissza
+ * ClassCastException helyett.
+ *
  * <p>@Transactional REQUIRED: az entitás visszaállítása + az új audit log bejegyzés egy
  * tranzakcióban. Ha bármi hiba, rollback az egész.
  */
@@ -59,10 +68,22 @@ public class AuditRollbackService {
             .findById(auditLogId)
             .orElseThrow(() -> new ResourceNotFoundException("Audit log not found: " + auditLogId));
 
+    // Idempotencia-védelem: ha már rollback-eltük ezt az audit logot, ne csináljuk újra.
+    // Dupla rollback egy DELETE-re a recreateEntity-t hívná, ami vagy duplicate key hibát
+    // ad, vagy felülírná a jelenlegi állapotot — egyik sem kívánatos.
+    boolean alreadyRolledBack =
+        auditLogRepository
+            .findByEndpointAndRequestPayload("rollback", "auditLogId=" + auditLogId)
+            .isPresent();
+    if (alreadyRolledBack) {
+      throw new BusinessValidationException(
+          "auditLogAlreadyRolledBack", "Audit log " + auditLogId + " has already been rolled back");
+    }
+
     // 1. A changes_json parse-olása
     Map<String, Object> changes = parseChanges(auditLog.getChangesJson());
-    Map<String, Object> beforeState = (Map<String, Object>) changes.get("before");
-    Map<String, Object> afterState = (Map<String, Object>) changes.get("after");
+    Map<String, Object> beforeState = extractMap(changes, "before");
+    Map<String, Object> afterState = extractMap(changes, "after");
 
     String entityType = auditLog.getEntityType();
     Long entityId = auditLog.getEntityId();
@@ -192,5 +213,32 @@ public class AuditRollbackService {
       return authentication.getName();
     }
     return "anonymous";
+  }
+
+  /**
+   * Típusbiztonságos map-kiolvasás a changes Map-ből. Korábban az unchecked {@code (Map<String,
+   * Object>) changes.get("before")} cast ClassCastException-t dobott, ha a JSON struktúra nem volt
+   * megfelelő — most ellenőrzött kiolvasás, és {@code null}-t ad vissza, ha a kulcs nem Map típusú.
+   */
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> extractMap(Map<String, Object> source, String key) {
+    if (source == null) {
+      return null;
+    }
+    Object value = source.get(key);
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof Map) {
+      return (Map<String, Object>) value;
+    }
+    // Ha nem Map (pl. a JSON-ban string/array volt), inkább null-t adunk vissza,
+    // mint hogy ClassCastException-t dobnánk — a rollback így is el tud dönteni a
+    // hiányzó before/after alapján, hogy milyen típusú rollback legyen.
+    log.warn(
+        "changes[{}] is not a Map (actual type: {}); treating as null",
+        key,
+        value.getClass().getSimpleName());
+    return null;
   }
 }

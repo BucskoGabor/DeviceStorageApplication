@@ -1,7 +1,10 @@
 package hu.tanszek.device.audit;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.springframework.stereotype.Component;
@@ -10,7 +13,9 @@ import hu.tanszek.device.assignment.entity.DeviceAssignment;
 import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
 import hu.tanszek.device.attachment.entity.DeviceAttachment;
 import hu.tanszek.device.attachment.repository.DeviceAttachmentRepository;
+import hu.tanszek.device.auth.entity.Permission;
 import hu.tanszek.device.auth.entity.Role;
+import hu.tanszek.device.auth.repository.PermissionRepository;
 import hu.tanszek.device.auth.repository.RoleRepository;
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.device.repository.DeviceRepository;
@@ -29,18 +34,6 @@ import lombok.RequiredArgsConstructor;
  * <p>A {@code audit_logs.entity_type} mező String ("Device", "User", stb.), és a rollback-hez tudni
  * kell, melyik repository-t kell használni az adott típus betöltéséhez. Ez az osztály centralizálja
  * a típus→repository mappinget.
- *
- * <p>Támogatott típusok:
- *
- * <ul>
- *   <li>Device → DeviceRepository.findById()
- *   <li>User → AppUserRepository.findById()
- *   <li>Location → LocationRepository.findById()
- *   <li>Assignment → DeviceAssignmentRepository.findById()
- *   <li>Software → SoftwareRepository.findById()
- *   <li>Attachment → DeviceAttachmentRepository.findById()
- *   <li>Role → RoleRepository.findByIdWithPermissions()
- * </ul>
  */
 @Component
 @RequiredArgsConstructor
@@ -53,6 +46,7 @@ public class EntityTypeRegistry {
   private final SoftwareRepository softwareRepository;
   private final DeviceAttachmentRepository attachmentRepository;
   private final RoleRepository roleRepository;
+  private final PermissionRepository permissionRepository;
 
   /**
    * Entity lookup az entity_type string alapján.
@@ -71,12 +65,7 @@ public class EntityTypeRegistry {
     return finder.apply(entityId).orElse(null);
   }
 
-  /**
-   * Entity törlése az entity_type string alapján (CREATE rollback-hez).
-   *
-   * @param entityType az entity típusa
-   * @param entityId az entity ID-ja
-   */
+  /** Entity törlése az entity_type string alapján (CREATE rollback-hez). */
   public void deleteById(String entityType, Long entityId) {
     switch (entityType) {
       case "Device" -> deviceRepository.deleteById(entityId);
@@ -110,15 +99,7 @@ public class EntityTypeRegistry {
     }
   }
 
-  /**
-   * Az aktuális entity state JSON-ba konvertálása (rollback összehasonlításhoz).
-   *
-   * <p>A JSON-ba konvertálás az entity mezőiből történik. A {@code changes_json} mezőben tárolt
-   * before/after diff-et hasonlítjuk össze.
-   *
-   * @param entity az entitás
-   * @return Map<String, Object> a mező nevek és értékek
-   */
+  /** Az aktuális entity state JSON-ba konvertálása (rollback összehasonlításhoz). */
   public Map<String, Object> toJsonMap(Object entity) {
     if (entity == null) {
       return null;
@@ -131,7 +112,9 @@ public class EntityTypeRegistry {
       map.put("type", device.getType());
       map.put("inventoryNumber", device.getInventoryNumber());
       map.put("status", device.getStatus());
-      // location_id, softwares nem tároljuk a rollback JSON-ban
+      map.put(
+          "currentLocationId",
+          device.getCurrentLocation() != null ? device.getCurrentLocation().getId() : null);
     } else if (entity instanceof AppUser user) {
       map.put("id", user.getId());
       map.put("email", user.getEmail());
@@ -139,7 +122,14 @@ public class EntityTypeRegistry {
       map.put("mustChangePassword", user.isMustChangePassword());
       map.put("emailHash", user.getEmailHash());
       map.put("roleId", user.getRole() != null ? user.getRole().getId() : null);
-      // password_hash, email_encrypted, locked_until nem (security)
+      map.put(
+          "officeLocationId",
+          user.getOfficeLocation() != null ? user.getOfficeLocation().getId() : null);
+      map.put(
+          "permissions",
+          user.getPermissions() != null
+              ? user.getPermissions().stream().map(Permission::getName).sorted().toList()
+              : List.of());
     } else if (entity instanceof Location location) {
       map.put("id", location.getId());
       map.put("name", location.getName());
@@ -161,7 +151,6 @@ public class EntityTypeRegistry {
     } else if (entity instanceof Software software) {
       map.put("id", software.getId());
       map.put("name", software.getName());
-      // license_key_encrypted nem tároljuk (security)
     } else if (entity instanceof DeviceAttachment attachment) {
       map.put("id", attachment.getId());
       map.put("deviceId", attachment.getDevice() != null ? attachment.getDevice().getId() : null);
@@ -174,11 +163,8 @@ public class EntityTypeRegistry {
       map.put(
           "permissions",
           role.getPermissions() != null
-              ? role.getPermissions().stream()
-                  .map(hu.tanszek.device.auth.entity.Permission::getName)
-                  .sorted()
-                  .toList()
-              : java.util.List.of());
+              ? role.getPermissions().stream().map(Permission::getName).sorted().toList()
+              : List.of());
     }
 
     return map;
@@ -187,11 +173,8 @@ public class EntityTypeRegistry {
   /**
    * Entity JSON map-ből entitás apply-olása (rollback-hez).
    *
-   * <p>Frissíti az entitás mezőit a JSON map alapján. Csak azokat a mezőket frissíti, amelyek a
-   * map-ben szerepelnek (before/after diff-ek).
-   *
-   * @param entity az entitás (in-place frissítve)
-   * @param fields a JSON map (a before/after-ből)
+   * <p>A Role permission listáját is visszaállítja — korábban ez kimaradt, így a role-ból
+   * eltávolított permission a rollback során NEM került vissza.
    */
   public void applyJsonMap(Object entity, Map<String, Object> fields) {
     if (entity == null || fields == null) {
@@ -209,6 +192,14 @@ public class EntityTypeRegistry {
         device.setStatus(
             hu.tanszek.device.device.entity.DeviceStatus.valueOf(fields.get("status").toString()));
       }
+      if (fields.containsKey("currentLocationId")) {
+        Object locIdRaw = fields.get("currentLocationId");
+        if (locIdRaw instanceof Number locIdNum) {
+          locationRepository.findById(locIdNum.longValue()).ifPresent(device::setCurrentLocation);
+        } else if (locIdRaw == null) {
+          device.setCurrentLocation(null);
+        }
+      }
     } else if (entity instanceof AppUser user) {
       if (fields.containsKey("active") && fields.get("active") != null) {
         Object val = fields.get("active");
@@ -224,6 +215,48 @@ public class EntityTypeRegistry {
           user.setMustChangePassword(b);
         } else if (val instanceof String s && !"***".equals(s)) {
           user.setMustChangePassword(Boolean.parseBoolean(s));
+        }
+      }
+      // A user role ID-ját is vissza kell állítani — korábban ez kimaradt, így a
+      // user role-váltása (pl. tanár → diák) a rollback során NEM állt vissza.
+      // A toJsonMap serializálja a roleId-t; itt a roleId alapján betöltjük a
+      // Role entitást, és beállítjuk a user-re. Explicit null = role eltávolítása.
+      if (fields.containsKey("roleId")) {
+        Object roleIdRaw = fields.get("roleId");
+        if (roleIdRaw instanceof Number roleIdNum) {
+          roleRepository.findById(roleIdNum.longValue()).ifPresent(user::setRole);
+        } else if (roleIdRaw == null) {
+          user.setRole(null);
+        }
+      }
+      // A user officeLocation ID-ját is vissza kell állítani
+      if (fields.containsKey("officeLocationId")) {
+        Object locIdRaw = fields.get("officeLocationId");
+        if (locIdRaw instanceof Number locIdNum) {
+          locationRepository.findById(locIdNum.longValue()).ifPresent(user::setOfficeLocation);
+        } else if (locIdRaw == null) {
+          user.setOfficeLocation(null);
+        }
+      }
+      // A user direct permission-jeit is vissza kell állítani
+      if (fields.containsKey("permissions")) {
+        Object permsRaw = fields.get("permissions");
+        if (permsRaw instanceof List<?> permsList) {
+          Set<Permission> perms = new HashSet<>();
+          for (Object p : permsList) {
+            if (p instanceof String name && !name.isBlank()) {
+              permissionRepository.findByName(name).ifPresent(perms::add);
+            }
+          }
+          if (user.getPermissions() == null) {
+            user.setPermissions(new HashSet<>());
+          }
+          user.getPermissions().clear();
+          user.getPermissions().addAll(perms);
+        } else if (permsRaw == null) {
+          if (user.getPermissions() != null) {
+            user.getPermissions().clear();
+          }
         }
       }
     } else if (entity instanceof Location location) {
@@ -248,6 +281,15 @@ public class EntityTypeRegistry {
             hu.tanszek.device.assignment.entity.AssignmentStatus.valueOf(
                 fields.get("status").toString()));
       }
+      applyAssignmentReference(
+          fields, "deviceId", deviceRepository::findById, assignment::setDevice);
+      applyAssignmentReference(
+          fields, "fromLocationId", locationRepository::findById, assignment::setFromLocation);
+      applyAssignmentReference(
+          fields, "toLocationId", locationRepository::findById, assignment::setToLocation);
+      applyAssignmentReference(
+          fields, "fromUserId", userRepository::findById, assignment::setFromUser);
+      applyAssignmentReference(fields, "toUserId", userRepository::findById, assignment::setToUser);
     } else if (entity instanceof Software software) {
       if (fields.get("name") instanceof String s && !"***".equals(s)) {
         software.setName(s);
@@ -266,6 +308,43 @@ public class EntityTypeRegistry {
       if (fields.get("name") instanceof String s && !"***".equals(s)) {
         role.setName(s);
       }
+      Object permsRaw = fields.get("permissions");
+      if (permsRaw instanceof List<?> permsList) {
+        Set<Permission> perms = new HashSet<>();
+        for (Object p : permsList) {
+          if (p instanceof String name && !name.isBlank()) {
+            permissionRepository.findByName(name).ifPresent(perms::add);
+          }
+        }
+        role.getPermissions().clear();
+        role.getPermissions().addAll(perms);
+      } else if (permsRaw == null && fields.containsKey("permissions")) {
+        role.getPermissions().clear();
+      }
+    }
+  }
+
+  /**
+   * Generikus helper a DeviceAssignment referencia mezőinek (deviceId, fromLocationId,
+   * toLocationId, fromUserId, toUserId) visszaállításához a beforeState alapján.
+   *
+   * <p>Ha a fields tartalmazza a megadott kulcsot, megpróbálja betölteni az entitást a megadott
+   * repository-n keresztül, és beállítani a setter-en. Ha a kulcs értéke explicit null, a setter
+   * null-t állít be.
+   */
+  private <T> void applyAssignmentReference(
+      Map<String, Object> fields,
+      String key,
+      java.util.function.Function<Long, java.util.Optional<T>> finder,
+      java.util.function.Consumer<T> setter) {
+    if (!fields.containsKey(key)) {
+      return;
+    }
+    Object raw = fields.get(key);
+    if (raw instanceof Number num) {
+      finder.apply(num.longValue()).ifPresent(setter);
+    } else if (raw == null) {
+      setter.accept(null);
     }
   }
 
@@ -312,10 +391,14 @@ public class EntityTypeRegistry {
                         ? invNumber
                         : "INV-RESTORED-" + System.currentTimeMillis())
                 .status(status)
-                .softwares(new java.util.HashSet<>())
+                .softwares(new HashSet<>())
                 .build();
 
-        if (fields.containsKey("locationId") && fields.get("locationId") instanceof Number locId) {
+        if (fields.containsKey("currentLocationId")
+            && fields.get("currentLocationId") instanceof Number locId) {
+          locationRepository.findById(locId.longValue()).ifPresent(device::setCurrentLocation);
+        } else if (fields.containsKey("locationId")
+            && fields.get("locationId") instanceof Number locId) {
           locationRepository.findById(locId.longValue()).ifPresent(device::setCurrentLocation);
         }
         return deviceRepository.save(device);
@@ -355,8 +438,19 @@ public class EntityTypeRegistry {
         Role role =
             Role.builder()
                 .name(name != null && !"***".equals(name) ? name : "ROLE_RESTORED")
-                .permissions(new java.util.HashSet<>())
+                .permissions(new HashSet<>())
                 .build();
+        // Törölt role visszaállításakor is alkalmazzuk a permission listát.
+        Object permsRaw = fields.get("permissions");
+        if (permsRaw instanceof List<?> permsList) {
+          Set<Permission> perms = new HashSet<>();
+          for (Object p : permsList) {
+            if (p instanceof String pname && !pname.isBlank()) {
+              permissionRepository.findByName(pname).ifPresent(perms::add);
+            }
+          }
+          role.getPermissions().addAll(perms);
+        }
         return roleRepository.save(role);
       }
       case "User", "AppUser" -> {
@@ -375,8 +469,27 @@ public class EntityTypeRegistry {
                 .active(true)
                 .mustChangePassword(true)
                 .failedLoginCount(0)
-                .permissions(new java.util.HashSet<>())
+                .permissions(new HashSet<>())
                 .build();
+        // Törölt user visszaállításakor a roleId alapján visszaállítjuk a role-t.
+        // Korábban a role null maradt, ami azt eredményezte, hogy a rekreált
+        // user nem kapta vissza a jogosultságait.
+        Object roleIdRaw = fields.get("roleId");
+        if (roleIdRaw instanceof Number roleIdNum) {
+          roleRepository.findById(roleIdNum.longValue()).ifPresent(user::setRole);
+        }
+        if (fields.containsKey("officeLocationId")
+            && fields.get("officeLocationId") instanceof Number locId) {
+          locationRepository.findById(locId.longValue()).ifPresent(user::setOfficeLocation);
+        }
+        Object permsRaw = fields.get("permissions");
+        if (permsRaw instanceof List<?> permsList) {
+          for (Object p : permsList) {
+            if (p instanceof String pname && !pname.isBlank()) {
+              permissionRepository.findByName(pname).ifPresent(user.getPermissions()::add);
+            }
+          }
+        }
         return userRepository.save(user);
       }
       default ->
@@ -387,11 +500,7 @@ public class EntityTypeRegistry {
   /** Entity lookup finder-ek map-je: entity_type string → repository.findById(). */
   private final Map<String, Function<Long, ?>> finders = new HashMap<>();
 
-  /**
-   * Init metódus — a {@link #finders} map feltöltése a támogatott típusokkal.
-   *
-   * <p>A map-et a konstruktor után töltjük fel, hogy a dependency injection befejeződjön.
-   */
+  /** Init metódus — a finders map feltöltése a támogatott típusokkal. */
   @jakarta.annotation.PostConstruct
   @SuppressWarnings("unchecked")
   public void initFinders() {

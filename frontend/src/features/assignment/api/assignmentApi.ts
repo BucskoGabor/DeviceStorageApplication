@@ -26,7 +26,8 @@ export interface DeviceAssignment {
   unassignDate?: string | null
   unassignCreatedDate?: string | null
   status: AssignmentStatus
-  active: boolean
+  // A `status` mező a forrása az aktivitásnak (ASSIGNED, PENDING_*), nincs külön
+  // `active` flag a backend DeviceAssignment entitáson.
 }
 
 export interface CreateAssignmentPayload {

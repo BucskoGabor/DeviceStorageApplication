@@ -97,16 +97,18 @@ class RateLimiterServiceTest {
   }
 
   @Test
-  void nullOrBlankIpIsAllowed() {
-    // Nincs IP (proxy mögött nincs X-Forwarded-For és getRemoteAddr is null)
-    assertThat(rateLimiterService.tryConsumePerIp(null)).isTrue();
-    assertThat(rateLimiterService.tryConsumePerIp("")).isTrue();
-    assertThat(rateLimiterService.tryConsumePerIp("   ")).isTrue();
+  void nullOrBlankIpIsBlocked() {
+    // Bug #4 fix: null/blank IP címek elutasításra kerülnek a rate-limit bypass megelőzésére
+    assertThat(rateLimiterService.tryConsumePerIp(null)).isFalse();
+    assertThat(rateLimiterService.tryConsumePerIp("")).isFalse();
+    assertThat(rateLimiterService.tryConsumePerIp("   ")).isFalse();
   }
 
   @Test
-  void nullOrBlankEmailIsAllowed() {
-    assertThat(rateLimiterService.tryConsumePerEmail(null)).isTrue();
-    assertThat(rateLimiterService.tryConsumePerEmail("")).isTrue();
+  void nullOrBlankEmailIsBlocked() {
+    // Bug #4 fix: null/blank email címek elutasításra kerülnek a rate-limit bypass megelőzésére
+    assertThat(rateLimiterService.tryConsumePerEmail(null)).isFalse();
+    assertThat(rateLimiterService.tryConsumePerEmail("")).isFalse();
+    assertThat(rateLimiterService.tryConsumePerEmail("   ")).isFalse();
   }
 }

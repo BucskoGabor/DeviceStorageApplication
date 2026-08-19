@@ -32,9 +32,14 @@ export function MyDashboardPage({ children }: { children?: React.ReactNode }) {
     queryFn: () => authApi.me(),
   })
 
+  // A `me?.id` guarded: a queryFn csak akkor fut, ha enabled=true (van user ID).
+  // A queryFn-en belül `me!.id` volt — ezt lecseréltük `me.id`-re, mert a
+  // `enabled: Boolean(me?.id)` garantálja, hogy a queryFn csak érvényes ID-val hívódik.
+  // Ha bármiért mégis undefined lenne (TS strict null check), inkább kihagyjuk
+  // a fetch-et, mintsem crash-t okozzunk a non-null assertionnel.
   const { data: myUserDetail, isLoading: isUserDetailLoading } = useQuery({
     queryKey: me?.id ? userKeys.detail(me.id) : (['users', 'detail', 'disabled'] as const),
-    queryFn: () => userApi.findById(me!.id),
+    queryFn: () => (me ? userApi.findById(me.id) : Promise.reject(new Error('me is undefined'))),
     enabled: Boolean(me?.id),
   })
 

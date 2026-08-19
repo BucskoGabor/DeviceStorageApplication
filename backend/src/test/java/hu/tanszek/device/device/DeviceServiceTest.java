@@ -80,11 +80,12 @@ class DeviceServiceTest {
     when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
     when(locationRepository.findById(10L)).thenReturn(Optional.of(office));
     when(userRepository.findById(100L)).thenReturn(Optional.of(byUser));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.PENDING_ASSIGNMENT))
+        .thenReturn(Optional.empty());
     when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED))
         .thenReturn(Optional.empty());
     when(assignmentRepository.save(any(DeviceAssignment.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
-
     DeviceAssignment result = deviceService.requestAssignment(1L, 10L, null, 100L);
 
     assertThat(result.getStatus()).isEqualTo(AssignmentStatus.PENDING_ASSIGNMENT);

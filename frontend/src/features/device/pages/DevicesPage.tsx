@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom'
 import { DataTable } from '@/components/DataTable/DataTable'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DebouncedInput } from '@/components/ui/debounced-input'
 import { Label } from '@/components/ui/label'
 import {
   Dialog,
@@ -390,16 +391,16 @@ export function DevicesPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Input
+          <DebouncedInput
             placeholder={t('devices.type') + '...'}
             value={typeFilter}
-            onChange={(e) => {
-              setTypeFilter(e.target.value)
+            onDebouncedChange={(val) => {
+              setTypeFilter(val)
               setPage(0)
             }}
             className="h-8 w-44 text-xs"
+            delay={300}
           />
-
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 text-xs">
               <X className="mr-1 h-3.5 w-3.5" />
