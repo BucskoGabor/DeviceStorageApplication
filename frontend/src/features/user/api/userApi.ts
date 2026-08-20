@@ -96,4 +96,10 @@ export const userApi = {
   unlock: async (id: number): Promise<void> => {
     await apiClient.post(`/api/users/${id}/unlock`)
   },
+  resetPassword: async (id: number): Promise<string> => {
+    const response = await apiClient.post<{ newPassword: string }>(
+      `/api/users/${id}/reset-password`
+    )
+    return response.data.newPassword
+  },
 }

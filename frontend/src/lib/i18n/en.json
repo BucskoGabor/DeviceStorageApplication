@@ -190,6 +190,7 @@
     "copy": "Copy",
     "copied": "Copied!",
     "name": "Name",
+    "copiedToClipboard": "Copied to clipboard",
     "statusChanged": "Status changed successfully",
     "viewDetails": "Details"
   },
@@ -232,7 +233,14 @@
     "noCurrentDevices": "No devices are currently assigned to this user.",
     "assignmentHistory": "Assignment History",
     "assignmentHistoryTitle": "User's Device Assignment and Return History",
-    "noAssignmentHistory": "No previous assignment history found for this user."
+    "noAssignmentHistory": "No previous assignment history found for this user.",
+    "resetPassword": "Reset password",
+    "confirmResetPassword": "Generate a new password for this user? The user must change it on next login.",
+    "resetPasswordSuccess": "Password reset successfully",
+    "resetPasswordError": "Password reset failed",
+    "resetPasswordDialogTitle": "New password generated",
+    "resetPasswordDialogDesc": "Share this password with the user via a secure channel. The user must change it on next login.",
+    "resetPasswordDialogLabel": "New password"
   },
   "locations": {
     "title": "Locations",

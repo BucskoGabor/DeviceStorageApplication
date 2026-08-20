@@ -190,6 +190,7 @@
     "copy": "Másolás",
     "copied": "Másolva!",
     "name": "Név",
+    "copiedToClipboard": "Vágólapra másolva",
     "statusChanged": "Státusz sikeresen módosítva",
     "viewDetails": "Részletek"
   },
@@ -232,7 +233,14 @@
     "noCurrentDevices": "A felhasználóhoz jelenleg nincs eszköz hozzárendelve.",
     "assignmentHistory": "Hozzárendelési előzmények",
     "assignmentHistoryTitle": "A felhasználó korábbi eszközhozzárendelési előzményei",
-    "noAssignmentHistory": "Nem található korábbi hozzárendelési előzmény a felhasználóhoz."
+    "noAssignmentHistory": "Nem található korábbi hozzárendelési előzmény a felhasználóhoz.",
+    "resetPassword": "Jelszó resetelése",
+    "confirmResetPassword": "Biztosan új jelszót generálsz ehhez a userhez? A user a következő bejelentkezésénél kötelezően megváltoztatja.",
+    "resetPasswordSuccess": "Jelszó sikeresen resetelve",
+    "resetPasswordError": "Jelszó reset sikertelen",
+    "resetPasswordDialogTitle": "Új jelszó generálva",
+    "resetPasswordDialogDesc": "Az alábbi jelszót add át a usernek biztonságos csatornán. A user a következő bejelentkezésénél kötelezően megváltoztatja.",
+    "resetPasswordDialogLabel": "Új jelszó"
   },
   "locations": {
     "title": "Helyszínek",

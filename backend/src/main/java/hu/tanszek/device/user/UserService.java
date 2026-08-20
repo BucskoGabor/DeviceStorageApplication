@@ -1,5 +1,6 @@
 package hu.tanszek.device.user;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
@@ -42,6 +43,7 @@ public class UserService {
   private final Argon2PasswordEncoder passwordEncoder;
   private final hu.tanszek.device.assignment.repository.DeviceAssignmentRepository
       assignmentRepository;
+  private final SecureRandom secureRandom = new SecureRandom();
 
   /**
    * User jelszavának cseréje.
@@ -94,6 +96,55 @@ public class UserService {
     // 5. Bulk revoke minden aktív refresh token (security: régi session-ök elvesznek)
     int revokedCount = refreshTokenRepository.revokeAllRefreshTokensByUserId(userId);
     log.info("Password changed for user {}, revoked {} refresh tokens", userId, revokedCount);
+  }
+
+  /**
+   * Admin jelszó-reset — generált új jelszó beállítása mustChangePassword=true flag-gel.
+   *
+   * <p>Az új jelszót a backend generálja (16 karakter, secure random), az admin a válaszban kapja
+   * meg plain text-ben, hogy továbbadhassa a usernek. A user a következő bejelentkezésénél
+   * kötelezően megváltoztatja (mustChangePassword=true). Az aktív refresh token-ek automatikusan
+   * revokeolódnak, így a user meglévő session-jei érvénytelenítődnek.
+   *
+   * @param userId a user ID-ja
+   * @return a generált plain text új jelszó (admin továbbadja a usernek)
+   * @throws ResourceNotFoundException ha a user nem található
+   */
+  @AuditTarget(entityType = "AppUser", action = "admin_reset_password")
+  @Transactional
+  public String adminResetPassword(Long userId) {
+    AppUser user =
+        appUserRepository
+            .findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+    String newPassword = generateSecurePassword();
+    user.setPasswordHash(passwordEncoder.encode(newPassword));
+    user.setPasswordChangedAt(Instant.now());
+    user.setMustChangePassword(true);
+    user.setFailedLoginCount(0);
+    user.setLockedUntil(null);
+    appUserRepository.save(user);
+
+    int revokedCount = refreshTokenRepository.revokeAllRefreshTokensByUserId(userId);
+    log.info(
+        "Admin reset password for user {}, revoked {} refresh tokens, mustChangePassword=true",
+        userId,
+        revokedCount);
+    return newPassword;
+  }
+
+  /**
+   * Biztonságos, véletlenszerű jelszó generálása (16 karakter: kis- és nagybetűk, számok, speciális
+   * jelek). A generált jelszó megfelel a jelszó-policy minimum 12 karakter hosszúságnak.
+   */
+  private String generateSecurePassword() {
+    String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    StringBuilder sb = new StringBuilder(16);
+    for (int i = 0; i < 16; i++) {
+      sb.append(chars.charAt(secureRandom.nextInt(chars.length())));
+    }
+    return sb.toString();
   }
 
   /**

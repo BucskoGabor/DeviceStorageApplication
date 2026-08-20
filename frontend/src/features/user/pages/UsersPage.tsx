@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { type ColumnDef } from '@tanstack/react-table'
-import { Plus, Trash2, Unlock, Pencil, Eye, MapPin } from 'lucide-react'
+import { Plus, Trash2, Unlock, Pencil, Eye, MapPin, KeyRound, Copy } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { DataTable } from '@/components/DataTable/DataTable'
 import {
@@ -32,17 +32,17 @@ export function UsersPage() {
   const canCreate = permissions.includes('USER_CREATE')
   const canUpdate = permissions.includes('USER_UPDATE')
   const canDelete = permissions.includes('USER_DELETE')
-
+  const canResetPassword = permissions.includes('USER_RESET_PASSWORD')
   const [page, setPage] = useState(0)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AppUserDto | null>(null)
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null)
   const [unlockUserId, setUnlockUserId] = useState<number | null>(null)
-  const [editOfficeLocationId, setEditOfficeLocationId] = useState<number | null>(null)
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<number | null>(null)
+  const [resetPasswordValue, setResetPasswordValue] = useState<string | null>(null)
   const [editOfficeLocationName, setEditOfficeLocationName] = useState<string>('')
+  const [editOfficeLocationId, setEditOfficeLocationId] = useState<number | null>(null)
   const [officeSelectorOpen, setOfficeSelectorOpen] = useState(false)
-
-  // Create form state
   const [email, setEmail] = useState('')
   const [selectedRole, setSelectedRole] = useState<string>('ROLE_TEACHER')
   const [initialPassword, setInitialPassword] = useState('')
@@ -136,6 +136,18 @@ export function UsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.all })
       toast.success(t('users.unlockAccount', 'Fiók feloldva'))
+    },
+  })
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: userApi.resetPassword,
+    onSuccess: (newPassword) => {
+      queryClient.invalidateQueries({ queryKey: userKeys.all })
+      setResetPasswordValue(newPassword)
+      toast.success(t('users.resetPasswordSuccess', 'Jelszó sikeresen resetelve'))
+    },
+    onError: () => {
+      toast.error(t('users.resetPasswordError', 'Jelszó reset sikertelen'))
     },
   })
 
@@ -258,6 +270,16 @@ export function UsersPage() {
                   onClick={() => setUnlockUserId(user.id)}
                 >
                   <Unlock className="h-4 w-4 text-blue-400" />
+                </Button>
+              )}
+              {canResetPassword && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title={t('users.resetPassword', 'Jelszó resetelése')}
+                  onClick={() => setResetPasswordUserId(user.id)}
+                >
+                  <KeyRound className="h-4 w-4 text-amber-500" />
                 </Button>
               )}
               {canDelete && (
@@ -453,6 +475,82 @@ export function UsersPage() {
           }
         }}
       />
+
+      <ConfirmDialog
+        open={resetPasswordUserId !== null && resetPasswordValue === null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetPasswordUserId(null)
+            setResetPasswordValue(null)
+          }
+        }}
+        description={t(
+          'users.confirmResetPassword',
+          'Biztosan új jelszót generálsz ehhez a userhez? A user a következő bejelentkezésénél kötelezően megváltoztatja.'
+        )}
+        onConfirm={() => {
+          if (resetPasswordUserId) resetPasswordMutation.mutate(resetPasswordUserId)
+        }}
+      />
+
+      <Dialog
+        open={resetPasswordValue !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetPasswordUserId(null)
+            setResetPasswordValue(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('users.resetPasswordDialogTitle', 'Új jelszó generálva')}</DialogTitle>
+            <DialogDescription>
+              {t(
+                'users.resetPasswordDialogDesc',
+                'Az alábbi jelszót add át a usernek biztonságos csatornán. A user a következő bejelentkezésénél kötelezően megváltoztatja.'
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="reset-password-output">
+              {t('users.resetPasswordDialogLabel', 'Új jelszó')}
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="reset-password-output"
+                readOnly
+                value={resetPasswordValue ?? ''}
+                className="font-mono text-sm"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title={t('common.copy')}
+                onClick={() => {
+                  if (resetPasswordValue) {
+                    void navigator.clipboard.writeText(resetPasswordValue)
+                    toast.success(t('common.copiedToClipboard', 'Vágólapra másolva'))
+                  }
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setResetPasswordUserId(null)
+                setResetPasswordValue(null)
+              }}
+            >
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={editingUser !== null}

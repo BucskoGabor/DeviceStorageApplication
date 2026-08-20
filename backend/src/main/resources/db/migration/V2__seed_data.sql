@@ -36,7 +36,9 @@ INSERT INTO permissions (name, created_at, updated_at) VALUES
     ('SOFTWARE_DELETE',            NOW(), NOW()),
     ('AUDIT_READ',                 NOW(), NOW()),
     ('AUDIT_ROLLBACK',             NOW(), NOW()),
-    ('IMPORT_EXECUTE',             NOW(), NOW());
+    ('IMPORT_EXECUTE',             NOW(), NOW()),
+    ('USER_RESET_PASSWORD',        NOW(), NOW())
+ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================================
 -- 2. roles seed — 3 role

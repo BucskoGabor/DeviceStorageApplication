@@ -258,6 +258,29 @@ public class UserController {
     return ResponseEntity.noContent().build();
   }
 
+  @Operation(
+      summary = "Felhasználó jelszavának resetelése admin által",
+      description =
+          "A backend generál egy 16 karakteres biztonságos jelszót, beállítja a user "
+              + "mustChangePassword=true flagjét (a user a következő bejelentkezésénél "
+              + "kötelezően megváltoztatja), revokeolja az aktív refresh tokeneket, "
+              + "és a generált plain text jelszót adja vissza a válaszban, hogy az "
+              + "admin továbbadhassa a usernek. A művelet USER_RESET_PASSWORD permissiont igényel.")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "Új jelszó generálva és beállítva"),
+    @ApiResponse(responseCode = "404", description = "User nem található"),
+    @ApiResponse(responseCode = "403", description = "USER_RESET_PASSWORD permission hiányzik")
+  })
+  @PostMapping("/{id}/reset-password")
+  @RequirePermission("USER_RESET_PASSWORD")
+  public ResponseEntity<ResetPasswordResponse> resetPassword(
+      @Parameter(description = "User azonosító") @PathVariable Long id) {
+    String newPassword = userService.adminResetPassword(id);
+    return ResponseEntity.ok(new ResetPasswordResponse(newPassword));
+  }
+
+  public record ResetPasswordResponse(String newPassword) {}
+
   public record CreateUserRequest(
       @NotBlank @Email @Size(max = 255) String email,
       @NotBlank String role,
