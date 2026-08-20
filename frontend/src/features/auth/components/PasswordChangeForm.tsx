@@ -143,7 +143,7 @@ export function PasswordChangeForm({ open, onSuccess, closable = false }: Passwo
 
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t('passwordChange.submitting') : t('passwordChange.confirm')}
+              {isSubmitting ? t('passwordChange.submitting') : t('passwordChange.title')}
             </Button>
           </DialogFooter>
         </form>

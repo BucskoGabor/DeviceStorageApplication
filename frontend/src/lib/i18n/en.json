@@ -73,7 +73,7 @@
     "currentPassword": "Current Password",
     "newPassword": "New Password",
     "newPasswordHelp": "Minimum 12 characters, contain upper/lowercase, digit, and special character",
-    "confirm": "Change Password",
+    "confirm": "Confirm New Password",
     "submitting": "Changing password...",
     "success": "Password changed successfully",
     "error": "Error changing password"
@@ -249,7 +249,7 @@
     "typeStorage": "Storage",
     "typeGroup": "Group",
     "typeGroupHelp": "Group type locations cannot have devices assigned",
-    "confirmDelete": "Are you sure you want to delete?",
+    "confirmDelete": "Are you sure you want to delete this location?",
     "cycleDetected": "Cyclic reference! The selected parent is a descendant of this location.",
     "viewList": "List",
     "viewTree": "Tree view",

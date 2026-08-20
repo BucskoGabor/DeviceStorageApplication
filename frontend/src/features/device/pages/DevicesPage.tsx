@@ -451,7 +451,7 @@ export function DevicesPage() {
                 {selectedStorageLocation ? (
                   <span className="font-mono text-xs">{selectedStorageLocation.name}</span>
                 ) : (
-                  <span className="text-muted-foreground">{t('assignments.selectLocation')}</span>
+                  <span className="text-muted-foreground">{t('devices.selectLocation')}</span>
                 )}
               </Button>
             </div>

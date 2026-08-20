@@ -48,11 +48,11 @@ export function LoginForm() {
         response.permissions,
         response.mustChangePassword
       )
-      toast.success(t('loginSuccess'), { position: 'top-right' })
+      toast.success(t('messages.loginSuccess'), { position: 'top-right' })
       navigate('/my-dashboard')
     } catch (error: any) {
       const messageKey = error.response?.data?.messageKey ?? 'invalidCredentials'
-      toast.error(t(messageKey), { position: 'top-right' })
+      toast.error(t(`messages.${messageKey}`), { position: 'top-right' })
     } finally {
       setIsSubmitting(false)
     }

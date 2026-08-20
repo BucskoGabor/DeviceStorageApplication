@@ -15,11 +15,19 @@ import hu.tanszek.device.audit.entity.AuditLog;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
+import hu.tanszek.device.assignment.entity.AssignmentStatus;
+import hu.tanszek.device.assignment.entity.DeviceAssignment;
+import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
+import hu.tanszek.device.device.entity.Device;
+import hu.tanszek.device.device.entity.DeviceStatus;
+import hu.tanszek.device.device.repository.DeviceRepository;
 
 import lombok.RequiredArgsConstructor;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
+
  * AuditRollbackService — audit log bejegyzés alapján rollback.
  *
  * <p>A {@code changes_json} mező {before, after} formátumban tárolja a rollback információt. A
@@ -49,6 +57,8 @@ import lombok.extern.slf4j.Slf4j;
 public class AuditRollbackService {
 
   private final AuditLogRepository auditLogRepository;
+  private final DeviceRepository deviceRepository;
+  private final DeviceAssignmentRepository assignmentRepository;
   private final EntityTypeRegistry entityTypeRegistry;
   private final ObjectMapper objectMapper;
 
@@ -119,6 +129,11 @@ public class AuditRollbackService {
     } else {
       throw new BusinessValidationException(
           "invalidAuditChanges", "Audit log changes_json has no before or after state");
+    }
+
+    // 3. Device státusz újraszámítása Assignment rollback után
+    if ("DeviceAssignment".equals(entityType) || "Assignment".equals(entityType)) {
+      recomputeDeviceStatus(entityId);
     }
 
     String changesJsonStr;
@@ -240,5 +255,58 @@ public class AuditRollbackService {
         key,
         value.getClass().getSimpleName());
     return null;
+  }
+
+  /**
+   * Device státusz újraszámítása Assignment rollback után.
+   *
+   * <p>Az Assignment rollback a {@code DeviceAssignment} tábla mezőit állítja vissza
+   * ({@code status}, {@code approvedByUserId}, stb.), de a {@code Device.status} mezőt nem —
+   * az {@code approveAssignment()} külön beállítja {@code ASSIGNED}-re, és a rollback ezt nem
+   * fordította vissza. Ez a helper az aktív (ASSIGNED) assignment-ek alapján újraszámolja a
+   * device státuszt:
+   *
+   * <ul>
+   *   <li>Van aktív (ASSIGNED) assignment → {@code ASSIGNED}
+   *   <li>Nincs aktív → {@code IN_STORAGE}
+   * </ul>
+   *
+   * <p>Maintenance / Disposal állapotú device-okhoz NEM nyúl, mert azokat az Assignment rollback
+   * nem befolyásolja.
+   *
+   * @param assignmentId a rollback-elt assignment ID-ja
+   */
+  private void recomputeDeviceStatus(Long assignmentId) {
+    DeviceAssignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
+    if (assignment == null || assignment.getDevice() == null) {
+      log.warn("Cannot recompute device status: assignment {} not found", assignmentId);
+      return;
+    }
+    Device device = assignment.getDevice();
+    DeviceStatus current = device.getStatus();
+    if (current == DeviceStatus.MAINTENANCE
+        || current == DeviceStatus.PENDING_MAINTENANCE
+        || current == DeviceStatus.DISPOSED
+        || current == DeviceStatus.PENDING_DISPOSAL) {
+      log.debug(
+          "Skipping device status recompute for {} (status={} is maintenance/disposal)",
+          device.getId(),
+          current);
+      return;
+    }
+    boolean hasActive =
+        assignmentRepository
+            .findFirstByDeviceIdAndStatus(device.getId(), AssignmentStatus.ASSIGNED)
+            .isPresent();
+    DeviceStatus expected = hasActive ? DeviceStatus.ASSIGNED : DeviceStatus.IN_STORAGE;
+    if (current != expected) {
+      log.info(
+          "Recomputing device status after assignment rollback: device={}, {} → {}",
+          device.getId(),
+          current,
+          expected);
+      device.setStatus(expected);
+      deviceRepository.save(device);
+    }
   }
 }

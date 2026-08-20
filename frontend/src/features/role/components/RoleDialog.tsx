@@ -217,7 +217,7 @@ export function RoleDialog({
                               checked={isChecked}
                               onChange={() => togglePermission(perm.id)}
                             />
-                            <span className="font-mono">{perm.name}</span>
+                            <span>{t(`permissions.${perm.name}`, perm.name)}</span>
                           </label>
                         )
                       })}

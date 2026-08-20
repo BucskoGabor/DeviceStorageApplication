@@ -37,6 +37,7 @@ export function UsersPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<AppUserDto | null>(null)
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null)
+  const [unlockUserId, setUnlockUserId] = useState<number | null>(null)
   const [editOfficeLocationId, setEditOfficeLocationId] = useState<number | null>(null)
   const [editOfficeLocationName, setEditOfficeLocationName] = useState<string>('')
   const [officeSelectorOpen, setOfficeSelectorOpen] = useState(false)
@@ -254,7 +255,7 @@ export function UsersPage() {
                   variant="ghost"
                   size="icon"
                   title={t('users.unlockAccount')}
-                  onClick={() => unlockMutation.mutate(user.id)}
+                  onClick={() => setUnlockUserId(user.id)}
                 >
                   <Unlock className="h-4 w-4 text-blue-400" />
                 </Button>
@@ -398,7 +399,7 @@ export function UsersPage() {
                         onChange={() => toggleCreatePerm(perm.id)}
                         className="rounded border-border"
                       />
-                      <span className="font-mono text-[11px]">{perm.name}</span>
+                      <span className="text-[11px]">{t(`permissions.${perm.name}`, perm.name)}</span>
                     </label>
                   ))}
                 </div>
@@ -435,6 +436,18 @@ export function UsersPage() {
           if (deleteUserId) {
             deleteMutation.mutate(deleteUserId)
             setDeleteUserId(null)
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={unlockUserId !== null}
+        onOpenChange={(open) => !open && setUnlockUserId(null)}
+        description={t('users.confirmUnlock', 'Biztosan feloldod a fiók zárolását?')}
+        onConfirm={() => {
+          if (unlockUserId) {
+            unlockMutation.mutate(unlockUserId)
+            setUnlockUserId(null)
           }
         }}
       />
@@ -527,7 +540,7 @@ export function UsersPage() {
                         onChange={() => toggleEditPerm(perm.id)}
                         className="rounded border-border"
                       />
-                      <span className="font-mono text-[11px]">{perm.name}</span>
+                      <span className="text-[11px]">{t(`permissions.${perm.name}`, perm.name)}</span>
                     </label>
                   ))}
                 </div>

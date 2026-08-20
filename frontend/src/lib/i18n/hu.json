@@ -73,7 +73,7 @@
     "currentPassword": "Jelenlegi jelszó",
     "newPassword": "Új jelszó",
     "newPasswordHelp": "Minimum 12 karakter, tartalmazzon kis- és nagybetűt, számot és speciális karaktert",
-    "confirm": "Jelszó megváltoztatása",
+    "confirm": "Új jelszó megerősítése",
     "submitting": "Jelszó megváltoztatása...",
     "success": "Jelszó sikeresen megváltoztatva",
     "error": "Hiba a jelszó megváltoztatásakor"
@@ -249,7 +249,7 @@
     "typeStorage": "Raktár",
     "typeGroup": "Csoport",
     "typeGroupHelp": "Csoport típusú helyre NEM lehet eszközt assignolni",
-    "confirmDelete": "Biztosan törölni szeretnéd?",
+    "confirmDelete": "Biztosan törölni szeretnéd ezt a helyszínt?",
     "cycleDetected": "Körkörös referencia! A kiválasztott szülő a saját leszármazottja.",
     "viewList": "Lista",
     "viewTree": "Fa nézet",

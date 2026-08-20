@@ -22,6 +22,7 @@ export function LanguageSelector() {
   const handleLanguageChange = (langCode: string) => {
     i18n.changeLanguage(langCode)
     localStorage.setItem('device-storage-locale', langCode)
+    document.documentElement.lang = langCode
   }
 
   return (
