@@ -13,11 +13,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import hu.tanszek.device.assignment.entity.AssignmentStatus;
+import hu.tanszek.device.assignment.entity.DeviceAssignment;
+import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
 import hu.tanszek.device.audit.entity.AuditLog;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
 import hu.tanszek.device.device.entity.Device;
+import hu.tanszek.device.device.entity.DeviceStatus;
+import hu.tanszek.device.device.repository.DeviceRepository;
+import hu.tanszek.device.location.entity.Location;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,6 +37,8 @@ class AuditRollbackServiceTest {
 
   @Mock private AuditLogRepository auditLogRepository;
   @Mock private EntityTypeRegistry entityTypeRegistry;
+  @Mock private DeviceRepository deviceRepository;
+  @Mock private DeviceAssignmentRepository assignmentRepository;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   @InjectMocks private AuditRollbackService auditRollbackService;
@@ -131,5 +139,113 @@ class AuditRollbackServiceTest {
 
     assertThatThrownBy(() -> auditRollbackService.rollback(103L))
         .isInstanceOf(BusinessValidationException.class);
+  }
+
+  @Test
+  void rollback_DeviceAssignment_recomputesDeviceStatusToInStorageWhenNoActiveAssignment() {
+    // After rolling back an approve_assign audit log for a DeviceAssignment, the device
+    // should be re-derived to IN_STORAGE because there is no longer any active (ASSIGNED)
+    // assignment for it. This guards against the silent state drift where the
+    // DeviceAssignment row reverted but Device.status=ASSIGNED remained.
+    Location storage = Location.builder().id(3L).name("Eszköz Raktár").build();
+    device.setStatus(DeviceStatus.ASSIGNED);
+    DeviceAssignment reverted =
+        DeviceAssignment.builder()
+            .id(7L)
+            .device(device)
+            .status(AssignmentStatus.PENDING_ASSIGNMENT)
+            .build();
+    String changesJson =
+        "{\"before\": {\"status\": \"PENDING_ASSIGNMENT\"},"
+            + " \"after\": {\"status\": \"ASSIGNED\"}}";
+    AuditLog log =
+        AuditLog.builder()
+            .id(200L)
+            .entityType("DeviceAssignment")
+            .entityId(7L)
+            .changesJson(changesJson)
+            .build();
+
+    when(auditLogRepository.findById(200L)).thenReturn(Optional.of(log));
+    when(entityTypeRegistry.findById("DeviceAssignment", 7L)).thenReturn(reverted);
+    when(assignmentRepository.findById(7L)).thenReturn(Optional.of(reverted));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED))
+        .thenReturn(Optional.empty());
+    when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(i -> i.getArgument(0));
+
+    auditRollbackService.rollback(200L);
+
+    assertThat(device.getStatus()).isEqualTo(DeviceStatus.IN_STORAGE);
+    verify(deviceRepository).save(device);
+  }
+
+  @Test
+  void rollback_DeviceAssignment_recomputesDeviceStatusToAssignedWhenActiveAssignmentRemains() {
+    // If another active (ASSIGNED) assignment still exists for the device, the device
+    // status should remain ASSIGNED (no recompute-induced change).
+    Location storage = Location.builder().id(3L).name("Eszköz Raktár").build();
+    device.setStatus(DeviceStatus.ASSIGNED);
+    DeviceAssignment reverted =
+        DeviceAssignment.builder()
+            .id(8L)
+            .device(device)
+            .status(AssignmentStatus.PENDING_UNASSIGNMENT)
+            .build();
+    String changesJson =
+        "{\"before\": {\"status\": \"PENDING_UNASSIGNMENT\"},"
+            + " \"after\": {\"status\": \"ASSIGNED\"}}";
+    AuditLog log =
+        AuditLog.builder()
+            .id(201L)
+            .entityType("DeviceAssignment")
+            .entityId(8L)
+            .changesJson(changesJson)
+            .build();
+    DeviceAssignment otherActive =
+        DeviceAssignment.builder().id(9L).device(device).status(AssignmentStatus.ASSIGNED).build();
+
+    when(auditLogRepository.findById(201L)).thenReturn(Optional.of(log));
+    when(entityTypeRegistry.findById("DeviceAssignment", 8L)).thenReturn(reverted);
+    when(assignmentRepository.findById(8L)).thenReturn(Optional.of(reverted));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED))
+        .thenReturn(Optional.of(otherActive));
+    when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(i -> i.getArgument(0));
+
+    auditRollbackService.rollback(201L);
+
+    assertThat(device.getStatus()).isEqualTo(DeviceStatus.ASSIGNED);
+    verify(deviceRepository, org.mockito.Mockito.never()).save(device);
+  }
+
+  @Test
+  void rollback_DeviceAssignment_skipsRecomputeWhenDeviceInMaintenance() {
+    // Maintenance state is independent of assignment rollback — must not be touched.
+    device.setStatus(DeviceStatus.MAINTENANCE);
+    DeviceAssignment reverted =
+        DeviceAssignment.builder()
+            .id(10L)
+            .device(device)
+            .status(AssignmentStatus.PENDING_ASSIGNMENT)
+            .build();
+    String changesJson =
+        "{\"before\": {\"status\": \"PENDING_ASSIGNMENT\"},"
+            + " \"after\": {\"status\": \"ASSIGNED\"}}";
+    AuditLog log =
+        AuditLog.builder()
+            .id(202L)
+            .entityType("DeviceAssignment")
+            .entityId(10L)
+            .changesJson(changesJson)
+            .build();
+
+    when(auditLogRepository.findById(202L)).thenReturn(Optional.of(log));
+    when(entityTypeRegistry.findById("DeviceAssignment", 10L)).thenReturn(reverted);
+    when(assignmentRepository.findById(10L)).thenReturn(Optional.of(reverted));
+    when(auditLogRepository.save(any(AuditLog.class))).thenAnswer(i -> i.getArgument(0));
+
+    auditRollbackService.rollback(202L);
+
+    assertThat(device.getStatus()).isEqualTo(DeviceStatus.MAINTENANCE);
+    verify(deviceRepository, org.mockito.Mockito.never()).save(device);
   }
 }

@@ -1,5 +1,6 @@
 package hu.tanszek.device.audit;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -485,5 +486,145 @@ class EntityTypeRegistryTest {
     assertThat(appUser.getEmailEncrypted()).isEqualTo("enc:test@tanszek.local");
     assertThat(appUser.getPasswordHash()).isEqualTo("hashed-pwd");
     assertThat(appUser.getPasswordChangedAt()).isNotNull();
+  }
+
+  @Test
+  void recreateEntity_unknownTypeThrows() {
+    assertThatThrownBy(() -> registry.recreateEntity("Alien", 99L, Map.of("foo", "bar")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Alien");
+  }
+
+  @Test
+  void recreateEntity_nullFieldsThrows() {
+    assertThatThrownBy(() -> registry.recreateEntity("Device", 1L, null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void recreateEntity_Device_duplicateInventoryNumberThrows() {
+    Device existing = Device.builder().inventoryNumber("INV-DUP").build();
+    existing.setId(7L);
+    when(deviceRepository.findByInventoryNumber("INV-DUP")).thenReturn(Optional.of(existing));
+
+    assertThatThrownBy(
+            () -> registry.recreateEntity("Device", 10L, Map.of("inventoryNumber", "INV-DUP")))
+        .isInstanceOf(hu.tanszek.device.common.BusinessValidationException.class)
+        .hasMessageContaining("INV-DUP");
+  }
+
+  @Test
+  void recreateEntity_Device_fallsBackToUnknownTypeWhenMissingOrMasked() {
+
+    when(deviceRepository.save(any(Device.class))).thenAnswer(i -> i.getArgument(0));
+
+    Device dev = (Device) registry.recreateEntity("Device", 1L, Map.of("type", "***"));
+    assertThat(dev.getType()).isEqualTo("Unknown");
+    assertThat(dev.getInventoryNumber()).startsWith("INV-RESTORED-");
+  }
+
+  @Test
+  void recreateEntity_Device_handlesMissingLocationId() {
+
+    when(deviceRepository.save(any(Device.class))).thenAnswer(i -> i.getArgument(0));
+
+    Device dev = (Device) registry.recreateEntity("Device", 1L, Map.of("type", "Laptop"));
+  }
+
+  @Test
+  void recreateEntity_Software_usesRestoredKeyWhenLicenseMissingOrMasked() {
+    when(softwareRepository.save(any(Software.class))).thenAnswer(i -> i.getArgument(0));
+    when(cryptoService.encrypt(any())).thenAnswer(i -> "enc:" + i.getArgument(0));
+
+    Software sw =
+        (Software)
+            registry.recreateEntity("Software", 5L, Map.of("name", "X", "licenseKey", "***"));
+
+    assertThat(sw.getLicenseKeyEncrypted()).startsWith("enc:RESTORED-KEY-");
+  }
+
+  @Test
+  void recreateEntity_Role_restoresPermissions() {
+    Permission p1 = new Permission();
+    p1.setId(1L);
+    p1.setName("DEVICE_READ");
+    when(permissionRepository.findByName("DEVICE_READ")).thenReturn(Optional.of(p1));
+    when(roleRepository.save(any(Role.class))).thenAnswer(i -> i.getArgument(0));
+
+    Role role =
+        (Role)
+            registry.recreateEntity(
+                "Role", 1L, Map.of("name", "ROLE_TEST", "permissions", List.of("DEVICE_READ")));
+
+    assertThat(role.getPermissions()).hasSize(1);
+  }
+
+  @Test
+  void recreateEntity_User_restoresRoleAndOfficeLocation() {
+    Role r = new Role();
+    r.setId(5L);
+    Location office = Location.builder().name("Office").build();
+    office.setId(11L);
+    Permission p1 = new Permission();
+    p1.setId(1L);
+    p1.setName("DEVICE_READ");
+
+    when(userRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArgument(0));
+    when(roleRepository.findById(5L)).thenReturn(Optional.of(r));
+    when(locationRepository.findById(11L)).thenReturn(Optional.of(office));
+    when(permissionRepository.findByName("DEVICE_READ")).thenReturn(Optional.of(p1));
+    when(cryptoService.encrypt(any())).thenAnswer(i -> "enc:" + i.getArgument(0));
+    when(cryptoService.sha256(any())).thenAnswer(i -> "hashed:" + i.getArgument(0));
+    when(passwordEncoder.encode(any())).thenReturn("hashed-pwd");
+
+    AppUser user =
+        (AppUser)
+            registry.recreateEntity(
+                "User",
+                9L,
+                Map.of(
+                    "email",
+                    "u@tanszek.local",
+                    "roleId",
+                    5L,
+                    "officeLocationId",
+                    11L,
+                    "permissions",
+                    List.of("DEVICE_READ")));
+
+    assertThat(user.getRole()).isEqualTo(r);
+    assertThat(user.getOfficeLocation()).isEqualTo(office);
+    assertThat(user.getPermissions()).hasSize(1);
+  }
+
+  @Test
+  void recreateEntity_User_duplicateEmailThrows() {
+    AppUser existing = new AppUser();
+    existing.setId(7L);
+    when(userRepository.findByEmailHash("dup")).thenReturn(Optional.of(existing));
+
+    assertThatThrownBy(() -> registry.recreateEntity("User", 1L, Map.of("emailHash", "dup")))
+        .isInstanceOf(hu.tanszek.device.common.BusinessValidationException.class);
+  }
+
+  @Test
+  void recreateEntity_Device_fallsBackToInvRestoredWhenMasked() {
+    when(deviceRepository.save(any(Device.class))).thenAnswer(i -> i.getArgument(0));
+
+    Device dev =
+        (Device)
+            registry.recreateEntity(
+                "Device", 1L, Map.of("type", "Laptop", "inventoryNumber", "***"));
+
+    assertThat(dev.getInventoryNumber()).startsWith("INV-RESTORED-");
+  }
+
+  @Test
+  void recreateEntity_Location_handlesMissingType() {
+    when(locationRepository.save(any(Location.class))).thenAnswer(i -> i.getArgument(0));
+
+    Location loc = (Location) registry.recreateEntity("Location", 1L, Map.of("name", "AutoName"));
+
+    assertThat(loc.getType()).isEqualTo(LocationType.CLASSROOM);
   }
 }

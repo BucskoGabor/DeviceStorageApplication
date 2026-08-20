@@ -207,4 +207,61 @@ class DeviceServiceCrudAndWorkflowTest {
     assertThatThrownBy(() -> deviceService.requestAssignment(1L, 10L, 100L, 100L))
         .isInstanceOf(BusinessValidationException.class);
   }
+
+  @Test
+  void requestAssignment_fromLocationFromDeviceCurrentLocationWhenNoActiveAssignment() {
+    // Device IN_STORAGE with currentLocation set, no prior active assignment.
+    // The new PENDING_ASSIGNMENT's fromLocation must come from device.currentLocation,
+    // not be left as null.
+    device.setCurrentLocation(storageLoc);
+    when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED))
+        .thenReturn(Optional.empty());
+    when(locationRepository.findById(10L)).thenReturn(Optional.of(officeLoc));
+    when(userRepository.findById(100L)).thenReturn(Optional.of(user));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.PENDING_ASSIGNMENT))
+        .thenReturn(Optional.empty());
+    when(assignmentRepository.save(any(DeviceAssignment.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+
+    DeviceAssignment saved =
+        deviceService.requestAssignment(1L, 10L, /* targetUserId */ null, 100L);
+
+    assertThat(saved.getFromLocation()).isEqualTo(storageLoc);
+    assertThat(saved.getToLocation()).isEqualTo(officeLoc);
+    assertThat(saved.getStatus()).isEqualTo(AssignmentStatus.PENDING_ASSIGNMENT);
+  }
+
+  @Test
+  void requestAssignment_fromLocationFromPriorActiveAssignmentWhenPresent() {
+    // Device has a prior active (ASSIGNED) assignment. The new PENDING_ASSIGNMENT's
+    // fromLocation must come from the prior assignment's toLocation, NOT from
+    // device.currentLocation (which represents the storage bay).
+    DeviceAssignment priorActive =
+        DeviceAssignment.builder()
+            .id(50L)
+            .device(device)
+            .toLocation(officeLoc)
+            .toUser(user)
+            .status(AssignmentStatus.ASSIGNED)
+            .build();
+    device.setCurrentLocation(storageLoc);
+    when(deviceRepository.findById(1L)).thenReturn(Optional.of(device));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.ASSIGNED))
+        .thenReturn(Optional.of(priorActive));
+    when(assignmentRepository.save(any(DeviceAssignment.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+    when(userRepository.findById(100L)).thenReturn(Optional.of(user));
+    when(assignmentRepository.findFirstByDeviceIdAndStatus(1L, AssignmentStatus.PENDING_ASSIGNMENT))
+        .thenReturn(Optional.empty());
+    when(locationRepository.findById(10L)).thenReturn(Optional.of(officeLoc));
+
+    DeviceAssignment saved =
+        deviceService.requestAssignment(1L, 10L, /* targetUserId */ null, 100L);
+
+    assertThat(saved.getFromLocation()).isEqualTo(officeLoc);
+    assertThat(saved.getToLocation()).isEqualTo(officeLoc);
+    assertThat(saved.getFromUser()).isEqualTo(user);
+    verify(assignmentRepository).save(priorActive);
+  }
 }
