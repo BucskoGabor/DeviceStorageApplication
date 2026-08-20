@@ -399,7 +399,9 @@ export function UsersPage() {
                         onChange={() => toggleCreatePerm(perm.id)}
                         className="rounded border-border"
                       />
-                      <span className="text-[11px]">{t(`permissions.${perm.name}`, perm.name)}</span>
+                      <span className="text-[11px]">
+                        {t(`permissions.${perm.name}`, perm.name)}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -540,7 +542,9 @@ export function UsersPage() {
                         onChange={() => toggleEditPerm(perm.id)}
                         className="rounded border-border"
                       />
-                      <span className="text-[11px]">{t(`permissions.${perm.name}`, perm.name)}</span>
+                      <span className="text-[11px]">
+                        {t(`permissions.${perm.name}`, perm.name)}
+                      </span>
                     </label>
                   ))}
                 </div>

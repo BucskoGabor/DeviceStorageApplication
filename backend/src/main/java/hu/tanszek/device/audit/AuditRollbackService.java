@@ -11,23 +11,21 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import hu.tanszek.device.assignment.entity.AssignmentStatus;
+import hu.tanszek.device.assignment.entity.DeviceAssignment;
+import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
 import hu.tanszek.device.audit.entity.AuditLog;
 import hu.tanszek.device.audit.repository.AuditLogRepository;
 import hu.tanszek.device.common.BusinessValidationException;
 import hu.tanszek.device.common.ResourceNotFoundException;
-import hu.tanszek.device.assignment.entity.AssignmentStatus;
-import hu.tanszek.device.assignment.entity.DeviceAssignment;
-import hu.tanszek.device.assignment.repository.DeviceAssignmentRepository;
 import hu.tanszek.device.device.entity.Device;
 import hu.tanszek.device.device.entity.DeviceStatus;
 import hu.tanszek.device.device.repository.DeviceRepository;
 
 import lombok.RequiredArgsConstructor;
-
 import lombok.extern.slf4j.Slf4j;
 
 /**
-
  * AuditRollbackService — audit log bejegyzés alapján rollback.
  *
  * <p>A {@code changes_json} mező {before, after} formátumban tárolja a rollback információt. A
@@ -260,11 +258,10 @@ public class AuditRollbackService {
   /**
    * Device státusz újraszámítása Assignment rollback után.
    *
-   * <p>Az Assignment rollback a {@code DeviceAssignment} tábla mezőit állítja vissza
-   * ({@code status}, {@code approvedByUserId}, stb.), de a {@code Device.status} mezőt nem —
-   * az {@code approveAssignment()} külön beállítja {@code ASSIGNED}-re, és a rollback ezt nem
-   * fordította vissza. Ez a helper az aktív (ASSIGNED) assignment-ek alapján újraszámolja a
-   * device státuszt:
+   * <p>Az Assignment rollback a {@code DeviceAssignment} tábla mezőit állítja vissza ({@code
+   * status}, {@code approvedByUserId}, stb.), de a {@code Device.status} mezőt nem — az {@code
+   * approveAssignment()} külön beállítja {@code ASSIGNED}-re, és a rollback ezt nem fordította
+   * vissza. Ez a helper az aktív (ASSIGNED) assignment-ek alapján újraszámolja a device státuszt:
    *
    * <ul>
    *   <li>Van aktív (ASSIGNED) assignment → {@code ASSIGNED}
