@@ -159,7 +159,8 @@ public class DeviceService {
     // Régi aktív assignment lekérése a fromLocation / fromUser kitöltéséhez
     Optional<DeviceAssignment> oldAssignmentOpt =
         assignmentRepository.findFirstByDeviceIdAndStatus(deviceId, AssignmentStatus.ASSIGNED);
-    Location fromLocation = oldAssignmentOpt.map(DeviceAssignment::getToLocation).orElse(null);
+    Location fromLocation =
+        oldAssignmentOpt.map(DeviceAssignment::getToLocation).orElse(device.getCurrentLocation());
     AppUser fromUser = oldAssignmentOpt.map(DeviceAssignment::getToUser).orElse(null);
 
     oldAssignmentOpt.ifPresent(
