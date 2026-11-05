@@ -1,6 +1,6 @@
 # Nyilvántartó Rendszer
 
-EEszköz- és szoftver-nyilvántartó rendszer. Spring Boot 3.3 backend + React / Vite frontend, Docker Compose alapú on-premise környezettel.
+Eszköz- és szoftver-nyilvántartó rendszer. Spring Boot 3.3 backend + React / Vite frontend, Docker Compose alapú on-premise környezettel.
 
 ## Áttekintés
 
