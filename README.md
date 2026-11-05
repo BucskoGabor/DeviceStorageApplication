@@ -1,10 +1,10 @@
-# Egyetemi Informatikai Tanszéki Nyilvántartó Rendszer
+# Nyilvántartó Rendszer
 
-Egyetemi tanszéki eszköz- és szoftver-nyilvántartó rendszer. Spring Boot 3.3 backend + React / Vite frontend, Docker Compose alapú on-premise környezettel.
+EEszköz- és szoftver-nyilvántartó rendszer. Spring Boot 3.3 backend + React / Vite frontend, Docker Compose alapú on-premise környezettel.
 
 ## Áttekintés
 
-A rendszer az egyetemi tanszék fizikai eszközeinek (laptopok, monitorok, hálózati eszközök), szoftverlicenceinek, helyszíneinek (tantermek, irodák, raktárak), valamint az eszköz-kiosztások és felelősök nyilvántartását és kezelését biztosítja.
+A rendszer a fizikai eszközök (laptopok, monitorok, hálózati eszközök), szoftverlicenceinek, helyszíneinek (tantermek, irodák, raktárak), valamint az eszköz-kiosztások és felelősök nyilvántartását és kezelését biztosítja.
 
 ### Főbb funkciók
 
